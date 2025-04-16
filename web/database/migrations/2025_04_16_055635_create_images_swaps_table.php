@@ -16,7 +16,8 @@ class CreateImagesSwapsTable extends Migration
         Schema::create('images_swaps', function (Blueprint $table) {
             $table->id();
             $table->longText('original_image')->nullable();
-            $table->longText('swapped_image')->nullable();
+            $table->longText('swapped_image_without_water_mark')->nullable();
+            $table->longText('swapped_image_with_water_mark')->nullable();
             $table->string('type')->nullable();
             $table->string('shop_id')->nullable();
             $table->timestamps();

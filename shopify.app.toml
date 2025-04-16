@@ -3,14 +3,25 @@
 client_id = "a7fb985f33ba0f4453e0010c316f855d"
 name = "Art transformer (Local)"
 handle = "art-transformer-local"
-application_url = "https://example.com/"
+application_url = "https://fp-absorption-questions-licenses.trycloudflare.com"
 embedded = true
 
 [webhooks]
 api_version = "2025-04"
 
 [auth]
-redirect_urls = [ "https://example.com/api/auth" ]
+redirect_urls = [
+  "https://fp-absorption-questions-licenses.trycloudflare.com/auth/callback",
+  "https://fp-absorption-questions-licenses.trycloudflare.com/auth/shopify/callback",
+  "https://fp-absorption-questions-licenses.trycloudflare.com/api/auth/callback"
+]
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_products,write_products,read_orders,write_orders"
 
 [pos]
 embedded = false
+
+[build]
+automatically_update_urls_on_dev = true

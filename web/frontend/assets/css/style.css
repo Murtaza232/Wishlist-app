@@ -1,0 +1,58 @@
+/* Tabs Container Styling */
+.tab-container {
+    margin-top: 20px;
+    background-color: #f4f6f8;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.custom-tabs {
+    margin-bottom: 10px;  /* Reduced bottom margin */
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #e1e4e8;
+}
+
+/* Active Tab Styling */
+.custom-tabs .Polaris-Tabs__Tab.Polaris-Tabs__Tab--active {
+    background-color: #007bff !important;  /* Changed to a different shade of blue */
+    color: white !important;
+    font-weight: bold !important;
+    border-radius: 8px 8px 0 0 !important; /* Rounded top corners for selected tab */
+    border: 1px solid #007bff !important;  /* Border for selected tab */
+    border-bottom: none !important; /* Remove bottom border to blend with content */
+}
+
+/* Inactive Tab Styling */
+.custom-tabs .Polaris-Tabs__Tab {
+    background-color: #f1f1f1 !important;  /* Light background color for inactive tabs */
+    color: #333 !important;  /* Dark text for inactive tabs */
+    border-radius: 8px 8px 0 0 !important; /* Rounded top corners for all tabs */
+    border: 1px solid #e1e4e8 !important;  /* Light border for inactive tabs */
+    border-bottom: none !important; /* Remove bottom border to blend with content */
+}
+
+/* Tab Content Styling */
+.tab-content {
+    padding: 20px;
+    background-color: #ffffff;
+    border-radius: 8px;
+}
+
+/* Input Fields Styling */
+.input-field {
+    margin-bottom: 10px;  /* Reduced bottom margin */
+}
+
+/* Action Buttons */
+.actions {
+    margin-top: 20px;
+    text-align: right;
+}
+
+/* Skeleton Loading Styles */
+.Polaris-SkeletonBodyText {
+    margin-top: 20px;
+    background-color: #f4f6f8;
+    border-radius: 4px;
+}

@@ -41,6 +41,7 @@ class SettingController extends Controller
 
     public function SaveSetting(Request $request)
     {
+
         try {
             $shop = getShop($request->get('shopifySession'));
             if ($shop) {
@@ -53,6 +54,15 @@ class SettingController extends Controller
                 $setting->type=$request->type;
                 $setting->magic_api_key=$request->magic_api_key;
                 $setting->deepface_api_key=$request->deepface_api_key;
+                $setting->smtp_host=$request->smtp_host;
+                $setting->smtp_username=$request->smtp_username;
+                $setting->smtp_password=$request->smtp_password;
+                $setting->email_from=$request->email_from;
+                $setting->from_name=$request->from_name;
+                $setting->reply_to=$request->reply_to;
+                $setting->smtp_type=$request->smtp_type;
+                $setting->smtp_port=$request->smtp_port;
+                $setting->subject=$request->subject;
                 $setting->save();
                 $data = [
                     'message' =>'Setting Save Successfully',

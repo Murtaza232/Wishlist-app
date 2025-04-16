@@ -363,10 +363,15 @@ class SwapImageController extends Controller
             if (!$imageContents) throw new \Exception('Failed to download the output image.');
 
             $faceswapsDir = public_path('faceswaps');
+            $rawFaceswapsDir = public_path('rawfaceswaps');
             if (!file_exists($faceswapsDir)) mkdir($faceswapsDir, 0777, true);
+            if (!file_exists($rawFaceswapsDir)) mkdir($rawFaceswapsDir, 0777, true);
 
             $fileName = 'faceswap_' . Str::uuid() . '.jpg';
+            $rawFileName = 'faceswap_raw_' . Str::uuid() . '.jpg';
+
             $imagePath = $faceswapsDir . '/' . $fileName;
+            $rawImagePath = $rawFaceswapsDir . '/' . $rawFileName;
 
             $finalImage = imagecreatefromstring($imageContents);
             if (!$finalImage) throw new \Exception('Failed to create image from contents.');
@@ -384,9 +389,11 @@ class SwapImageController extends Controller
                 $resizedImage = imagecreatetruecolor($newWidth, $newHeight);
                 imagecopyresampled($resizedImage, $finalImage, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
                 imagejpeg($resizedImage, $imagePath, 85);
+                imagejpeg($resizedImage, $rawImagePath, 85); // Save raw
                 imagedestroy($resizedImage);
             } else {
                 imagejpeg($finalImage, $imagePath, 85);
+                imagejpeg($finalImage, $rawImagePath, 85); // Save raw
             }
             imagedestroy($finalImage);
 
@@ -424,9 +431,9 @@ class SwapImageController extends Controller
             // ------------------- SAVE TO DATABASE -------------------
             ImagesSwap::create([
                 'original_image' => url('originalpic/' . $swapFileName),
-                'swapped_image' => url('faceswaps/' . $fileName),
+                'swapped_image_with_water_mark' => url('faceswaps/' . $fileName),
+                'swapped_image_without_water_mark' => url('rawfaceswaps/' . $rawFileName),
                 'type' => $setting->type,
-
             ]);
 
             // ------------------- RETURN FINAL URL -------------------
@@ -442,6 +449,25 @@ class SwapImageController extends Controller
             ]);
         }
     }
+
+
+    public function GetImages()
+    {
+        try {
+            $images = ImagesSwap::paginate(20);
+            $data = [
+                'data' => $images,
+                'success' => true
+            ];
+        }catch (\Exception $exception){
+            $data = [
+                'error' => $exception->getMessage(),
+                'success' => false
+            ];
+        }
+        return response()->json($data);
+    }
+
 
 
 
