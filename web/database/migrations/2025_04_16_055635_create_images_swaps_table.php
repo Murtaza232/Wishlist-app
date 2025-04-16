@@ -18,6 +18,7 @@ class CreateImagesSwapsTable extends Migration
             $table->longText('original_image')->nullable();
             $table->longText('swapped_image_without_water_mark')->nullable();
             $table->longText('swapped_image_with_water_mark')->nullable();
+            $table->longText('media_id')->nullable();
             $table->string('type')->nullable();
             $table->string('shop_id')->nullable();
             $table->timestamps();

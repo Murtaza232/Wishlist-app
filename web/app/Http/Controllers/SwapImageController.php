@@ -270,6 +270,7 @@ class SwapImageController extends Controller
                     'error' => 'Uploaded swap image is invalid.',
                 ]);
             }
+            $mediaId = Str::random(20);
 
             // Save uploaded image
             $swapFileName = 'swap_' . Str::uuid() . '.' . $swapImage->getClientOriginalExtension();
@@ -430,6 +431,7 @@ class SwapImageController extends Controller
 
             // ------------------- SAVE TO DATABASE -------------------
             ImagesSwap::create([
+                'media_id' => $mediaId,
                 'original_image' => url('originalpic/' . $swapFileName),
                 'swapped_image_with_water_mark' => url('faceswaps/' . $fileName),
                 'swapped_image_without_water_mark' => url('rawfaceswaps/' . $rawFileName),
@@ -439,6 +441,7 @@ class SwapImageController extends Controller
             // ------------------- RETURN FINAL URL -------------------
             return response()->json([
                 'success' => true,
+                'media_id' => $mediaId,
                 'url' => url('faceswaps/' . $fileName),
             ]);
 
