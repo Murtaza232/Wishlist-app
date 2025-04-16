@@ -17,4 +17,12 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return "Hello API";
 });
+
+//Route::group(['middleware' => ['shopify.auth']], function () {
+    Route::post('setting', [\App\Http\Controllers\SettingController::class, 'Setting']);
+    Route::post('save-setting', [\App\Http\Controllers\SettingController::class, 'SaveSetting']);
+
+//});
+
 Route::post('swap-image', [\App\Http\Controllers\SwapImageController::class, 'SwapImage']);
+Route::get('test', [\App\Http\Controllers\SettingController::class, 'getSwapDetails']);
