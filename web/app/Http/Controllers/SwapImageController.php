@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\SendEmail;
 use App\Models\ImagesSwap;
+use App\Models\Session;
 use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class SwapImageController extends Controller
@@ -260,6 +264,7 @@ class SwapImageController extends Controller
 
     public function SwapImage(Request $request)
     {
+
         try {
             $setting = Setting::first();
             $swapImage = $request->file('swap_image');
@@ -470,6 +475,8 @@ class SwapImageController extends Controller
         }
         return response()->json($data);
     }
+
+
 
 
 

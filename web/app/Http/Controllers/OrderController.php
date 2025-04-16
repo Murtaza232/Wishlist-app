@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\SendEmail;
 use App\Models\Charge;
 use App\Models\LineItem;
 use App\Models\Log;
@@ -16,7 +17,9 @@ use Gnikyt\BasicShopifyAPI\BasicShopifyAPI;
 use Gnikyt\BasicShopifyAPI\Options;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Shopify\Clients\Rest;
 
@@ -130,6 +133,43 @@ class OrderController extends Controller
     }
 
 
+    public function SendMail($dun_builder_detail)
+    {
+        $user = Session::first();
+        $order=Order::first();
 
+        $mail_smtp = Setting::where('shop_id', $user->id)->first();
+        if ($mail_smtp) {
+
+            Config::set('mail.mailers.smtp.host', isset($mail_smtp->smtp_host) ? ($mail_smtp->smtp_host) : env('MAIL_HOST'));
+            Config::set('mail.mailers.smtp.port', isset($mail_smtp->smtp_port) ? ($mail_smtp->smtp_port) : env('MAIL_PORT'));
+            Config::set('mail.mailers.smtp.username', isset($mail_smtp->smtp_username) ? ($mail_smtp->smtp_username) : env('MAIL_USERNAME'));
+            Config::set('mail.mailers.smtp.password', isset($mail_smtp->smtp_password) ? ($mail_smtp->smtp_password) : env('MAIL_PASSWORD'));
+            Config::set('mail.from.address', isset($mail_smtp->email_from) ? ($mail_smtp->email_from) : env('MAIL_FROM_ADDRESS'));
+            Config::set('mail.from.name', isset($mail_smtp->from_name) ? ($mail_smtp->from_name) : 'Dun wall');
+
+
+            $details['to'] = 'zain.irfan4442@gmail.com';
+            $details['order_number'] = $order->order_number;
+            $details['customer_name'] = $order->shipping_name;
+
+            if ($dun_builder_detail->email) {
+                try {
+                    Mail::to('zain.irfan4442@gmail.com')->send(new SendEmail($details));
+                    $dun_builder_detail->is_email_failed = 0;
+                    $dun_builder_detail->email_error = null;
+                    $dun_builder_detail->save();
+                } catch (\Exception $exception) {
+                    dd($exception->getMessage());
+                    $dun_builder_detail->is_email_failed = 1;
+                    $dun_builder_detail->email_error = json_encode($exception->getMessage());
+                    $dun_builder_detail->save();
+                    throw $exception;
+                }
+
+            }
+
+        }
+    }
 
 }
