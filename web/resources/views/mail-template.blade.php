@@ -6,106 +6,117 @@
     <style>
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
-            background-color: #f4f5f7;
+            background-color: #f7f8fa;
             margin: 0;
             padding: 0;
-            color: #333333;
+            color: #333;
         }
         .email-container {
-            max-width: 600px;
-            margin: 20px auto;
-            background: #ffffff;
-            padding: 30px;
-            border-radius: 6px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            max-width: 650px;
+            margin: 30px auto;
+            background: #fff;
+            padding: 35px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
         }
         .header {
             text-align: center;
-            border-bottom: 1px solid #eaeaea;
+            border-bottom: 2px solid #eaeaea;
             padding-bottom: 20px;
-            margin-bottom: 25px;
         }
-        .logo {
-            margin-bottom: 15px;
+        .logo img {
+            width: 140px;
+            margin-bottom: 10px;
         }
         h2 {
             color: #2c3e50;
-            font-size: 22px;
+            font-size: 24px;
             margin-top: 0;
             font-weight: 600;
         }
         .content {
-            color: #333333;
-            line-height: 1.6;
+            padding: 20px 0;
         }
-        .button {
-            display: inline-block;
-            margin-top: 15px;
-            padding: 12px 24px;
-            background-color: #1a73e8;
-            color: #ffffff;
-            text-decoration: none;
-            border-radius: 4px;
-            font-weight: 500;
-            text-align: center;
+        .product-list {
+            margin-top: 20px;
         }
-        .button:hover {
-            background-color: #0d66da;
+        .product-item {
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+            padding: 15px 0;
         }
-        .image-container {
-            text-align: center;
-            margin: 25px 0;
-            padding: 15px;
-            border: 1px solid #eaeaea;
-            border-radius: 5px;
+        .product-item img {
+            width: 100px;
+            border-radius: 6px;
+            margin-right: 20px;
+            transition: 0.3s ease;
         }
-        .image-container img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 4px;
+        .product-item img:hover {
+            opacity: 0.9;
+        }
+        .product-details {
+            flex: 1;
+        }
+        .product-title {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 5px;
+            color: #1a1a1a;
         }
         .footer {
             margin-top: 30px;
             padding-top: 20px;
-            border-top: 1px solid #eaeaea;
-            color: #777777;
             font-size: 13px;
+            color: #888;
+            border-top: 1px solid #eaeaea;
             text-align: center;
+        }
+        a {
+            color: #1a73e8;
+            text-decoration: none;
         }
     </style>
 </head>
 <body>
 <div class="email-container">
-    <!-- Company Logo -->
+    <!-- Header -->
     <div class="header">
         <div class="logo">
-            <img src="/api/placeholder/150/50" alt="Company Logo" width="150">
+            <img src="{{ asset('logo.png') }}" alt="Company Logo">
         </div>
         <h2>Order Confirmation</h2>
     </div>
 
-    <!-- Email Content -->
+    <!-- Content -->
     <div class="content">
-        <p>Dear <strong>{{ $details['customer_name'] }}</strong>,</p>
+        <p>Hi <strong>{{ $details['customer_name'] }}</strong>,</p>
+        <p>Thanks for your order <strong>{{ $details['order_number'] }}</strong>. We're preparing your digital image(s) now. Below is a preview of your purchased item(s):</p>
 
-        <p>Thank you for your purchase! Your order <strong>{{ $details['order_number'] }}</strong> has been successfully received and is now being processed.</p>
-
-        <p>We appreciate your business and will notify you once your order has shipped.</p>
-
-        <!-- Downloadable Image -->
-        <div class="image-container">
-            <img src="/api/placeholder/400/300" alt="Invoice Image">
-            <p><a href="https://example.com/download/invoice.jpg" class="button" download>Download Invoice</a></p>
+        <!-- Product List -->
+        <div class="product-list">
+            @if (!empty($details['imageUrls']))
+                @foreach ($details['imageUrls'] as $image)
+                    <div class="product-item">
+                        <a href="{{ $image['url'] }}" target="_blank">
+                            <img src="{{ $image['src'] }}" alt="{{ $image['title'] }}">
+                        </a>
+                        <div class="product-details">
+                            <div class="product-title">{{ $image['title'] }}</div>
+                            <div><a href="{{ $image['url'] }}" target="_blank">View Full Image</a></div>
+                        </div>
+                    </div>
+                @endforeach
+            @endif
         </div>
 
-        <p>If you have any questions about your order, please contact our customer service team.</p>
-
-        <p>Thank you for shopping with us!</p>
+        <p>If you have any questions about your order, feel free to contact our support team.</p>
+        <p>Thanks again for choosing us!</p>
     </div>
 
     <!-- Footer -->
     <div class="footer">
-        <p>&copy; 2025 Your Company Name. All rights reserved.</p>
+        &copy; {{ date('Y') }} ArtTransformers. All rights reserved.
     </div>
 </div>
 </body>

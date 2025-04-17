@@ -38,6 +38,7 @@ export default function Settings() {
     const [selectedVendor, setSelectedVendor] = useState('magic_api');
     const [magicApiKey, setMagicApiKey] = useState('');
     const [deepfaceApiKey, setDeepfaceApiKey] = useState('');
+    const [letsenhanceApiKey, setLetsenhanceApiKey] = useState('');
 
     // SMTP states
     const [smtpHost, setSmtpHost] = useState('');
@@ -95,6 +96,7 @@ export default function Settings() {
             );
             const data = response?.data?.data;
             setSmtpHost(data?.smtp_host);
+            setSelectedVendor(data?.type)
             setSmtpUsername(data?.smtp_username);
             setSmtpPassword(data?.smtp_password);
             setSmtpEmail(data?.email_from);
@@ -105,6 +107,7 @@ export default function Settings() {
             setSubject(data?.subject);
             setMagicApiKey(data?.magic_api_key)
             setDeepfaceApiKey(data?.deepface_api_key)
+            setLetsenhanceApiKey(data?.letsenhance_api_key)
         } catch (error) {
             console.error(error);
             setLoading(false)
@@ -133,6 +136,7 @@ export default function Settings() {
             subject: subject,
             magic_api_key: magicApiKey,
             deepface_api_key: deepfaceApiKey,
+            letsenhance_api_key: letsenhanceApiKey,
             type: selectedVendor,
         };
 
@@ -204,6 +208,14 @@ export default function Settings() {
                                                         type="text"
                                                         value={deepfaceApiKey}
                                                         onChange={(e) => setDeepfaceApiKey(e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="input-field">
+                                                    <InputField
+                                                        label="Letsenhance API Key"
+                                                        type="text"
+                                                        value={letsenhanceApiKey}
+                                                        onChange={(e) => setLetsenhanceApiKey(e.target.value)}
                                                     />
                                                 </div>
                                             </FormLayout>

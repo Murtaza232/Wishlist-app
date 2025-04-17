@@ -478,7 +478,7 @@ class SwapImageController extends Controller
 
             imagedestroy($finalImage);
 
-            // ADD WATERMARK
+            // ADD STRETCHED WATERMARK
             $watermarkPath = public_path('watermark.png');
             if (!file_exists($watermarkPath)) {
                 $this->createTransparentWatermark("FACESWAP", $watermarkPath);
@@ -491,25 +491,34 @@ class SwapImageController extends Controller
 
                 if ($baseImage && $watermark) {
                     imagealphablending($baseImage, true);
-                    imagealphablending($watermark, true);
-                    imagesavealpha($watermark, true);
+                    imagesavealpha($baseImage, true);
 
                     $baseWidth = imagesx($baseImage);
                     $baseHeight = imagesy($baseImage);
-                    $wmWidth = imagesx($watermark);
-                    $wmHeight = imagesy($watermark);
 
-                    $destX = $baseWidth - $wmWidth - 20;
-                    $destY = $baseHeight - $wmHeight - 20;
+                    // Resize watermark to match base image size
+                    $wmResized = imagecreatetruecolor($baseWidth, $baseHeight);
+                    imagealphablending($wmResized, false);
+                    imagesavealpha($wmResized, true);
+                    $transparent = imagecolorallocatealpha($wmResized, 0, 0, 0, 127);
+                    imagefill($wmResized, 0, 0, $transparent);
 
-                    imagecopy($baseImage, $watermark, $destX, $destY, 0, 0, $wmWidth, $wmHeight);
+                    imagecopyresampled(
+                        $wmResized,
+                        $watermark,
+                        0, 0, 0, 0,
+                        $baseWidth, $baseHeight,
+                        imagesx($watermark), imagesy($watermark)
+                    );
+
+                    imagecopy($baseImage, $wmResized, 0, 0, 0, 0, $baseWidth, $baseHeight);
                     imagejpeg($baseImage, $imagePath, 90);
 
                     imagedestroy($baseImage);
                     imagedestroy($watermark);
+                    imagedestroy($wmResized);
                 }
 
-                // ✅ Correct base64 from watermarked image
                 $finalImageContents = file_get_contents($imagePath);
                 $watermarkBase64 = 'data:image/jpeg;base64,' . base64_encode($finalImageContents);
             }
@@ -526,6 +535,7 @@ class SwapImageController extends Controller
             return response()->json([
                 'success' => true,
                 'media_id' => $mediaId,
+//                'url' => "https://feenchlet.com/a/ai/show-image/{$mediaId}",
                 'url' => url('faceswaps/' . $fileName),
                 'watermark_base64' => $watermarkBase64,
                 'status' => 'complete'
@@ -545,9 +555,20 @@ class SwapImageController extends Controller
 
 
 
+
     public function GetImagesbyMediaId(Request $request)
     {
         try {
+            if (!$request->has('media_id') || empty($request->media_id)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Missing parameter: media_id',
+                    'media_id' => null,
+                    'url' => null,
+                    'watermark_base64' => null,
+                    'status' => 'failed',
+                ], 400); // 400 Bad Request
+            }
             $image_swap = ImagesSwap::where('media_id', $request->media_id)->first();
 
             if (!$image_swap) {
@@ -633,6 +654,7 @@ class SwapImageController extends Controller
                 'success' => true,
                 'media_id' => $mediaId,
                 'url' => $urlWithWatermark,
+//                'url' => "https://feenchlet.com/a/ai/show-image/{$mediaId}",
                 'watermark_base64' => $base64,
                 'status' => 'complete'
             ]);
@@ -700,7 +722,7 @@ class SwapImageController extends Controller
 
         imagedestroy($finalImage);
 
-        // ✅ Add watermark
+        // ✅ Add stretched watermark
         $watermarkPath = public_path('watermark.png');
         if (!file_exists($watermarkPath)) {
             $this->createTransparentWatermark("FACESWAP", $watermarkPath);
@@ -713,22 +735,27 @@ class SwapImageController extends Controller
 
             if ($baseImage && $watermark) {
                 imagealphablending($baseImage, true);
-                imagealphablending($watermark, true);
-                imagesavealpha($watermark, true);
+                imagesavealpha($baseImage, true);
 
                 $baseWidth = imagesx($baseImage);
                 $baseHeight = imagesy($baseImage);
-                $wmWidth = imagesx($watermark);
-                $wmHeight = imagesy($watermark);
 
-                $destX = $baseWidth - $wmWidth - 20;
-                $destY = $baseHeight - $wmHeight - 20;
+                // Resize watermark to match base image size
+                $wmResized = imagecreatetruecolor($baseWidth, $baseHeight);
+                imagealphablending($wmResized, false);
+                imagesavealpha($wmResized, true);
+                $transparent = imagecolorallocatealpha($wmResized, 0, 0, 0, 127);
+                imagefill($wmResized, 0, 0, $transparent);
 
-                imagecopy($baseImage, $watermark, $destX, $destY, 0, 0, $wmWidth, $wmHeight);
+                imagecopyresampled($wmResized, $watermark, 0, 0, 0, 0, $baseWidth, $baseHeight, imagesx($watermark), imagesy($watermark));
+
+                imagecopy($baseImage, $wmResized, 0, 0, 0, 0, $baseWidth, $baseHeight);
+
                 imagejpeg($baseImage, $imagePath, 90);
 
                 imagedestroy($baseImage);
                 imagedestroy($watermark);
+                imagedestroy($wmResized);
             }
 
             $finalImageContents = file_get_contents($imagePath);
@@ -743,6 +770,16 @@ class SwapImageController extends Controller
     }
 
 
+
+
+
+    public function ShowImage($id)
+    {
+        $swap_image=ImagesSwap::where('media_id',$id)->first();
+        if($swap_image){
+            return view('image_preview',compact('swap_image'));
+        }
+    }
 
 
 

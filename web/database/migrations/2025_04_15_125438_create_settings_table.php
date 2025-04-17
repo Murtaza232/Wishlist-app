@@ -19,6 +19,7 @@ class CreateSettingsTable extends Migration
             $table->string('type')->nullable();
             $table->longText('magic_api_key')->nullable();
             $table->longText('deepface_api_key')->nullable();
+            $table->longText('letsenhance_api_key')->nullable();
             $table->longText('smtp_host')->nullable();
             $table->longText('smtp_username')->nullable();
             $table->longText('smtp_password')->nullable();

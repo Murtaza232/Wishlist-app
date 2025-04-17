@@ -32,6 +32,9 @@ Route::post('swap-image', [\App\Http\Controllers\SwapImageController::class, 'Sw
 Route::post('get-media-detail', [\App\Http\Controllers\SwapImageController::class, 'GetImagesbyMediaId']);
 
 
+
+Route::get('show-image/{id}', [\App\Http\Controllers\SwapImageController::class, 'ShowImage']);
+
 Route::post('/webhooks/order-create', function (Request $request) {
     try {
 
@@ -48,5 +51,5 @@ Route::post('/webhooks/order-create', function (Request $request) {
 });
 
 
-Route::get('test', [\App\Http\Controllers\OrderController::class, 'SendMail']);
+Route::get('test', [\App\Http\Controllers\OrderController::class, 'bye']);
 Route::get('test-api', [\App\Http\Controllers\SwapImageController::class, 'testapi']);

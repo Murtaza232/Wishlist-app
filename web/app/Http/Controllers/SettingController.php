@@ -54,6 +54,7 @@ class SettingController extends Controller
                 $setting->type=$request->type;
                 $setting->magic_api_key=$request->magic_api_key;
                 $setting->deepface_api_key=$request->deepface_api_key;
+                $setting->letsenhance_api_key=$request->letsenhance_api_key;
                 $setting->smtp_host=$request->smtp_host;
                 $setting->smtp_username=$request->smtp_username;
                 $setting->smtp_password=$request->smtp_password;
