@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\SendEmail;
 use App\Models\Charge;
-use App\Models\LineItem;
+use App\Models\Lineitem;
 use App\Models\Log;
 use App\Models\Order;
 use App\Models\Plan;
@@ -133,12 +133,14 @@ class OrderController extends Controller
     }
 
 
-    public function SendMail($dun_builder_detail)
+    public function SendMail()
     {
+
         $user = Session::first();
         $order=Order::first();
 
         $mail_smtp = Setting::where('shop_id', $user->id)->first();
+
         if ($mail_smtp) {
 
             Config::set('mail.mailers.smtp.host', isset($mail_smtp->smtp_host) ? ($mail_smtp->smtp_host) : env('MAIL_HOST'));
@@ -152,13 +154,14 @@ class OrderController extends Controller
             $details['to'] = 'zain.irfan4442@gmail.com';
             $details['order_number'] = $order->order_number;
             $details['customer_name'] = $order->shipping_name;
+            $details['subject'] = 'Test Mail';
 
-            if ($dun_builder_detail->email) {
+            if ($order->email) {
                 try {
                     Mail::to('zain.irfan4442@gmail.com')->send(new SendEmail($details));
-                    $dun_builder_detail->is_email_failed = 0;
-                    $dun_builder_detail->email_error = null;
-                    $dun_builder_detail->save();
+//                    $dun_builder_detail->is_email_failed = 0;
+//                    $dun_builder_detail->email_error = null;
+//                    $dun_builder_detail->save();
                 } catch (\Exception $exception) {
                     dd($exception->getMessage());
                     $dun_builder_detail->is_email_failed = 1;

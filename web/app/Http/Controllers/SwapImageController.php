@@ -77,193 +77,12 @@ class SwapImageController extends Controller
      * @param Request $request The request containing swap_image and target_image URLs
      * @return \Illuminate\Http\JsonResponse Response with the final image URL or error
      */
-//    public function SwapImage(Request $request)
-//    {
-//        try {
-//            $setting=Setting::first();
-//            $swapImage = $request->file('swap_image');
-//
-//            if (!$swapImage || !$swapImage->isValid()) {
-//                return response()->json([
-//                    'success' => false,
-//                    'error' => 'Uploaded swap image is invalid.',
-//                ]);
-//            }
-//
-//            // Step 1: Save the uploaded image to originalpic directory
-//            $swapFileName = 'swap_' . Str::uuid() . '.' . $swapImage->getClientOriginalExtension();
-//            $originalDir = public_path('originalpic');
-//
-//            if (!file_exists($originalDir)) {
-//                mkdir($originalDir, 0777, true);
-//            }
-//
-//            $swapImage->move($originalDir, $swapFileName);
-//            $swapImageUrl = url('originalpic/' . $swapFileName);
-//
-//            // Step 2: Call MagicAPI for face swapping
-//
-//
-//            if($setting->type=='magic_api') {
-//                $response = Http::withHeaders([
-//                    'accept' => 'application/json',
-//                    'x-magicapi-key' => env('FACE_SWAP_API'),
-//                    'Content-Type' => 'application/json',
-//                ])->post('https://api.magicapi.dev/api/v1/magicapi/faceswap/faceswap-image', [
-//                    'input' => [
-//                        'swap_image' => $swapImageUrl,
-//                        'target_image' => $request->target_image,
-//                    ]
-//                ]);
-//
-//                $data = $response->json();
-//                $requestId = $data['request_id'] ?? null;
-//
-//                if (!$requestId) {
-//                    return response()->json([
-//                        'success' => false,
-//                        'error' => 'Request ID not received.'
-//                    ]);
-//                }
-//
-//                // Step 3: Wait and fetch result
-//                sleep(3);
-//
-//                $resultResponse = Http::withHeaders([
-//                    'accept' => 'application/json',
-//                    'x-magicapi-key' => env('FACE_SWAP_API'),
-//                    'Content-Type' => 'application/json',
-//                ])->post('https://api.magicapi.dev/api/v1/magicapi/faceswap/result', [
-//                    'request_id' => $requestId
-//                ]);
-//
-//                $resultData = $resultResponse->json();
-//                $outputImageUrl = $resultData['output'] ?? null;
-//
-//                if (!$outputImageUrl) {
-//                    return response()->json([
-//                        'success' => false,
-//                        'error' => 'Output image not found.'
-//                    ]);
-//                }
-//
-//                // Step 4: Save the result image to faceswaps
-//                $imageContents = file_get_contents($outputImageUrl);
-//                if (!$imageContents) {
-//                    return response()->json([
-//                        'success' => false,
-//                        'error' => 'Failed to download the output image.'
-//                    ]);
-//                }
-//
-//                $faceswapsDir = public_path('faceswaps');
-//                if (!file_exists($faceswapsDir)) {
-//                    mkdir($faceswapsDir, 0777, true);
-//                }
-//
-//                $fileName = 'faceswap_' . Str::uuid() . '.jpg';
-//                $imagePath = $faceswapsDir . '/' . $fileName;
-//                file_put_contents($imagePath, $imageContents);
-//
-//                // Step 5: Add watermark (if it exists or create one)
-//                $watermarkPath = public_path('watermark.png');
-//                if (!file_exists($watermarkPath)) {
-//                    $this->createTransparentWatermark("FACESWAP", $watermarkPath);
-//                }
-//
-//                if (file_exists($watermarkPath)) {
-//                    $baseImage = imagecreatefromjpeg($imagePath);
-//                    $watermark = imagecreatefrompng($watermarkPath);
-//
-//                    if ($baseImage && $watermark) {
-//                        imagealphablending($baseImage, true);
-//                        imagealphablending($watermark, true);
-//                        imagesavealpha($watermark, true);
-//
-//                        $baseWidth = imagesx($baseImage);
-//                        $baseHeight = imagesy($baseImage);
-//                        $wmWidth = imagesx($watermark);
-//                        $wmHeight = imagesy($watermark);
-//
-//                        $destX = $baseWidth - $wmWidth - 20;
-//                        $destY = $baseHeight - $wmHeight - 20;
-//
-//                        imagecopy($baseImage, $watermark, $destX, $destY, 0, 0, $wmWidth, $wmHeight);
-//                        imagejpeg($baseImage, $imagePath, 95);
-//
-//                        imagedestroy($baseImage);
-//                        imagedestroy($watermark);
-//                    } else {
-//                        return response()->json([
-//                            'success' => false,
-//                            'error' => 'Failed to create image resources for watermarking.'
-//                        ]);
-//                    }
-//                }
-//            }elseif ($setting->type=='deepfaceswap'){
-//                $response = Http::withHeaders([
-//                    'Authorization' => 'Bearer ' . env('DEEPFACESWAP_API_TOKEN'),
-//                ])
-//                    ->attach(
-//                        'swap[source_resource][file]',
-//                        file_get_contents($swapImageUrl),
-//                        'source.jpg'
-//                    )
-//                    ->attach(
-//                        'swap[target_resource][file]',
-//                        file_get_contents($request->target_image),
-//                        'target.jpg'
-//                    )
-//                    ->post('https://deepfaceswap.ai/api/v1/swaps');
-//                if (!$response->successful()) {
-//                    return response()->json([
-//                        'success' => 'false',
-//                        'error' => $response->body(),
-//                    ], $response->status());
-//                }
-//                $data = $response->json();
-//                $swapId = $data['id'];
-//
-//                // Start polling until status is "completed" or max attempts reached
-//                $maxAttempts = 10;
-//                $attempt = 0;
-//                $delay = 10; // seconds
-//
-//                do {
-//                    sleep($delay);
-//                    $attempt++;
-//
-//                    $statusResponse = Http::withHeaders([
-//                        'Authorization' => 'Bearer ' . env('DEEPFACESWAP_API_TOKEN'),
-//                    ])->get("https://deepfaceswap.ai/api/v1/swaps/{$swapId}");
-//
-//                    if (!$statusResponse->successful()) {
-//                        return response()->json([
-//                            'success' => 'false',
-//                            'error' => $statusResponse->body(),
-//                        ], $statusResponse->status());
-//                    }
-//
-//                    $statusData = $statusResponse->json();
-//                } while ($statusData['status'] !== 'completed' && $attempt < $maxAttempts);
-//            }
-//            // Step 6: Return the final image URL
-//            return response()->json([
-//                'success' => true,
-//                'url' => url('faceswaps/' . $fileName),
-//            ]);
-//
-//        } catch (\Exception $exception) {
-//            return response()->json([
-//                'error' => $exception->getMessage(),
-//                'success' => false
-//            ]);
-//        }
-//    }
 
 
-    public function SwapImage(Request $request)
+
+    public function SwapImageLoop(Request $request)
     {
+
 
         try {
             $setting = Setting::first();
@@ -303,18 +122,38 @@ class SwapImageController extends Controller
                 $requestId = $response->json()['request_id'] ?? null;
                 if (!$requestId) throw new \Exception('Request ID not received from MagicAPI');
 
-                sleep(3);
-                $resultResponse = Http::withHeaders([
-                    'accept' => 'application/json',
-                    'x-magicapi-key' => $setting->magic_api_key,
-                    'Content-Type' => 'application/json',
-                ])->post('https://api.magicapi.dev/api/v1/magicapi/faceswap/result', [
-                    'request_id' => $requestId
-                ]);
+                // Poll for result
+                $finalImageUrl = null;
+                $maxAttempts = 10;
+                $attempt = 0;
+                $delay = 5; // seconds
 
-                $finalImageUrl = $resultResponse->json()['output'] ?? null;
-                if (!$finalImageUrl) throw new \Exception('Output image not found from MagicAPI');
+                do {
+                    sleep($delay);
+                    $attempt++;
+
+                    $resultResponse = Http::withHeaders([
+                        'accept' => 'application/json',
+                        'x-magicapi-key' => $setting->magic_api_key,
+                        'Content-Type' => 'application/json',
+                    ])->post('https://api.magicapi.dev/api/v1/magicapi/faceswap/result', [
+                        'request_id' => $requestId
+                    ]);
+
+                    $status = $resultResponse->json()['status'] ?? null;
+
+                    if ($status === 'processed') {
+                        $finalImageUrl = $resultResponse->json()['output'] ?? null;
+                        break;
+                    }
+
+                } while ($status === 'processing' && $attempt < $maxAttempts);
+
+                if (!$finalImageUrl) {
+                    throw new \Exception('Image processing not completed or output not found from MagicAPI.');
+                }
             }
+
 
             // ------------------- DEEPFACESWAP FLOW -------------------
             elseif ($setting->type === 'deepfaceswap') {
@@ -459,6 +298,454 @@ class SwapImageController extends Controller
     }
 
 
+    public function SwapImage(Request $request)
+    {
+        try {
+            $setting = Setting::first();
+            $swapImage = $request->file('swap_image');
+
+            if (!$swapImage || !$swapImage->isValid()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Uploaded swap image is invalid.',
+                    'status' => 'failed'
+                ]);
+            }
+
+            $swapFileName = 'swap_' . Str::uuid() . '.' . $swapImage->getClientOriginalExtension();
+            $originalDir = public_path('originalpic');
+            if (!file_exists($originalDir)) mkdir($originalDir, 0777, true);
+            $swapImage->move($originalDir, $swapFileName);
+            $swapImagePath = $originalDir . '/' . $swapFileName;
+            $swapImageUrl = url('originalpic/' . $swapFileName);
+
+            $finalImageUrl = null;
+            $mediaId = null;
+
+            // MAGIC API FLOW
+            if ($setting->type === 'magic_api') {
+                $response = Http::withHeaders([
+                    'accept' => 'application/json',
+                    'x-magicapi-key' => $setting->magic_api_key,
+                    'Content-Type' => 'application/json',
+                ])->post('https://api.magicapi.dev/api/v1/magicapi/faceswap/faceswap-image', [
+                    'input' => [
+                        'swap_image' => $swapImageUrl,
+                        'target_image' => $request->target_image,
+                    ]
+                ]);
+
+                $requestId = $response->json()['request_id'] ?? null;
+
+                if (!$requestId) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Request ID not received from MagicAPI',
+                        'media_id' => null,
+                        'url' => null,
+                        'watermark_base64' => null,
+                        'status' => 'failed'
+                    ]);
+                }
+
+                $mediaId = $requestId;
+                sleep(20);
+
+                $resultResponse = Http::withHeaders([
+                    'accept' => 'application/json',
+                    'x-magicapi-key' => $setting->magic_api_key,
+                    'Content-Type' => 'application/json',
+                ])->post('https://api.magicapi.dev/api/v1/magicapi/faceswap/result', [
+                    'request_id' => $requestId
+                ]);
+
+                $status = $resultResponse->json()['status'] ?? null;
+                if ($status === 'processed') {
+                    $finalImageUrl = $resultResponse->json()['output'] ?? null;
+                } else {
+                    if ($mediaId) {
+                        ImagesSwap::create([
+                            'media_id' => $mediaId,
+                            'type' => $setting->type,
+                            'original_image' => url('originalpic/' . $swapFileName),
+                        ]);
+                    }
+
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Image processing not completed or output not found.',
+                        'media_id' => $mediaId,
+                        'url' => null,
+                        'watermark_base64' => null,
+                        'status' => 'in-progress'
+                    ]);
+                }
+            }
+
+            // DEEPFACESWAP FLOW
+            elseif ($setting->type === 'deepfaceswap') {
+                $response = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . $setting->deepface_api_key,
+                ])
+                    ->attach('swap[source_resource][file]', file_get_contents($swapImagePath), 'source.jpg')
+                    ->attach('swap[target_resource][file]', file_get_contents($request->target_image), 'target.jpg')
+                    ->post('https://deepfaceswap.ai/api/v1/swaps');
+
+                if (!$response->successful()) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => $response->body(),
+                        'status' => 'failed'
+                    ], $response->status());
+                }
+
+                $swapId = $response->json()['id'];
+                $mediaId = $swapId;
+
+                sleep(20);
+
+                $statusResponse = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . $setting->deepface_api_key,
+                ])->get("https://deepfaceswap.ai/api/v1/swaps/{$swapId}");
+
+                if (!$statusResponse->successful()) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => $statusResponse->body(),
+                        'status' => 'failed'
+                    ], $statusResponse->status());
+                }
+
+                $statusData = $statusResponse->json();
+                if ($statusData['status'] !== 'completed' || empty($statusData['output_resource']['url'])) {
+                    if ($mediaId) {
+                        ImagesSwap::create([
+                            'media_id' => $mediaId,
+                            'type' => $setting->type,
+                            'original_image' => url('originalpic/' . $swapFileName),
+                        ]);
+                    }
+
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Image processing not completed or output not found.',
+                        'media_id' => $mediaId,
+                        'url' => null,
+                        'watermark_base64' => null,
+                        'status' => 'in-progress'
+                    ]);
+                }
+
+                $finalImageUrl = $statusData['output_resource']['url'];
+            }
+
+            // SAVE FINAL IMAGE
+            $imageContents = file_get_contents($finalImageUrl);
+            if (!$imageContents) throw new \Exception('Failed to download the output image.');
+
+            $faceswapsDir = public_path('faceswaps');
+            $rawFaceswapsDir = public_path('rawfaceswaps');
+            if (!file_exists($faceswapsDir)) mkdir($faceswapsDir, 0777, true);
+            if (!file_exists($rawFaceswapsDir)) mkdir($rawFaceswapsDir, 0777, true);
+
+            $fileName = 'faceswap_' . Str::uuid() . '.jpg';
+            $rawFileName = 'faceswap_raw_' . Str::uuid() . '.jpg';
+
+            $imagePath = $faceswapsDir . '/' . $fileName;
+            $rawImagePath = $rawFaceswapsDir . '/' . $rawFileName;
+
+            $finalImage = imagecreatefromstring($imageContents);
+            if (!$finalImage) throw new \Exception('Failed to create image from contents.');
+
+            $maxWidth = 1024;
+            $width = imagesx($finalImage);
+            $height = imagesy($finalImage);
+
+            if ($width > $maxWidth) {
+                $ratio = $maxWidth / $width;
+                $newWidth = $maxWidth;
+                $newHeight = intval($height * $ratio);
+
+                $resizedImage = imagecreatetruecolor($newWidth, $newHeight);
+                imagecopyresampled($resizedImage, $finalImage, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+                imagejpeg($resizedImage, $imagePath, 85);
+                imagejpeg($resizedImage, $rawImagePath, 85);
+                imagedestroy($resizedImage);
+            } else {
+                imagejpeg($finalImage, $imagePath, 85);
+                imagejpeg($finalImage, $rawImagePath, 85);
+            }
+
+            imagedestroy($finalImage);
+
+            // ADD WATERMARK
+            $watermarkPath = public_path('watermark.png');
+            if (!file_exists($watermarkPath)) {
+                $this->createTransparentWatermark("FACESWAP", $watermarkPath);
+            }
+
+            $watermarkBase64 = null;
+            if (file_exists($watermarkPath)) {
+                $baseImage = imagecreatefromjpeg($imagePath);
+                $watermark = imagecreatefrompng($watermarkPath);
+
+                if ($baseImage && $watermark) {
+                    imagealphablending($baseImage, true);
+                    imagealphablending($watermark, true);
+                    imagesavealpha($watermark, true);
+
+                    $baseWidth = imagesx($baseImage);
+                    $baseHeight = imagesy($baseImage);
+                    $wmWidth = imagesx($watermark);
+                    $wmHeight = imagesy($watermark);
+
+                    $destX = $baseWidth - $wmWidth - 20;
+                    $destY = $baseHeight - $wmHeight - 20;
+
+                    imagecopy($baseImage, $watermark, $destX, $destY, 0, 0, $wmWidth, $wmHeight);
+                    imagejpeg($baseImage, $imagePath, 90);
+
+                    imagedestroy($baseImage);
+                    imagedestroy($watermark);
+                }
+
+                // ✅ Correct base64 from watermarked image
+                $finalImageContents = file_get_contents($imagePath);
+                $watermarkBase64 = 'data:image/jpeg;base64,' . base64_encode($finalImageContents);
+            }
+
+            // SAVE TO DATABASE
+            ImagesSwap::create([
+                'media_id' => $mediaId,
+                'original_image' => url('originalpic/' . $swapFileName),
+                'swapped_image_with_water_mark' => url('faceswaps/' . $fileName),
+                'swapped_image_without_water_mark' => url('rawfaceswaps/' . $rawFileName),
+                'type' => $setting->type,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'media_id' => $mediaId,
+                'url' => url('faceswaps/' . $fileName),
+                'watermark_base64' => $watermarkBase64,
+                'status' => 'complete'
+            ]);
+
+        } catch (\Exception $exception) {
+            return response()->json([
+                'success' => false,
+                'error' => $exception->getMessage(),
+                'media_id' => null,
+                'url' => null,
+                'watermark_base64' => null,
+                'status' => 'failed'
+            ]);
+        }
+    }
+
+
+
+    public function GetImagesbyMediaId(Request $request)
+    {
+        try {
+            $image_swap = ImagesSwap::where('media_id', $request->media_id)->first();
+
+            if (!$image_swap) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Record not found',
+                    'media_id' => null,
+                    'url' => null,
+                    'watermark_base64' => null,
+                    'status' => 'failed'
+                ]);
+            }
+
+            // ✅ Already processed? Return from DB.
+            if (!empty($image_swap->swapped_image_with_water_mark)) {
+                $imagePath = public_path(parse_url($image_swap->swapped_image_with_water_mark, PHP_URL_PATH));
+
+                if (file_exists($imagePath)) {
+                    $imageData = file_get_contents($imagePath);
+                    $base64 = 'data:image/jpeg;base64,' . base64_encode($imageData);
+
+                    return response()->json([
+                        'success' => true,
+                        'media_id' => $image_swap->media_id,
+                        'url' => $image_swap->swapped_image_with_water_mark,
+                        'watermark_base64' => $base64,
+                        'status' => 'complete'
+                    ]);
+                }
+            }
+
+            $setting = Setting::first();
+            $finalImageUrl = null;
+            $mediaId = $image_swap->media_id;
+
+            if ($image_swap->type === 'magic_api') {
+                $response = Http::withHeaders([
+                    'accept' => 'application/json',
+                    'x-magicapi-key' => $setting->magic_api_key,
+                    'Content-Type' => 'application/json',
+                ])->post('https://api.magicapi.dev/api/v1/magicapi/faceswap/result', [
+                    'request_id' => $mediaId
+                ]);
+
+                $status = $response->json()['status'] ?? null;
+                if ($status !== 'processed') {
+                    return $this->buildInProgressResponse($mediaId);
+                }
+
+                $finalImageUrl = $response->json()['output'] ?? null;
+            } elseif ($setting->type === 'deepfaceswap') {
+                $response = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . $setting->deepface_api_key,
+                ])->get("https://deepfaceswap.ai/api/v1/swaps/{$mediaId}");
+
+                if (!$response->successful()) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => $response->body(),
+                        'status' => 'failed'
+                    ], $response->status());
+                }
+
+                $data = $response->json();
+                if ($data['status'] !== 'completed' || empty($data['output_resource']['url'])) {
+                    return $this->buildInProgressResponse($mediaId);
+                }
+
+                $finalImageUrl = $data['output_resource']['url'];
+            }
+
+            if (!$finalImageUrl) {
+                throw new \Exception('Final image URL is missing.');
+            }
+
+            [$urlWithWatermark, $urlWithoutWatermark, $base64] = $this->processSwappedImage($finalImageUrl);
+
+            $image_swap->swapped_image_with_water_mark = $urlWithWatermark;
+            $image_swap->swapped_image_without_water_mark = $urlWithoutWatermark;
+            $image_swap->save();
+
+            return response()->json([
+                'success' => true,
+                'media_id' => $mediaId,
+                'url' => $urlWithWatermark,
+                'watermark_base64' => $base64,
+                'status' => 'complete'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'media_id' => null,
+                'url' => null,
+                'watermark_base64' => null,
+                'status' => 'failed'
+            ]);
+        }
+    }
+
+    private function buildInProgressResponse($mediaId)
+    {
+        return response()->json([
+            'success' => false,
+            'error' => 'Image processing not completed or output not found.',
+            'media_id' => $mediaId,
+            'url' => null,
+            'watermark_base64' => null,
+            'status' => 'in-progress'
+        ]);
+    }
+
+    private function processSwappedImage($finalImageUrl)
+    {
+        $imageContents = file_get_contents($finalImageUrl);
+        if (!$imageContents) throw new \Exception('Failed to download the output image.');
+
+        $faceswapsDir = public_path('faceswaps');
+        $rawFaceswapsDir = public_path('rawfaceswaps');
+        if (!file_exists($faceswapsDir)) mkdir($faceswapsDir, 0777, true);
+        if (!file_exists($rawFaceswapsDir)) mkdir($rawFaceswapsDir, 0777, true);
+
+        $fileName = 'faceswap_' . Str::uuid() . '.jpg';
+        $rawFileName = 'faceswap_raw_' . Str::uuid() . '.jpg';
+
+        $imagePath = $faceswapsDir . '/' . $fileName;
+        $rawImagePath = $rawFaceswapsDir . '/' . $rawFileName;
+
+        $finalImage = imagecreatefromstring($imageContents);
+        if (!$finalImage) throw new \Exception('Failed to create image from contents.');
+
+        $maxWidth = 1024;
+        $width = imagesx($finalImage);
+        $height = imagesy($finalImage);
+
+        if ($width > $maxWidth) {
+            $ratio = $maxWidth / $width;
+            $newWidth = $maxWidth;
+            $newHeight = intval($height * $ratio);
+
+            $resizedImage = imagecreatetruecolor($newWidth, $newHeight);
+            imagecopyresampled($resizedImage, $finalImage, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+            imagejpeg($resizedImage, $imagePath, 85);
+            imagejpeg($resizedImage, $rawImagePath, 85);
+            imagedestroy($resizedImage);
+        } else {
+            imagejpeg($finalImage, $imagePath, 85);
+            imagejpeg($finalImage, $rawImagePath, 85);
+        }
+
+        imagedestroy($finalImage);
+
+        // ✅ Add watermark
+        $watermarkPath = public_path('watermark.png');
+        if (!file_exists($watermarkPath)) {
+            $this->createTransparentWatermark("FACESWAP", $watermarkPath);
+        }
+
+        $base64 = null;
+        if (file_exists($watermarkPath)) {
+            $baseImage = imagecreatefromjpeg($imagePath);
+            $watermark = imagecreatefrompng($watermarkPath);
+
+            if ($baseImage && $watermark) {
+                imagealphablending($baseImage, true);
+                imagealphablending($watermark, true);
+                imagesavealpha($watermark, true);
+
+                $baseWidth = imagesx($baseImage);
+                $baseHeight = imagesy($baseImage);
+                $wmWidth = imagesx($watermark);
+                $wmHeight = imagesy($watermark);
+
+                $destX = $baseWidth - $wmWidth - 20;
+                $destY = $baseHeight - $wmHeight - 20;
+
+                imagecopy($baseImage, $watermark, $destX, $destY, 0, 0, $wmWidth, $wmHeight);
+                imagejpeg($baseImage, $imagePath, 90);
+
+                imagedestroy($baseImage);
+                imagedestroy($watermark);
+            }
+
+            $finalImageContents = file_get_contents($imagePath);
+            $base64 = 'data:image/jpeg;base64,' . base64_encode($finalImageContents);
+        }
+
+        return [
+            url('faceswaps/' . $fileName),
+            url('rawfaceswaps/' . $rawFileName),
+            $base64
+        ];
+    }
+
+
+
+
+
     public function GetImages()
     {
         try {
@@ -478,7 +765,19 @@ class SwapImageController extends Controller
 
 
 
-
+public function testapi()
+{
+    $setting=Setting::first();
+    $requestId='VCPcbiKPATiNBMHhp2k2Lv';
+    $resultResponse = Http::withHeaders([
+        'accept' => 'application/json',
+        'x-magicapi-key' => $setting->magic_api_key,
+        'Content-Type' => 'application/json',
+    ])->post('https://api.magicapi.dev/api/v1/magicapi/faceswap/result', [
+        'request_id' => $requestId
+    ]);
+    dd($resultResponse->json());
+}
 
 
 

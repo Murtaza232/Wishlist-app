@@ -29,6 +29,7 @@ Route::group(['middleware' => ['shopify.auth']], function () {
 });
 
 Route::post('swap-image', [\App\Http\Controllers\SwapImageController::class, 'SwapImage']);
+Route::post('get-media-detail', [\App\Http\Controllers\SwapImageController::class, 'GetImagesbyMediaId']);
 
 
 Route::post('/webhooks/order-create', function (Request $request) {
@@ -47,4 +48,5 @@ Route::post('/webhooks/order-create', function (Request $request) {
 });
 
 
-Route::get('test', [\App\Http\Controllers\OrderController::class, 'shopifyOrders']);
+Route::get('test', [\App\Http\Controllers\OrderController::class, 'SendMail']);
+Route::get('test-api', [\App\Http\Controllers\SwapImageController::class, 'testapi']);
