@@ -18,8 +18,9 @@ export default function App() {
     const pages = import.meta.globEager("./pages/**/!(*.test.[jt]sx)*.([jt]sx)");
     const { t } = useTranslation();
 
-    const apiUrl = "https://phpstack-1447206-5423860.cloudwaysapps.com/api/";
-
+    // const apiUrl = "https://phpstack-1447206-5423860.cloudwaysapps.com/api/";
+    const appUrl = window.location.origin;
+    const apiUrl = `${appUrl}/api/`;
     return (
         <PolarisProvider>
             <BrowserRouter>

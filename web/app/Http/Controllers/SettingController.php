@@ -55,6 +55,7 @@ class SettingController extends Controller
                 $setting->magic_api_key=$request->magic_api_key;
                 $setting->deepface_api_key=$request->deepface_api_key;
                 $setting->letsenhance_api_key=$request->letsenhance_api_key;
+                $setting->email_notification=$request->email_notification;
                 $setting->smtp_host=$request->smtp_host;
                 $setting->smtp_username=$request->smtp_username;
                 $setting->smtp_password=$request->smtp_password;
@@ -64,6 +65,12 @@ class SettingController extends Controller
                 $setting->smtp_type=$request->smtp_type;
                 $setting->smtp_port=$request->smtp_port;
                 $setting->subject=$request->subject;
+                $setting->width=$request->width;
+                $setting->height=$request->height;
+                $setting->fit=$request->fit;
+                $setting->hdr=$request->hdr;
+                $setting->format_type=$request->format_type;
+                $setting->quality=$request->quality;
                 $setting->save();
                 $data = [
                     'message' =>'Setting Save Successfully',

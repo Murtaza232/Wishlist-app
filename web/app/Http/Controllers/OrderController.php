@@ -30,7 +30,7 @@ class OrderController extends Controller
 
     public function shopifyOrders(){
 
-        $shop=Session::find(4);
+        $shop=Session::find(2);
         $client = new Rest($shop->shop,$shop->access_token);
 
         $response = $client->get('/admin/api/2023-10/orders.json');
@@ -102,11 +102,12 @@ class OrderController extends Controller
             $newOrder->save();
 
             $imageUrls = [];
-            foreach ($order->line_items as $item) {
+            foreach ($order->line_items as $index=> $item) {
                 $new_line = Lineitem::where('shopify_id', $item->id)->where('order_id', $newOrder->id)->where('shop_id', $shop->id)->first();
                 if ($new_line == null) {
                     $new_line = new Lineitem();
                 }
+                $new_line->line_item_index=++$index;
                 $new_line->shopify_id=$item->id;
                 $new_line->shopify_product_id = $item->product_id;
                 $new_line->shopify_variant_id = $item->variant_id;
@@ -144,10 +145,12 @@ class OrderController extends Controller
                     // Check if the media already exists in the database
                     $media = ImagesSwap::where('media_id', $mediaId)->first();
 
+                    $new_line->media_id=$mediaId;
+                    $new_line->save();
                     // If the media exists and has a swapped image without watermark
                     if ($media && $media->swapped_image_without_water_mark) {
                         // Fetch the existing swapped image URL
-                        $imageUrl = "https://feenchlet.com/a/ai/show-image/{$mediaId}";
+                        $imageUrl = "https://feenchlet.com/a/art/show-image/{$mediaId}";
 
                         // Upscale the existing swapped image
                         $upscaledImageUrl = $this->UpscaleImage($media->swapped_image_without_water_mark);
@@ -243,7 +246,7 @@ class OrderController extends Controller
 
                 // If the media exists and has a swapped image without watermark
                 if ($media && $media->swapped_image_without_water_mark) {
-                    $imageUrl = "https://feenchlet.com/a/ai/show-image/{$mediaId}";
+                    $imageUrl = "https://feenchlet.com/a/art/show-image/{$mediaId}";
                     if ($media->upscale_image == null){
                         // Fetch the existing swapped image URL
 
@@ -294,7 +297,7 @@ class OrderController extends Controller
         $user = Session::first();
         $mail_smtp = Setting::where('shop_id', $user->id)->first();
 
-        if ($mail_smtp) {
+        if ($mail_smtp && $mail_smtp->email_notification==1) {
             Config::set('mail.mailers.smtp.host', isset($mail_smtp->smtp_host) ? ($mail_smtp->smtp_host) : env('MAIL_HOST'));
             Config::set('mail.mailers.smtp.port', isset($mail_smtp->smtp_port) ? ($mail_smtp->smtp_port) : env('MAIL_PORT'));
             Config::set('mail.mailers.smtp.username', isset($mail_smtp->smtp_username) ? ($mail_smtp->smtp_username) : env('MAIL_USERNAME'));
@@ -345,19 +348,18 @@ class OrderController extends Controller
             "input" => $imageUrl,  // Dynamically pass the image URL here
             "operations" => [
                 "resizing" => [
-                    "width" => 700,
-                    "height" => 800,
-                    "fit" => "crop"
+                    "width" => $setting->width,
+                    "height" => $setting->height,
+                    "fit" => $setting->fit
                 ],
                 "adjustments" => [
-                    "hdr" => 60,
-                    "sharpness" => 20
+                    "hdr" => $setting->hdr,
                 ]
             ],
             "output" => [
                 "format" => [
-                    "type" => "jpeg",
-                    "quality" => 100
+                    "type" => $setting->format_type,
+                    "quality" => $setting->quality
                 ]
             ]
         ];

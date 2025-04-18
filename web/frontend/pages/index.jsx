@@ -80,6 +80,12 @@ export default function HomePage() {
     const {mode, setMode} = useSetIndexFiltersMode(IndexFiltersMode.Filtering);
     const [toastMsg, setToastMsg] = useState('')
 
+    const [modalOpen, setModalOpen] = useState(false);
+    const [selectedImage, setSelectedImage] = useState({
+        src: '',
+        alt: '',
+    });
+
     const [ruleID, setRuleID] = useState("");
     const toggleDeleteModalClose = useCallback(() => {
         setActiveDeleteModal((activeDeleteModal) => !activeDeleteModal);
@@ -131,7 +137,11 @@ export default function HomePage() {
         }
     };
 
-
+    const handleImageClick = (e, src, alt) => {
+        e.stopPropagation(); // Prevent row click
+        setSelectedImage({ src, alt });
+        setModalOpen(true);
+    };
 
 
 
@@ -145,35 +155,7 @@ export default function HomePage() {
         setToggleLoadData(true);
     };
 
-    const handleDelete = async () => {
-        setDeleteBtnLoading(true);
-        try {
-            let sessionToken = await getSessionToken(appBridge);
-            const response = await axios.delete(
-                `${apiUrl}delete-rule/${ruleID}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${sessionToken}`,
-                    },
-                }
-            );
-            if (response?.status === 200) {
-                setTableLoading(false)
-                setSucessToast(true);
-                setToastMsg(response?.data?.message);
-                setActiveDeleteModal((activeDeleteModal) => !activeDeleteModal);
-                setToggleLoadData(true);
-                setDeleteBtnLoading(false);
-            } else {
-                setErrorToast(true);
-                setToastMsg(response?.data?.message);
-                setDeleteBtnLoading(false);
-            }
-        } catch (error) {
-            setDeleteBtnLoading(false);
-            setActiveDeleteModal((activeDeleteModal) => !activeDeleteModal);
-        }
-    };
+
 
     const handleButtonClick = () => {
         if (linkUrl) {
@@ -237,13 +219,19 @@ export default function HomePage() {
         ];
 
         const date = new Date(created_at);
+
         const monthName = months[date.getMonth()];
         const day = date.getDate();
         const year = date.getFullYear();
 
-        const formattedDate = `${monthName} ${day}, ${year}`;
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const seconds = date.getSeconds().toString().padStart(2, '0');
+
+        const formattedDate = `${monthName} ${day}, ${year} ${hours}:${minutes}:${seconds}`;
         return formattedDate;
-    }
+    };
+
 
 
     const resourceName = {
@@ -334,48 +322,39 @@ export default function HomePage() {
 
                 <IndexTable.Cell>
                     {original_image ? (
-                        <a
-                            href={original_image}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()} // Prevent row click
-                        >
-                            <img
-                                src={original_image}
-                                alt="Orignal"
-                                style={{
-                                    width: '60px',
-                                    height: '60px',
-                                    objectFit: 'cover',
-                                    borderRadius: '4px',
-                                }}
-                            />
-                        </a>
+                        <img
+                            src={original_image}
+                            alt="Original"
+                            onClick={(e) => handleImageClick(e, original_image, 'Original')}
+                            style={{
+                                width: '60px',
+                                height: '60px',
+                                objectFit: 'cover',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                            }}
+                        />
                     ) : (
                         "---"
                     )}
                 </IndexTable.Cell>
 
                 {/* Column 1: Without Watermark Image */}
+
                 <IndexTable.Cell>
                     {swapped_image_without_water_mark ? (
-                        <a
-                            href={swapped_image_without_water_mark}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()} // Prevent row click
-                        >
-                            <img
-                                src={swapped_image_without_water_mark}
-                                alt="Without Watermark"
-                                style={{
-                                    width: '60px',
-                                    height: '60px',
-                                    objectFit: 'cover',
-                                    borderRadius: '4px',
-                                }}
-                            />
-                        </a>
+                        <img
+                            src={swapped_image_without_water_mark}
+                            alt="Without Watermark"
+                            onClick={(e) => handleImageClick(e, swapped_image_without_water_mark, 'Without Watermark')}
+                            style={{
+                                width: '60px',
+                                height: '60px',
+                                objectFit: 'cover',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                            }}
+                        />
                     ) : (
                         "---"
                     )}
@@ -384,23 +363,18 @@ export default function HomePage() {
                 {/* Column 2: With Watermark Image */}
                 <IndexTable.Cell>
                     {swapped_image_with_water_mark ? (
-                        <a
-                            href={swapped_image_with_water_mark}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()} // Prevent row click
-                        >
-                            <img
-                                src={swapped_image_with_water_mark}
-                                alt="With Watermark"
-                                style={{
-                                    width: '60px',
-                                    height: '60px',
-                                    objectFit: 'cover',
-                                    borderRadius: '4px',
-                                }}
-                            />
-                        </a>
+                        <img
+                            src={swapped_image_with_water_mark}
+                            alt="With Watermark"
+                            onClick={(e) => handleImageClick(e, swapped_image_with_water_mark, 'With Watermark')}
+                            style={{
+                                width: '60px',
+                                height: '60px',
+                                objectFit: 'cover',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                            }}
+                        />
                     ) : (
                         "---"
                     )}
@@ -422,31 +396,18 @@ export default function HomePage() {
     return (
 
         <>
-
             <Modal
-                size="large"
-                open={activeDeleteModal}
-                onClose={toggleDeleteModalClose}
-                title="Image"
+                open={modalOpen}
+                onClose={() => setModalOpen(false)}
+                title={selectedImage.alt}
+                sectioned
+
             >
-                <Modal.Section>
-                    <div
-                        style={{
-                            position: 'relative',
-                            boxSizing: 'content-box',
-                            maxWidth: '100%',
-                            aspectRatio: '1.8508997429305913',
-                        }}
-                    >
-                        {modalImage && (
-                            <img
-                                src={modalImage}
-                                alt="Preview"
-                                style={{ width: '100%', height: 'auto' }}
-                            />
-                        )}
-                    </div>
-                </Modal.Section>
+                <img
+                    src={selectedImage.src}
+                    alt={selectedImage.alt}
+                    style={{ width: '100%', borderRadius: '8px' }}
+                />
             </Modal>
             {loading ? (
                 <SkeletonTable />

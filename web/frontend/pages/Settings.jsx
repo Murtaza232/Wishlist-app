@@ -5,8 +5,12 @@ import {
     Layout,
     Tabs,
     Button,
+    RangeSlider,
     FormLayout,
+    Text,
     Select,
+    InlineStack,
+    Badge,
     Toast,
     SkeletonBodyText,
 } from "@shopify/polaris";
@@ -14,6 +18,7 @@ import { InputField } from "../components/Utils/InputField"; // Adjust this path
 import { AppContext } from "../components/providers";
 import axios from "axios";
 import {getSessionToken} from "@shopify/app-bridge-utils";
+import {Knob} from "../components/Knob.jsx"
 import { useAppBridge } from "@shopify/app-bridge-react";
 import SkeletonTable from "../components/SkeletonTable.jsx";
 export default function Settings() {
@@ -27,6 +32,7 @@ export default function Settings() {
     const tabs = [
         { id: "1", content: "API Vendor" },
         { id: "2", content: "SMTP" },
+        { id: "3", content: "Upscaling" },
     ];
     const [errorToast, setErrorToast] = useState(false);
     const [sucessToast, setSucessToast] = useState(false);
@@ -51,6 +57,18 @@ export default function Settings() {
     const [subject, setSubject] = useState('');
     const [smtpType, setSmtpType] = useState('tls');
 
+
+
+    const [selected, setSelected] = useState(0);
+
+
+    const [width, setWidth] = useState('');
+    const [height, setHeight] = useState('');
+    const [fit, setFit] = useState('bounds');
+    const [hdr, setHdr] = useState(50);
+    const [formatType, setFormatType] = useState('jpeg');
+    const [quality, setQuality] = useState(50);
+
     const toggleErrorMsgActive = useCallback(
         () => setErrorToast((errorToast) => !errorToast),
         []
@@ -68,14 +86,33 @@ export default function Settings() {
         <Toast content={toastMsg} onDismiss={toggleSuccessMsgActive} />
     ) : null;
 
-
     const smtpTypeOptions = [
         { label: "TLS", value: "tls" },
         { label: "SSL", value: "ssl" },
         { label: "STARTTLS", value: "start_tls" },
     ];
 
+    const fitTypeOptions = [
+        { label: "Bounds", value: "bounds" },
+        { label: "Cover", value: "cover" },
+        { label: "Canvas", value: "canvas" },
+        { label: "Outpaint", value: "outpaint" },
+        { label: "Crop", value: "crop" },
+    ];
+
+    const formatTypeOptions = [
+        { label: "JPEG", value: "jpeg" },
+        { label: "PNG", value: "png" },
+        { label: "WEBP", value: "webp" },
+        { label: "AVIF", value: "avif" },
+
+    ];
+
     const handleSmtpType = useCallback((value) => setSmtpType(value), []);
+
+
+    const handleFitType = useCallback((value) => setFit(value), []);
+    const handleFormatType = useCallback((value) => setFormatType(value), []);
 
     useEffect(() => {
         getMailSmtpData();
@@ -108,6 +145,15 @@ export default function Settings() {
             setMagicApiKey(data?.magic_api_key)
             setDeepfaceApiKey(data?.deepface_api_key)
             setLetsenhanceApiKey(data?.letsenhance_api_key)
+            setSelected(data?.email_notification)
+            setWidth(data?.width)
+            setHeight(data?.height)
+            setFit(data?.fit)
+            setHdr(data?.hdr)
+            setFormatType(data?.format_type)
+            setQuality(data?.quality)
+
+
         } catch (error) {
             console.error(error);
             setLoading(false)
@@ -138,6 +184,13 @@ export default function Settings() {
             deepface_api_key: deepfaceApiKey,
             letsenhance_api_key: letsenhanceApiKey,
             type: selectedVendor,
+            email_notification:selected,
+            width: width,
+            height: height,
+            fit: fit,
+            hdr: hdr,
+            format_type: formatType,
+            quality: quality
         };
 
         try {
@@ -183,12 +236,28 @@ export default function Settings() {
                                     {selectedTab === 0 && (
                                         <Card sectioned title="API Vendor">
                                             <FormLayout>
+
+                                                <div className="input-field">
+                                                    <label style={{display: "block", marginBottom: "0.5rem"}}>Email
+                                                        Notifications</label>
+                                                    <InlineStack align="start" blockAlign="center" gap="200">
+                                                        <Knob
+                                                            selected={selected}
+                                                            ariaLabel="Toggle email notifications"
+                                                            onClick={() => setSelected((prev) => (prev === 1 ? 0 : 1))}
+                                                        />
+                                                        <Text as="span" variant="bodyMd">
+                                                            {selected === 1 ? "Enabled" : "Disabled"}
+                                                        </Text>
+                                                    </InlineStack>
+                                                </div>
+
                                                 <div className="input-field">
                                                     <Select
                                                         label="Select Vendor"
                                                         options={[
-                                                            { label: "Magic API Key", value: "magic_api" },
-                                                            { label: "Deepfaceswap API Key", value: "deepfaceswap" },
+                                                            {label: "Magic", value: "magic_api"},
+                                                            {label: "Deepfaceswap", value: "deepfaceswap"},
                                                         ]}
                                                         value={selectedVendor}
                                                         onChange={setSelectedVendor}
@@ -298,6 +367,69 @@ export default function Settings() {
                                                         onChange={handleSmtpType}
                                                     />
                                                 </div>
+                                            </FormLayout>
+                                        </Card>
+                                    )}
+
+                                    {selectedTab === 2 && (
+                                        <Card sectioned title="Upscalling Settings">
+                                            <FormLayout>
+                                                <div className="input-field">
+                                                    <InputField
+                                                        label="Width"
+                                                        type="text"
+                                                        value={width}
+                                                        onChange={(e) => setWidth(e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="input-field">
+                                                    <InputField
+                                                        label="Height"
+                                                        type="text"
+                                                        value={height}
+                                                        onChange={(e) => setHeight(e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="input-field">
+                                                    <Select
+                                                        label="Fit"
+                                                        options={fitTypeOptions}
+                                                        value={fit}
+                                                        onChange={handleFitType}
+                                                    />
+                                                </div>
+                                                <div className="input-field">
+                                                    <RangeSlider
+                                                        label="Hdr"
+                                                        value={hdr}
+                                                        onChange={(value) => setHdr(value)}
+                                                        output
+                                                        min={0}
+                                                        max={100}
+                                                    />
+                                                </div>
+                                                <div className="input-field">
+                                                    <Select
+                                                        label="Format Type"
+                                                        options={formatTypeOptions}
+                                                        value={formatType}
+                                                        onChange={handleFormatType}
+                                                    />
+                                                </div>
+                                                <div className="input-field">
+                                                    <RangeSlider
+                                                        label="Quality"
+                                                        value={quality}
+                                                        onChange={(value) => setQuality(value)}
+                                                        output
+                                                        min={0}
+                                                        max={100}
+                                                    />
+                                                </div>
+
+
+
+
                                             </FormLayout>
                                         </Card>
                                     )}

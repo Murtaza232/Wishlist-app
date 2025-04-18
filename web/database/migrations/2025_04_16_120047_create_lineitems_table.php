@@ -15,6 +15,8 @@ class CreateLineitemsTable extends Migration
     {
         Schema::create('lineitems', function (Blueprint $table) {
             $table->id();
+            $table->integer('line_item_index')->nullable();
+            $table->longText('media_id')->nullable();
             $table->bigInteger('shopify_id')->unsigned()->nullable();
             $table->bigInteger('shopify_order_id')->unsigned()->nullable();
             $table->bigInteger('shopify_product_id')->unsigned()->nullable();

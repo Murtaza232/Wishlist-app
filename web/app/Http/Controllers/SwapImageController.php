@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\SendEmail;
 use App\Models\ImagesSwap;
+use App\Models\Lineitem;
 use App\Models\Session;
 use App\Models\Setting;
 use Illuminate\Http\Request;
@@ -535,7 +536,7 @@ class SwapImageController extends Controller
             return response()->json([
                 'success' => true,
                 'media_id' => $mediaId,
-//                'url' => "https://feenchlet.com/a/ai/show-image/{$mediaId}",
+//                'url' => "https://feenchlet.com/a/art/show-image/{$mediaId}",
                 'url' => url('faceswaps/' . $fileName),
                 'watermark_base64' => $watermarkBase64,
                 'status' => 'complete'
@@ -654,7 +655,7 @@ class SwapImageController extends Controller
                 'success' => true,
                 'media_id' => $mediaId,
                 'url' => $urlWithWatermark,
-//                'url' => "https://feenchlet.com/a/ai/show-image/{$mediaId}",
+//                'url' => "https://feenchlet.com/a/art/show-image/{$mediaId}",
                 'watermark_base64' => $base64,
                 'status' => 'complete'
             ]);
@@ -816,7 +817,77 @@ public function testapi()
     dd($resultResponse->json());
 }
 
+public function ShowOrderRelatedImage($order_id,$line_item)
+{
+    $line_item=Lineitem::where('shopify_order_id',$order_id)->where('line_item_index',$line_item)->first();
+    if($line_item){
+        $swap_image=ImagesSwap::where('media_id',$line_item->media_id)->first();
+        if($swap_image) {
 
+            $html= view('image_preview')->with([
+                'swap_image' => $swap_image,
+            ])->render();
 
+        }else{
+            $html= [
+                'success' => false,
+                'message' => 'Record not found.'
+            ];
+
+        }
+    }else{
+        $html= [
+            'success' => false,
+            'message' => 'Record not found.'
+        ];
+    }
+    return response($html)->withHeaders(['Content-Type' => 'application/liquid']);
+    }
+public function ShowOrderRelatedImageWithMediaId($media_id)
+{
+        $swap_image=ImagesSwap::where('media_id',$media_id)->first();
+        if($swap_image) {
+
+            $html= view('image_preview')->with([
+                'swap_image' => $swap_image,
+            ])->render();
+
+        }else{
+            $html= [
+                'success' => false,
+                'message' => 'Record not found.'
+            ];
+
+        }
+
+    return response($html)->withHeaders(['Content-Type' => 'application/liquid']);
+    }
+
+    public function downloadImage(Request $request)
+    {
+        $url = $request->query('url');
+
+        if (!$url) {
+            return response('Invalid URL', 400);
+        }
+
+        $fileName = basename(parse_url($url, PHP_URL_PATH));
+
+        try {
+            $response = Http::withHeaders([
+                'User-Agent' => 'Mozilla/5.0'
+            ])->get($url);
+
+            if ($response->ok()) {
+                return response($response->body())
+                    ->header('Content-Type', $response->header('Content-Type', 'application/octet-stream'))
+                    ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
+            } else {
+                return response('Failed to download image: HTTP Error', 404);
+            }
+        } catch (\Exception $e) {
+            return response('Error downloading image: ' . $e->getMessage(), 500);
+        }
+    }
 
 }

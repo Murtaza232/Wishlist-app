@@ -24,8 +24,6 @@ Route::group(['middleware' => ['shopify.auth']], function () {
 
     Route::get('get-images', [\App\Http\Controllers\SwapImageController::class, 'GetImages']);
 
-
-
 });
 
 Route::post('swap-image', [\App\Http\Controllers\SwapImageController::class, 'SwapImage']);
@@ -34,6 +32,12 @@ Route::post('get-media-detail', [\App\Http\Controllers\SwapImageController::clas
 
 
 Route::get('show-image/{id}', [\App\Http\Controllers\SwapImageController::class, 'ShowImage']);
+
+Route::get('/order/{order_id}/line_item/{line_item}', [\App\Http\Controllers\SwapImageController::class, 'ShowOrderRelatedImage']);
+Route::get('/media/{media_id}', [\App\Http\Controllers\SwapImageController::class, 'ShowOrderRelatedImageWithMediaId']);
+
+Route::get('/download-image', [\App\Http\Controllers\SwapImageController::class, 'downloadImage'])->name('download.image');
+
 
 Route::post('/webhooks/order-create', function (Request $request) {
     try {
