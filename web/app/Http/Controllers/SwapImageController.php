@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Http;
 
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use SebastianBergmann\Diff\Line;
 
 class SwapImageController extends Controller
 {
@@ -208,12 +209,12 @@ class SwapImageController extends Controller
             $imageContents = file_get_contents($finalImageUrl);
             if (!$imageContents) throw new \Exception('Failed to download the output image.');
 
-            $faceswapsDir = public_path('faceswaps');
+            $faceswapsDir = public_path('arttransformer');
             $rawFaceswapsDir = public_path('rawfaceswaps');
             if (!file_exists($faceswapsDir)) mkdir($faceswapsDir, 0777, true);
             if (!file_exists($rawFaceswapsDir)) mkdir($rawFaceswapsDir, 0777, true);
 
-            $fileName = 'faceswap_' . Str::uuid() . '.jpg';
+            $fileName = 'arttransformer_' . Str::uuid() . '.jpg';
             $rawFileName = 'faceswap_raw_' . Str::uuid() . '.jpg';
 
             $imagePath = $faceswapsDir . '/' . $fileName;
@@ -278,7 +279,7 @@ class SwapImageController extends Controller
             ImagesSwap::create([
                 'media_id' => $mediaId,
                 'original_image' => url('originalpic/' . $swapFileName),
-                'swapped_image_with_water_mark' => url('faceswaps/' . $fileName),
+                'swapped_image_with_water_mark' => url('arttransformer/' . $fileName),
                 'swapped_image_without_water_mark' => url('rawfaceswaps/' . $rawFileName),
                 'type' => $setting->type,
             ]);
@@ -287,7 +288,7 @@ class SwapImageController extends Controller
             return response()->json([
                 'success' => true,
                 'media_id' => $mediaId,
-                'url' => url('faceswaps/' . $fileName),
+                'url' => url('arttransformer/' . $fileName),
             ]);
 
         } catch (\Exception $exception) {
@@ -392,6 +393,7 @@ class SwapImageController extends Controller
                     ->attach('swap[target_resource][file]', file_get_contents($request->target_image), 'target.jpg')
                     ->post('https://deepfaceswap.ai/api/v1/swaps');
 
+
                 if (!$response->successful()) {
                     return response()->json([
                         'success' => false,
@@ -409,6 +411,16 @@ class SwapImageController extends Controller
                     'Authorization' => 'Bearer ' . $setting->deepface_api_key,
                 ])->get("https://deepfaceswap.ai/api/v1/swaps/{$swapId}");
 
+
+                $check_response=$statusResponse->json();
+
+                if($check_response['status']=='failed'){
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Image cannot be processed',
+                        'status' => 'failed'
+                    ], $statusResponse->status());
+                }
                 if (!$statusResponse->successful()) {
                     return response()->json([
                         'success' => false,
@@ -444,12 +456,12 @@ class SwapImageController extends Controller
             $imageContents = file_get_contents($finalImageUrl);
             if (!$imageContents) throw new \Exception('Failed to download the output image.');
 
-            $faceswapsDir = public_path('faceswaps');
+            $faceswapsDir = public_path('arttransformer');
             $rawFaceswapsDir = public_path('rawfaceswaps');
             if (!file_exists($faceswapsDir)) mkdir($faceswapsDir, 0777, true);
             if (!file_exists($rawFaceswapsDir)) mkdir($rawFaceswapsDir, 0777, true);
 
-            $fileName = 'faceswap_' . Str::uuid() . '.jpg';
+            $fileName = 'arttransformer_' . Str::uuid() . '.jpg';
             $rawFileName = 'faceswap_raw_' . Str::uuid() . '.jpg';
 
             $imagePath = $faceswapsDir . '/' . $fileName;
@@ -457,28 +469,29 @@ class SwapImageController extends Controller
 
             $finalImage = imagecreatefromstring($imageContents);
             if (!$finalImage) throw new \Exception('Failed to create image from contents.');
-
-            $maxWidth = 1024;
-            $width = imagesx($finalImage);
-            $height = imagesy($finalImage);
-
-            if ($width > $maxWidth) {
-                $ratio = $maxWidth / $width;
-                $newWidth = $maxWidth;
-                $newHeight = intval($height * $ratio);
-
-                $resizedImage = imagecreatetruecolor($newWidth, $newHeight);
-                imagecopyresampled($resizedImage, $finalImage, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-                imagejpeg($resizedImage, $imagePath, 85);
-                imagejpeg($resizedImage, $rawImagePath, 85);
-                imagedestroy($resizedImage);
-            } else {
-                imagejpeg($finalImage, $imagePath, 85);
-                imagejpeg($finalImage, $rawImagePath, 85);
-            }
-
-            imagedestroy($finalImage);
-
+//comment code for image size
+//            $maxWidth = 1024;
+//            $width = imagesx($finalImage);
+//            $height = imagesy($finalImage);
+//
+//            if ($width > $maxWidth) {
+//                $ratio = $maxWidth / $width;
+//                $newWidth = $maxWidth;
+//                $newHeight = intval($height * $ratio);
+//
+//                $resizedImage = imagecreatetruecolor($newWidth, $newHeight);
+//                imagecopyresampled($resizedImage, $finalImage, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+//                imagejpeg($resizedImage, $imagePath, 85);
+//                imagejpeg($resizedImage, $rawImagePath, 85);
+//                imagedestroy($resizedImage);
+//            } else {
+//                imagejpeg($finalImage, $imagePath, 85);
+//                imagejpeg($finalImage, $rawImagePath, 85);
+//            }
+//
+//            imagedestroy($finalImage);
+            imagejpeg($finalImage, $imagePath, 85);
+            imagejpeg($finalImage, $rawImagePath, 85);
             // ADD STRETCHED WATERMARK
             $watermarkPath = public_path('watermark.png');
             if (!file_exists($watermarkPath)) {
@@ -496,28 +509,18 @@ class SwapImageController extends Controller
 
                     $baseWidth = imagesx($baseImage);
                     $baseHeight = imagesy($baseImage);
+                    $wmWidth = imagesx($watermark);
+                    $wmHeight = imagesy($watermark);
 
-                    // Resize watermark to match base image size
-                    $wmResized = imagecreatetruecolor($baseWidth, $baseHeight);
-                    imagealphablending($wmResized, false);
-                    imagesavealpha($wmResized, true);
-                    $transparent = imagecolorallocatealpha($wmResized, 0, 0, 0, 127);
-                    imagefill($wmResized, 0, 0, $transparent);
-
-                    imagecopyresampled(
-                        $wmResized,
-                        $watermark,
-                        0, 0, 0, 0,
-                        $baseWidth, $baseHeight,
-                        imagesx($watermark), imagesy($watermark)
-                    );
-
-                    imagecopy($baseImage, $wmResized, 0, 0, 0, 0, $baseWidth, $baseHeight);
+                    for ($x = 0; $x < $baseWidth; $x += $wmWidth) {
+                        for ($y = 0; $y < $baseHeight; $y += $wmHeight) {
+                            imagecopy($baseImage, $watermark, $x, $y, 0, 0, $wmWidth, $wmHeight);
+                        }
+                    }
                     imagejpeg($baseImage, $imagePath, 90);
 
                     imagedestroy($baseImage);
                     imagedestroy($watermark);
-                    imagedestroy($wmResized);
                 }
 
                 $finalImageContents = file_get_contents($imagePath);
@@ -528,7 +531,7 @@ class SwapImageController extends Controller
             ImagesSwap::create([
                 'media_id' => $mediaId,
                 'original_image' => url('originalpic/' . $swapFileName),
-                'swapped_image_with_water_mark' => url('faceswaps/' . $fileName),
+                'swapped_image_with_water_mark' => url('arttransformer/' . $fileName),
                 'swapped_image_without_water_mark' => url('rawfaceswaps/' . $rawFileName),
                 'type' => $setting->type,
             ]);
@@ -537,7 +540,8 @@ class SwapImageController extends Controller
                 'success' => true,
                 'media_id' => $mediaId,
 //                'url' => "https://feenchlet.com/a/art/show-image/{$mediaId}",
-                'url' => url('faceswaps/' . $fileName),
+                'url' => url('arttransformer/' . $fileName),
+//                'url' => null,
                 'watermark_base64' => $watermarkBase64,
                 'status' => 'complete'
             ]);
@@ -655,6 +659,7 @@ class SwapImageController extends Controller
                 'success' => true,
                 'media_id' => $mediaId,
                 'url' => $urlWithWatermark,
+//                'url' => null,
 //                'url' => "https://feenchlet.com/a/art/show-image/{$mediaId}",
                 'watermark_base64' => $base64,
                 'status' => 'complete'
@@ -688,12 +693,12 @@ class SwapImageController extends Controller
         $imageContents = file_get_contents($finalImageUrl);
         if (!$imageContents) throw new \Exception('Failed to download the output image.');
 
-        $faceswapsDir = public_path('faceswaps');
+        $faceswapsDir = public_path('arttransformer');
         $rawFaceswapsDir = public_path('rawfaceswaps');
         if (!file_exists($faceswapsDir)) mkdir($faceswapsDir, 0777, true);
         if (!file_exists($rawFaceswapsDir)) mkdir($rawFaceswapsDir, 0777, true);
 
-        $fileName = 'faceswap_' . Str::uuid() . '.jpg';
+        $fileName = 'arttransformer_' . Str::uuid() . '.jpg';
         $rawFileName = 'faceswap_raw_' . Str::uuid() . '.jpg';
 
         $imagePath = $faceswapsDir . '/' . $fileName;
@@ -702,26 +707,28 @@ class SwapImageController extends Controller
         $finalImage = imagecreatefromstring($imageContents);
         if (!$finalImage) throw new \Exception('Failed to create image from contents.');
 
-        $maxWidth = 1024;
-        $width = imagesx($finalImage);
-        $height = imagesy($finalImage);
-
-        if ($width > $maxWidth) {
-            $ratio = $maxWidth / $width;
-            $newWidth = $maxWidth;
-            $newHeight = intval($height * $ratio);
-
-            $resizedImage = imagecreatetruecolor($newWidth, $newHeight);
-            imagecopyresampled($resizedImage, $finalImage, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-            imagejpeg($resizedImage, $imagePath, 85);
-            imagejpeg($resizedImage, $rawImagePath, 85);
-            imagedestroy($resizedImage);
-        } else {
-            imagejpeg($finalImage, $imagePath, 85);
-            imagejpeg($finalImage, $rawImagePath, 85);
-        }
-
-        imagedestroy($finalImage);
+//        $maxWidth = 1024;
+//        $width = imagesx($finalImage);
+//        $height = imagesy($finalImage);
+//
+//        if ($width > $maxWidth) {
+//            $ratio = $maxWidth / $width;
+//            $newWidth = $maxWidth;
+//            $newHeight = intval($height * $ratio);
+//
+//            $resizedImage = imagecreatetruecolor($newWidth, $newHeight);
+//            imagecopyresampled($resizedImage, $finalImage, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+//            imagejpeg($resizedImage, $imagePath, 85);
+//            imagejpeg($resizedImage, $rawImagePath, 85);
+//            imagedestroy($resizedImage);
+//        } else {
+//            imagejpeg($finalImage, $imagePath, 85);
+//            imagejpeg($finalImage, $rawImagePath, 85);
+//        }
+//
+//        imagedestroy($finalImage);
+        imagejpeg($finalImage, $imagePath, 85);
+        imagejpeg($finalImage, $rawImagePath, 85);
 
         // ✅ Add stretched watermark
         $watermarkPath = public_path('watermark.png');
@@ -740,23 +747,20 @@ class SwapImageController extends Controller
 
                 $baseWidth = imagesx($baseImage);
                 $baseHeight = imagesy($baseImage);
+                $wmWidth = imagesx($watermark);
+                $wmHeight = imagesy($watermark);
 
-                // Resize watermark to match base image size
-                $wmResized = imagecreatetruecolor($baseWidth, $baseHeight);
-                imagealphablending($wmResized, false);
-                imagesavealpha($wmResized, true);
-                $transparent = imagecolorallocatealpha($wmResized, 0, 0, 0, 127);
-                imagefill($wmResized, 0, 0, $transparent);
-
-                imagecopyresampled($wmResized, $watermark, 0, 0, 0, 0, $baseWidth, $baseHeight, imagesx($watermark), imagesy($watermark));
-
-                imagecopy($baseImage, $wmResized, 0, 0, 0, 0, $baseWidth, $baseHeight);
+                for ($x = 0; $x < $baseWidth; $x += $wmWidth) {
+                    for ($y = 0; $y < $baseHeight; $y += $wmHeight) {
+                        imagecopy($baseImage, $watermark, $x, $y, 0, 0, $wmWidth, $wmHeight);
+                    }
+                }
 
                 imagejpeg($baseImage, $imagePath, 90);
 
                 imagedestroy($baseImage);
                 imagedestroy($watermark);
-                imagedestroy($wmResized);
+
             }
 
             $finalImageContents = file_get_contents($imagePath);
@@ -764,7 +768,7 @@ class SwapImageController extends Controller
         }
 
         return [
-            url('faceswaps/' . $fileName),
+            url('arttransformer/' . $fileName),
             url('rawfaceswaps/' . $rawFileName),
             $base64
         ];
@@ -787,7 +791,7 @@ class SwapImageController extends Controller
     public function GetImages()
     {
         try {
-            $images = ImagesSwap::paginate(20);
+            $images = ImagesSwap::orderBy('id','desc')->paginate(20);
             $data = [
                 'data' => $images,
                 'success' => true
@@ -848,19 +852,53 @@ public function ShowOrderRelatedImageWithMediaId($media_id)
         $swap_image=ImagesSwap::where('media_id',$media_id)->first();
         if($swap_image) {
 
+            if($swap_image->upscale_image==null){
+                $line_item=Lineitem::where('media_id',$media_id)->first();
+                if($line_item){
+                $order_controller=new OrderController();
+                $upscaledImageUrl = $order_controller->UpscaleImage($swap_image->swapped_image_without_water_mark);
+                if ($upscaledImageUrl) {
+
+                    $savedImagePath = $order_controller->saveUpscaledImage($upscaledImageUrl);
+
+
+                    if ($savedImagePath) {
+                        $swap_image->upscale_image = $savedImagePath;
+                        $swap_image->save();
+
+                        $swap_image=ImagesSwap::where('media_id',$media_id)->first();
+                    }
+                    }
+                    }else{
+                    $html= view('not_found')->render();
+                    return response($html)->withHeaders(['Content-Type' => 'application/liquid']);
+                }
+            }
+
             $html= view('image_preview')->with([
                 'swap_image' => $swap_image,
             ])->render();
 
         }else{
-            $html= [
-                'success' => false,
-                'message' => 'Record not found.'
-            ];
+            $html= view('not_found')->render();
 
         }
 
     return response($html)->withHeaders(['Content-Type' => 'application/liquid']);
+    }
+
+
+    public function showImgMedia($media_id)
+    {
+        $swap_image=ImagesSwap::where('media_id',$media_id)->first();
+        if($swap_image) {
+
+            $html= view('preview')->with([
+                'swap_image' => $swap_image,
+            ])->render();
+            return response($html)->withHeaders(['Content-Type' => 'application/liquid']);
+        }
+
     }
 
     public function downloadImage(Request $request)

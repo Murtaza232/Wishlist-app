@@ -132,11 +132,11 @@ class OrderController extends Controller
                 $mediaId = null;
                 $type = null;
                 foreach ($item->properties as $property) {
-                    if ($property->name == 'media_id' && !empty($property->value)) {
+                    if ($property->name == '_media_id' && !empty($property->value)) {
                         $mediaId = $property->value;
                     }
 
-                    if ($property->name == 'type' && $property->value == 'Digital Image ( Print Yourself ) - 24H Delivery') {
+                    if ($property->name == 'Types' && $property->value == 'Digital Image (Print Yourself) - Instant Delivery') {
                         $type = $property->value;
                     }
                 }
@@ -150,7 +150,7 @@ class OrderController extends Controller
                     // If the media exists and has a swapped image without watermark
                     if ($media && $media->swapped_image_without_water_mark) {
                         // Fetch the existing swapped image URL
-                        $imageUrl = "https://feenchlet.com/a/art/show-image/{$mediaId}";
+                        $imageUrl = "https://feenchlet.com/a/art/media/{$mediaId}";
 
                         // Upscale the existing swapped image
                         $upscaledImageUrl = $this->UpscaleImage($media->swapped_image_without_water_mark);
@@ -199,7 +199,7 @@ class OrderController extends Controller
             $imageContents = file_get_contents($upscaledImageUrl);
 
             // Generate a unique file name
-            $fileName = 'upscaled_' . uniqid() . '.jpeg'; // You can use a different extension if needed
+            $fileName = 'arttransformers_upscaled_' . uniqid() . '.jpeg'; // You can use a different extension if needed
 
             // Define the path to save the image in the 'public/images' folder
             $publicPath = public_path('upscaleimage/' . $fileName);
@@ -343,14 +343,28 @@ class OrderController extends Controller
         $url = 'https://api.claid.ai/v1-beta1/image/edit';
         $apiKey = $setting->letsenhance_api_key;  // Replace with your actual API key
 
+
+        [$originalWidth, $originalHeight] = getimagesize($imageUrl);
+
+        // Determine orientation and calculate target dimensions
+        if ($originalWidth >= $originalHeight) {
+            // Horizontal image: height should be 4000
+            $targetHeight = 4000;
+            $targetWidth = intval(($originalWidth / $originalHeight) * 4000);
+        } else {
+            // Vertical image: width should be 4000
+            $targetWidth = 4000;
+            $targetHeight = intval(($originalHeight / $originalWidth) * 4000);
+        }
+
         // Request body data
         $data = [
             "input" => $imageUrl,  // Dynamically pass the image URL here
             "operations" => [
                 "resizing" => [
-                    "width" => $setting->width,
-                    "height" => $setting->height,
-                    "fit" => $setting->fit
+                    "width" => $targetWidth,
+                    "height" => $targetHeight,
+//                    "fit" => $setting->fit
                 ],
                 "adjustments" => [
                     "hdr" => $setting->hdr,

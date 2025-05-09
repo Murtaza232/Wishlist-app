@@ -18,18 +18,24 @@ Route::get('/', function () {
     return "Hello API";
 });
 
-Route::group(['middleware' => ['shopify.auth']], function () {
+//Route::group(['middleware' => ['shopify.auth']], function () {
     Route::get('setting', [\App\Http\Controllers\SettingController::class, 'Setting']);
     Route::post('save-setting', [\App\Http\Controllers\SettingController::class, 'SaveSetting']);
 
     Route::get('get-images', [\App\Http\Controllers\SwapImageController::class, 'GetImages']);
 
-});
+//});
 
 Route::post('swap-image', [\App\Http\Controllers\SwapImageController::class, 'SwapImage']);
 Route::post('get-media-detail', [\App\Http\Controllers\SwapImageController::class, 'GetImagesbyMediaId']);
 
 
+
+
+
+
+
+Route::get('/img/{media_id}', [\App\Http\Controllers\SwapImageController::class, 'showImgMedia']);
 
 Route::get('show-image/{id}', [\App\Http\Controllers\SwapImageController::class, 'ShowImage']);
 

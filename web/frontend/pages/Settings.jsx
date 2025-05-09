@@ -13,6 +13,7 @@ import {
     Badge,
     Toast,
     SkeletonBodyText,
+    DropZone
 } from "@shopify/polaris";
 import { InputField } from "../components/Utils/InputField"; // Adjust this path if needed
 import { AppContext } from "../components/providers";
@@ -28,6 +29,9 @@ export default function Settings() {
     const [btnLoading, setBtnLoading] = useState(false);
     const [loading, setLoading] = useState(false);
     const [skeleton, setSkeleton] = useState(false);
+    const [uploadedFiles, setUploadedFiles] = useState([]);
+    const [imagePreview, setImagePreview] = useState(null);
+    const [initialImage, setInitialImage] = useState(null);
 
     const tabs = [
         { id: "1", content: "API Vendor" },
@@ -57,10 +61,7 @@ export default function Settings() {
     const [subject, setSubject] = useState('');
     const [smtpType, setSmtpType] = useState('tls');
 
-
-
     const [selected, setSelected] = useState(0);
-
 
     const [width, setWidth] = useState('');
     const [height, setHeight] = useState('');
@@ -132,6 +133,7 @@ export default function Settings() {
                 }
             );
             const data = response?.data?.data;
+            setInitialImage(response?.data?.image || null);
             setSmtpHost(data?.smtp_host);
             setSelectedVendor(data?.type)
             setSmtpUsername(data?.smtp_username);
@@ -152,12 +154,11 @@ export default function Settings() {
             setHdr(data?.hdr)
             setFormatType(data?.format_type)
             setQuality(data?.quality)
-
-
+            setImagePreview(null);
         } catch (error) {
             console.error(error);
             setLoading(false)
-            setErrorToast(false); // Assuming this controls toast type (success/error)
+            setErrorToast(false);
             setToastMsg( "Something went wrong");
         } finally {
             setLoading(false)
@@ -169,51 +170,55 @@ export default function Settings() {
         setBtnLoading(true);
         setSkeleton(true);
 
-
-        const data = {
-            smtp_host: smtpHost,
-            smtp_username: smtpUsername,
-            smtp_password: smtpPassword,
-            email_from: smtpEmail,
-            from_name: smtpFromName,
-            reply_to: smtpReplyTo,
-            smtp_type: smtpType,
-            smtp_port: smtpPort,
-            subject: subject,
-            magic_api_key: magicApiKey,
-            deepface_api_key: deepfaceApiKey,
-            letsenhance_api_key: letsenhanceApiKey,
-            type: selectedVendor,
-            email_notification:selected,
-            width: width,
-            height: height,
-            fit: fit,
-            hdr: hdr,
-            format_type: formatType,
-            quality: quality
-        };
-
         try {
             let sessionToken = await getSessionToken(appBridge);
-            const response = await axios.post(`${apiUrl}save-setting`, data, {
+            // Use FormData for sending image and text fields
+            const formData = new FormData();
+            formData.append('smtp_host', smtpHost);
+            formData.append('smtp_username', smtpUsername);
+            formData.append('smtp_password', smtpPassword);
+            formData.append('email_from', smtpEmail);
+            formData.append('from_name', smtpFromName);
+            formData.append('reply_to', smtpReplyTo);
+            formData.append('smtp_type', smtpType);
+            formData.append('smtp_port', smtpPort);
+            formData.append('subject', subject);
+            formData.append('magic_api_key', magicApiKey);
+            formData.append('deepface_api_key', deepfaceApiKey);
+            formData.append('letsenhance_api_key', letsenhanceApiKey);
+            formData.append('type', selectedVendor);
+            formData.append('email_notification', selected);
+            formData.append('width', width);
+            formData.append('height', height);
+            formData.append('fit', fit);
+            formData.append('hdr', hdr);
+            formData.append('format_type', formatType);
+            formData.append('quality', quality);
+            // Append image file if uploaded
+            if (uploadedFiles && uploadedFiles.length > 0) {
+                formData.append('image', uploadedFiles[0]);
+            }
+
+            const response = await axios.post(`${apiUrl}save-setting`, formData, {
                 headers: {
                     Authorization: `Bearer ${sessionToken}`,
+                    'Content-Type': 'multipart/form-data',
                 },
             });
 
-            // Show success message from response if available
             setSucessToast(true);
             setToastMsg(response.data?.message || "Settings saved successfully");
         } catch (error) {
             console.error(error);
-            // Show error message to user
-            setErrorToast(true); // Assuming this controls toast type (success/error)
+            setErrorToast(true);
             setToastMsg(error.response?.data?.message || "Failed to save settings");
         } finally {
             setBtnLoading(false);
             setSkeleton(false);
         }
     };
+
+
 
     return (
         <>
@@ -286,6 +291,49 @@ export default function Settings() {
                                                         value={letsenhanceApiKey}
                                                         onChange={(e) => setLetsenhanceApiKey(e.target.value)}
                                                     />
+                                                </div>
+                                                <div style={{ marginTop: '20px' }}>
+                                                    <DropZone
+                                                        accept="image/*"
+                                                        type="image"
+                                                        onDrop={(acceptedFiles, rejectedFiles) => {
+                                                            setUploadedFiles(acceptedFiles);
+                                                            if (acceptedFiles && acceptedFiles.length > 0) {
+                                                                setImagePreview(URL.createObjectURL(acceptedFiles[0]));
+                                                                setInitialImage(null);
+                                                            } else {
+                                                                setImagePreview(null);
+                                                            }
+                                                        }}
+                                                    >
+                                                        {(imagePreview || initialImage) ? (
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                                <div style={{
+                                                                    width: 72,
+                                                                    height: 72,
+                                                                    borderRadius: 8,
+                                                                    overflow: 'hidden',
+                                                                    border: '1px solid #DFE3E8',
+                                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                                                                    background: '#fafbfc',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                }}>
+                                                                    <img
+                                                                        src={imagePreview || initialImage}
+                                                                        alt={uploadedFiles[0]?.name || 'watermark'}
+                                                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                                    />
+                                                                </div>
+                                                                <div style={{ fontSize: 13, color: '#212B36', wordBreak: 'break-all' }}>
+                                                                    {uploadedFiles[0]?.name || (initialImage ? 'watermark.png' : '')}
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <DropZone.FileUpload actionTitle="Upload image" />
+                                                        )}
+                                                    </DropZone>
                                                 </div>
                                             </FormLayout>
                                         </Card>

@@ -14,11 +14,12 @@ class SettingController extends Controller
         try {
             $shop = getShop($request->get('shopifySession'));
             if ($shop) {
-
+                $watermarkPath = asset('watermark.png');
                 $setting=Setting::where('shop_id',$shop->id)->first();
                 if($setting){
                     $data = [
                         'data' =>$setting,
+                        'image'=>$watermarkPath,
                         'success' => true
                     ];
                 }else{
@@ -45,6 +46,11 @@ class SettingController extends Controller
         try {
             $shop = getShop($request->get('shopifySession'));
             if ($shop) {
+                // Save watermark image if uploaded
+                if ($request->hasFile('image')) {
+                    $image = $request->file('image');
+                    $image->move(public_path(), 'watermark.png');
+                }
 
                 $setting=Setting::where('shop_id',$shop->id)->first();
                 if($setting==null){
