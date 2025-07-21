@@ -39,10 +39,6 @@
     border-radius: 8px;
 }
 
-/* Input Fields Styling */
-.input-field {
-    /*margin-bottom: 10px;  !* Reduced bottom margin *!*/
-}
 
 /* Action Buttons */
 .actions {
@@ -106,4 +102,71 @@
 
 .track_on:hover {
     background: rgba(48, 48, 48, 1);
+}
+
+body, .Polaris-Frame, .Polaris-Frame__Main, .Polaris-Frame-ContextualSaveBar {
+  background: #F3F3F3 !important;
+  /* color-scheme: light !important; */
+}
+.Polaris-ContextualSaveBar__Icon .Polaris-Icon__Svg {
+  color: #222 !important;
+  opacity: 1 !important;
+}
+.Polaris-ContextualSaveBar__Contents {
+    color: #222 !important;
+  }
+  .Polaris-ContextualSaveBar__Message {
+    color: #222 !important;
+    font-weight: 600 !important;
+  }
+.Polaris-Frame-ContextualSaveBar__MessageContainer [class*='Polaris-Icon__Svg'] {
+  fill: #222 !important;
+}
+
+.Polaris-Frame-ContextualSaveBar__ActionContainer [class*='Polaris-Button--variantTertiary'],
+.Polaris-Frame-ContextualSaveBar__ActionContainer [class*='Button-variantTertiary'] {
+  --pc-button-bg: #fff !important;
+  --pc-button-bg_hover: #f4f6f8 !important;
+  --pc-button-bg_active: #ececec !important;
+  --pc-button-bg_disabled: #fff !important;
+  --pc-button-color: #222 !important;
+  --pc-button-color_disabled: #bbb !important;
+}
+
+.Polaris-Frame-ContextualSaveBar__ActionContainer [class*='Polaris-Button--variantPrimary'],
+.Polaris-Frame-ContextualSaveBar__ActionContainer [class*='Button-variantPrimary'] {
+  --pc-button-color: #fff !important;
+  --pc-button-color_disabled: #bbb !important;
+  --pc-button-bg: #222 !important;
+  --pc-button-bg_hover: #333 !important;
+  --pc-button-bg_active: #111 !important;
+  --pc-button-bg_pressed: #111 !important;
+  --pc-button-bg_disabled: #eee !important;
+  --pc-button-box-shadow: none !important;
+  --pc-button-box-shadow_active: none !important;
+}
+
+.Polaris-Frame-ContextualSaveBar {
+  height: 39px !important;
+  min-height: 39px !important;
+  line-height: 39px !important;
+}
+.compact-select.Polaris-Select {
+  min-width: 60px !important;
+  max-width: 60px !important;
+  width: 60px !important;
+}
+
+.compact-select.Polaris-Select .Polaris-Select__Content,
+.compact-select.Polaris-Select .Polaris-Select__Input {
+  min-width: 60px !important;
+  max-width: 60px !important;
+  width: 60px !important;
+  font-size: 16px !important;
+  box-sizing: border-box !important;
+}
+
+/* Remove padding from Polaris-Box only inside a card with the class 'no-padding-card' */
+.no-padding-card .Polaris-Box {
+  padding: 0 !important;
 }

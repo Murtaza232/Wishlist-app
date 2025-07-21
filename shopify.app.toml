@@ -1,27 +1,29 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "a7fb985f33ba0f4453e0010c316f855d"
-name = "Art transformer (Local)"
-handle = "art-transformer-local"
-application_url = "https://fp-absorption-questions-licenses.trycloudflare.com"
+client_id = "9068cf8200dc7a986a7fe4d361fa5948"
+name = "murtaza"
+handle = "murtaza"
+application_url = "https://dryer-beverages-frame-toward.trycloudflare.com"
 embedded = true
-
-[webhooks]
-api_version = "2025-04"
-
-[auth]
-redirect_urls = [
-  "https://fp-absorption-questions-licenses.trycloudflare.com/auth/callback",
-  "https://fp-absorption-questions-licenses.trycloudflare.com/auth/shopify/callback",
-  "https://fp-absorption-questions-licenses.trycloudflare.com/api/auth/callback"
-]
-
-[access_scopes]
-# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "read_products,write_products,read_orders,write_orders"
-
-[pos]
-embedded = false
 
 [build]
 automatically_update_urls_on_dev = true
+dev_store_url = "conversion-king-x.myshopify.com"
+include_config_on_deploy = true
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_orders,read_products,read_themes,write_orders,write_products"
+
+[auth]
+redirect_urls = [
+  "https://dryer-beverages-frame-toward.trycloudflare.com/auth/callback",
+  "https://dryer-beverages-frame-toward.trycloudflare.com/auth/shopify/callback",
+  "https://dryer-beverages-frame-toward.trycloudflare.com/api/auth/callback"
+]
+
+[webhooks]
+api_version = "2025-07"
+
+[pos]
+embedded = false

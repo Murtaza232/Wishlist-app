@@ -20,7 +20,8 @@ export default function App() {
 
     // const apiUrl = "https://phpstack-1447206-5423860.cloudwaysapps.com/api/";
     const appUrl = window.location.origin;
-    const apiUrl = `${appUrl}/api/`;
+    // const apiUrl = `${appUrl}/api/`;
+    const apiUrl = 'http://127.0.0.1:8000/api/';
     return (
         <PolarisProvider>
             <BrowserRouter>
@@ -28,9 +29,12 @@ export default function App() {
                     <QueryProvider>
                         <NavigationMenu
                             navigationLinks={[
-
                                 {
-                                    label:'Settings',
+                                    label: 'Features',
+                                    destination: "/Features",
+                                },
+                                {
+                                    label: 'Settings',
                                     destination: "/Settings",
                                 },
 

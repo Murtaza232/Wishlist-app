@@ -1,4 +1,7 @@
 <?php
+use Gnikyt\BasicShopifyAPI\BasicShopifyAPI;
+use Gnikyt\BasicShopifyAPI\Options;
+use Gnikyt\BasicShopifyAPI\Session;
 
 function getShop($session)
 {
@@ -11,6 +14,24 @@ function getShop($session)
         $shop = \App\Models\Session::first();
     }
     return $shop;
+}
+
+function LatestShopifyVersion()
+{
+
+$session=\App\Models\Session::first();
+    $options = new Options();
+    $options->setType(true);
+    $options->setVersion('2025-01');
+    $options->setApiKey(env('SHOPIFY_API_KEY'));
+    $options->setApiSecret(env('SHOPIFY_API_SECRET'));
+    $options->setApiPassword($session->access_token);
+
+    $api = new BasicShopifyAPI($options);
+    $api->setSession(new Session($session->shop));
+
+    return $api;
+
 }
 
 

@@ -1,0 +1,109 @@
+<span class="wishlist-collection-icon" style="display:none;" {{ block.shopify_attributes }}></span>
+
+<script>
+function renderWishlistIconInCollectionCards(settings) {
+  var iconType = settings.iconType;
+  var customIcon = settings.customIcon;
+  var buttonPosition = settings.buttonPosition || 'top-right';
+  var buttonSize = parseInt(settings.buttonSize) || 24;
+  var iconColor = settings.iconColor || '#000000';
+  var iconThickness = parseFloat(settings.iconThickness) || 1.7;
+  var svg = "";
+  if (customIcon && customIcon.trim() !== '') {
+    svg = '<img src="' + customIcon + '" alt="Wishlist Icon" style="width:' + buttonSize + 'px;height:' + buttonSize + 'px;object-fit:contain;" />';
+  } else if (iconType === "star") {
+    svg = `<svg width="${buttonSize}" height="${buttonSize}" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="${iconThickness}" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+  } else if (iconType === "bookmark") {
+    svg = `<svg width="${buttonSize}" height="${buttonSize}" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="${iconThickness}" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
+  } else if (iconType === "heart") {
+    svg = `<svg width="${buttonSize}" height="${buttonSize}" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="${iconThickness}" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/>
+    </svg>`;
+  }
+  var positionStyles = {
+    'top-right': 'top:10px;right:10px;',
+    'top-left': 'top:10px;left:10px;',
+    'bottom-right': 'bottom:70px;right:10px;',
+    'bottom-left': 'bottom:70px;left:10px;'
+  };
+  var iconPositionStyle = positionStyles[buttonPosition] || positionStyles['top-right'];
+  var cards = document.querySelectorAll('.card, .product-card-wrapper, .card-wrapper');
+  cards.forEach(function(card) {
+    var oldIcon = card.querySelector('.wishlist-icon');
+    if (oldIcon) oldIcon.remove();
+    var iconSpan = document.createElement('span');
+    iconSpan.className = 'wishlist-icon';
+    iconSpan.style.cssText = "position:absolute;z-index:2;cursor:pointer;" + iconPositionStyle;
+    iconSpan.innerHTML = svg;
+     iconSpan.addEventListener('click', function(event) {
+      event.stopPropagation();
+      event.preventDefault(); // prevents default anchor behavior
+    });
+    card.style.position = "relative";
+    card.appendChild(iconSpan);
+  });
+}
+
+function isValidIconType(val) {
+  return val && val !== '' && val !== 'Select icon';
+}
+
+function isValidPosition(val) {
+  return val && val !== '' && val !== 'Select Position';
+}
+
+function isValidFontColor(val) {
+  return val && val !== '' && val !== 'none' && val !== 'null' && val !== null && val !== 'transparent' && val !== '#00000000' && val !== 'rgba(0,0,0,0)';
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+  var extSettings = {
+    iconType: window.wishlistButtonIcon || '',
+    customIcon: window.wishlistCustomIcon || '',
+    buttonPosition: window.wishlistButtonPosition || '',
+    buttonSize: window.wishlistButtonSize || 24,
+    iconColor: '', // will be set below
+    iconThickness: window.wishlistIconThickness || 1.7
+  };
+
+  fetch('http://127.0.0.1:8000/api/wishlist-metafields')
+    .then(response => response.json())
+    .then(function(metafieldsEdges) {
+      var metafields = {};
+      metafieldsEdges.forEach(function(edge) {
+        metafields[edge.node.key] = edge.node.value;
+      });
+      var iconType = isValidIconType(extSettings.iconType) ? extSettings.iconType : (metafields['icon_type'] || '');
+      var buttonPosition = isValidPosition(extSettings.buttonPosition) ? extSettings.buttonPosition : (metafields['btn_group_position_collections_page'] ? metafields['btn_group_position_collections_page'].replace('_', '-') : 'top-right');
+      var fontColor = isValidFontColor(window.wishlistAddBtnFontColor) ? window.wishlistAddBtnFontColor : (metafields['primary_color'] || '#000000');
+      var settings = {
+        iconType: iconType,
+        customIcon: extSettings.customIcon,
+        buttonPosition: buttonPosition,
+        buttonSize: extSettings.buttonSize,
+        iconColor: fontColor,
+        iconThickness: extSettings.iconThickness || 1.7
+      };
+      renderWishlistIconInCollectionCards(settings);
+    })
+    .catch(function() {
+      // Fallback: use extension font color or black
+      var fontColor = isValidFontColor(window.wishlistAddBtnFontColor) ? window.wishlistAddBtnFontColor : '#000000';
+      extSettings.iconColor = fontColor;
+      renderWishlistIconInCollectionCards(extSettings);
+    });
+});
+</script>
+<style>
+/* Optional: Ensure pointer-events only apply to icon itself */
+.wishlist-icon {
+  pointer-events: auto;
+}
+</style>
+{% schema %}
+{
+  "name": "Wishlist Collection Icon",
+  "target": "section",
+  "settings": []
+}
+{% endschema %} 

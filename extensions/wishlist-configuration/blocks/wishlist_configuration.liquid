@@ -1,0 +1,103 @@
+{%- comment -%} Wishlist Icon Example and Ratings removed from storefront output {%- endcomment -%}
+
+<script>
+  // Removed: window.wishlistIconType, window.wishlistAddBtnIconType, and any icon-related extension settings
+  window.wishlistButtonIcon = "{{ block.settings.icon | default: '' }}";
+  window.wishlistCustomIcon = "{% if block.settings.icon_add != blank %}{{ block.settings.icon_add | image_url: width: 48 }}{% endif %}";
+  window.wishlistButtonPosition = "{{ block.settings.button_position | default: '' }}";
+  window.wishlistButtonSize = "{{ block.settings.button_size | default: 24 }}";
+  window.wishlistIconColor = "{{ block.settings.icon_color | default: '#000000' }}";
+  window.wishlistIconThickness = "{{ block.settings.icon_thickness | default: 1.7 }}";
+  window.wishlistPrimaryFontSize = "{{ block.settings.variant_selector_primary_font_size | default: 14 }}";
+  window.wishlistSecondaryFontSize = "{{ block.settings.variant_selector_secondary_font_size | default: 12 }}";
+  window.wishlistAddBtnFontColor = "{{ block.settings.add_to_wishlist_btn_font_color | default: '#e5e5e5' }}";
+  window.wishlistAddBtnCornerRadius = "{{ block.settings.corner_radius | default: 8 }}";
+  window.add_to_wishlist_btn_bg_color="{{block.settings.add_to_wishlist_btn_bg_color | default: '#e5e5e5'}}";
+</script>
+<script>
+function isProductPage() {
+  return window.location.pathname.indexOf('/products/') !== -1;
+}
+
+// Call the API as early as possible
+(function() {
+  var defaultSettings = {
+    buttonPosition: window.wishlistButtonPosition || '',
+    buttonSize: window.wishlistButtonSize || 24,
+    iconColor: window.wishlistIconColor || '#000000',
+    iconThickness: window.wishlistIconThickness || 1.7,
+    primaryFontSize: window.wishlistPrimaryFontSize || 14,
+    secondaryFontSize: window.wishlistSecondaryFontSize || 12
+  };
+  fetch('http://127.0.0.1:8000/api/wishlist-metafields')
+    .then(response => response.json())
+    .then(function(metafieldsEdges) {
+      var metafields = {};
+      metafieldsEdges.forEach(function(edge) {
+        metafields[edge.node.key] = edge.node.value;
+      });
+      // Set global metafield fallbacks
+      window.wishlistMetafieldIconType = metafields['icon_type'] || '';
+      window.wishlistMetafieldPrimaryColor = metafields['primary_color'] || '';
+      window.wishlistMetafieldSecondaryColor = metafields['secondary_color'] || '';
+      var iconType = metafields['icon_type']; // Only use API value
+      // Button position: extension first (unless empty or 'Select Position'), then API, then fallback
+      var buttonPosition = (
+        window.wishlistButtonPosition &&
+        window.wishlistButtonPosition !== '' &&
+        window.wishlistButtonPosition !== 'Select Position'
+      )
+        ? window.wishlistButtonPosition
+        : (metafields['btn_position_on_product_page']
+            ? metafields['btn_position_on_product_page'].replace('_', '-')
+            : 'top-right');
+      // Only render icon in product cards on collection pages
+    })
+    .catch(function() {
+      // If metafields fetch fails, do not render icon
+      // Optionally, you can skip calling renderWishlistIconAndFonts
+    });
+})();
+
+</script>
+{% schema %}
+{
+  "name": "Wishlist Configuration",
+  "target": "body",
+  "settings": [
+{ "type": "select", "id": "icon", "label": "Button Icon", "options": [
+    { "value": "", "label": "Select icon" },
+      { "value": "heart", "label": "heart" },
+      { "value": "star", "label": "star" },
+      { "value": "bookmark", "label": "bookmark" }
+    ], "default": "star" }, 
+    { "type": "range", "id": "icon_thickness", "label": "Icon Thickness", "min": 1, "max": 5, "step": 0.1, "unit": "px", "default": 1 },
+    { "type": "image_picker", "id": "icon_add", "label": "Custom Icon for 'Add to Wishlist'" },
+    { "type": "image_picker", "id": "icon_added", "label": "Custom Icon for 'Added to Wishlist'" },
+    { "type": "select", "id": "button_position", "label": "Button Position", "options": [
+        { "value": "", "label": "Select Position" },
+      { "value": "top-left", "label": "Top Left" },
+      { "value": "top-right", "label": "Top Right" },
+      { "value": "bottom-left", "label": "Bottom Left" },
+      { "value": "bottom-right", "label": "Bottom Right" }
+    ], "default": "top-right" },
+    { "type": "number", "id": "vertical_offset", "label": "Vertical Offset", "default": 0 },
+    { "type": "number", "id": "horizontal_offset", "label": "Horizontal Offset", "default": 0 },
+    { "type": "range", "id": "button_size", "label": "Button Size", "min": 16, "max": 55, "step": 1, "unit": "px", "default": 45 },
+    { "type": "text", "id": "product_link_selector", "label": "Product Link Selector", "default": "-" },
+    { "type": "text", "id": "product_tile_selector", "label": "Product Tile Selector", "default": "-" },
+    { "type": "checkbox", "id": "variant_selector_enable", "label": "Enable Variant Selector", "default": false },
+    { "type": "color", "id": "variant_selector_popup_title_color", "label": "Variant Selector Popup Title Color", "default": "#333333" },
+    { "type": "range", "id": "variant_selector_primary_font_size", "label": "Primary Font Size", "min": 10, "max":23, "step": 1, "unit": "px", "default": 14 },
+    { "type": "color", "id": "variant_selector_popup_bg_color", "label": "Popup Background Color", "default": "#FFFFFF" },
+    { "type": "color", "id": "variant_selector_headings_color", "label": "Variant Selector Sections Headings Color", "default": "#000000" },
+    { "type": "text", "id": "choose_create_action_text", "label": "Choose/Create Action Text", "default": "Choose or Create new Wishlist" },
+    { "type": "color", "id": "add_to_wishlist_btn_bg_color", "label": "Add To Wishlist Button Background Color", "default": "#e5e5e5" },
+    { "type": "color", "id": "add_to_wishlist_btn_font_color", "label": "Add To Wishlist Button Font Color", "default": "#FFFFFF" },
+    { "type": "color", "id": "product_detail_font_color", "label": "Product Detail Font Color", "default": "#FFFFFF" },
+    { "type": "text", "id": "create_list_placeholder_text", "label": "Create List Placeholder Text", "default": "Enter wishlist name" },
+    { "type": "text", "id": "create_list_title", "label": "Create List Title", "default": "Name Your Wishlist" }
+  ]
+}
+{% endschema %}
+

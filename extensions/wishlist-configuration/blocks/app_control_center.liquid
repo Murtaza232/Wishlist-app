@@ -1,0 +1,129 @@
+{%- comment -%}
+
+<div style="margin-bottom:16px;">
+  <strong>Advanced Wishlist Settings</strong>
+  <div style="font-size:13px;color:#666;margin-bottom:12px;">
+    These settings let you customize colors, position, etc. of the wishlist page, wishlist notifications and pop-ups. They apply only when the toggle is on.
+  </div>
+  
+  <label>Button Background Color (in wishlist):</label>
+  <div style="margin-bottom:8px;">
+    <span style="display:inline-block;width:20px;height:20px;background:{{ block.settings.button_bg_color }};border-radius:50%;vertical-align:middle;"></span>
+    {{ block.settings.button_bg_color }}
+  </div>
+
+  <label>Button Text Color (in wishlist):</label>
+  <div style="margin-bottom:8px;">
+    <span style="display:inline-block;width:20px;height:20px;background:{{ block.settings.button_text_color }};border-radius:50%;vertical-align:middle;"></span>
+    {{ block.settings.button_text_color }}
+  </div>
+
+  <label>Background Color (for wishlist header, footer, and pop-ups):</label>
+  <div style="margin-bottom:8px;">
+    <span style="display:inline-block;width:20px;height:20px;background:{{ block.settings.bg_color }};border-radius:50%;vertical-align:middle;"></span>
+    {{ block.settings.bg_color }}
+  </div>
+
+  <label>Text Color (for wishlist header, footer, and pop-ups):</label>
+  <div style="margin-bottom:8px;">
+    <span style="display:inline-block;width:20px;height:20px;background:{{ block.settings.text_color }};border-radius:50%;vertical-align:middle;"></span>
+    {{ block.settings.text_color }}
+</div>
+
+  <label>Corner Radius:</label>
+  <div style="margin-bottom:8px;">{{ block.settings.corner_radius }}px</div>
+
+  <label>Wishlist Notification Alignment:</label>
+  <div style="margin-bottom:8px;">
+    <select>
+      <option value="left" {% if block.settings.wishlist_notification_alignment == 'left' %}selected{% endif %}>Left</option>
+      <option value="center" {% if block.settings.wishlist_notification_alignment == 'center' %}selected{% endif %}>Center</option>
+      <option value="right" {% if block.settings.wishlist_notification_alignment == 'right' %}selected{% endif %}>Right</option>
+    </select>
+  </div>
+
+  <label>Multiple Wishlist Pop-up Alignment:</label>
+  <div style="margin-bottom:8px;">
+    <select>
+      <option value="left" {% if block.settings.multiple_wishlist_popup_alignment == 'left' %}selected{% endif %}>Left</option>
+      <option value="center" {% if block.settings.multiple_wishlist_popup_alignment == 'center' %}selected{% endif %}>Center</option>
+      <option value="right" {% if block.settings.multiple_wishlist_popup_alignment == 'right' %}selected{% endif %}>Right</option>
+    </select>
+</div>
+
+  <label>Drawer Slide-in Direction (only if Wishlist Drawer is enabled):</label>
+<div style="margin-bottom:16px;">
+    <select>
+      <option value="left" {% if block.settings.drawer_slide_direction == 'left' %}selected{% endif %}>Left</option>
+      <option value="right" {% if block.settings.drawer_slide_direction == 'right' %}selected{% endif %}>Right</option>
+    </select>
+  </div>
+</div>
+{%- endcomment -%}
+
+<script>
+  window.wishlistAddBtnTextColor = "{{ block.settings.button_text_color | default: '#e5e5e5' }}";
+  window.wishlistAddBtnBgColor = "{{ block.settings.button_bg_color | default: '#111' }}";
+  // Fetch metafields and update Button Background Color (in wishlist) and Button Text Color (in wishlist) if present
+  fetch('http://127.0.0.1:8000/api/wishlist-metafields')
+    .then(response => response.json())
+    .then(function(metafieldsEdges) {
+      var metafields = {};
+      metafieldsEdges.forEach(function(edge) {
+        metafields[edge.node.key] = edge.node.value;
+      });
+      var primaryColor = metafields['primary_color'] || window.wishlistAddBtnBgColor;
+      var secondaryColor = metafields['secondary_color'] || window.wishlistAddBtnTextColor;
+      // Update the color input for Button Background Color (in wishlist)
+      var bgColorInput = document.querySelector('input[name="button_bg_color"], input#button_bg_color');
+      if (bgColorInput) {
+        bgColorInput.value = primaryColor;
+        var event = new Event('change', { bubbles: true });
+        bgColorInput.dispatchEvent(event);
+      }
+      // Update the color input for Button Text Color (in wishlist)
+      var textColorInput = document.querySelector('input[name="button_text_color"], input#button_text_color');
+      if (textColorInput) {
+        textColorInput.value = secondaryColor;
+        var event = new Event('change', { bubbles: true });
+        textColorInput.dispatchEvent(event);
+      }
+      // Set the global variables for use in Add to Wishlist button
+      window.wishlistAddBtnBgColor = primaryColor;
+      window.wishlistAddBtnTextColor = secondaryColor;
+    })
+    .finally(function() {
+      // Show the button after the API call completes (success or fail)
+      var btn = document.getElementById('wishlist-add-btn');
+      if (btn) btn.style.display = 'flex';
+    });
+</script>
+
+{% schema %}
+{
+  "name": "Wishlist Advanced",
+  "target": "body",
+  "settings": [
+    { "type": "checkbox", "id": "advanced_wishlist_toggle", "label": "Advanced Wishlist Settings", "default": false },
+    { "type": "color", "id": "button_bg_color", "label": "Button Background Color (in wishlist)", "default": "#4FFA05" },
+    { "type": "color", "id": "button_text_color", "label": "Button Text Color (in wishlist)", "default": "#FFFFFF" },
+    { "type": "color", "id": "bg_color", "label": "Background Color (for wishlist header, footer, and pop-ups)", "default": "#F4F8FE" },
+    { "type": "color", "id": "text_color", "label": "Text Color (for wishlist header, footer, and pop-ups)", "default": "#EF1212" },
+    { "type": "range", "id": "corner_radius", "label": "Corner Radius", "min": 0, "max": 24, "step": 1, "unit": "px", "default": 6 },
+    { "type": "select", "id": "wishlist_notification_alignment", "label": "Wishlist Notification Alignment", "options": [
+      { "value": "left", "label": "Left" },
+      { "value": "center", "label": "Center" },
+      { "value": "right", "label": "Right" }
+    ], "default": "left" },
+    { "type": "select", "id": "multiple_wishlist_popup_alignment", "label": "Multiple Wishlist Pop-up Alignment", "options": [
+      { "value": "left", "label": "Left" },
+      { "value": "center", "label": "Center" },
+      { "value": "right", "label": "Right" }
+    ], "default": "left" },
+    { "type": "select", "id": "drawer_slide_direction", "label": "Drawer Slide-in Direction (only if Wishlist Drawer is enabled)", "options": [
+      { "value": "left", "label": "Left" },
+      { "value": "right", "label": "Right" }
+    ], "default": "right" }
+  ]
+}
+{% endschema %}
