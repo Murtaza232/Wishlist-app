@@ -65,7 +65,7 @@
   window.wishlistAddBtnTextColor = "{{ block.settings.button_text_color | default: '#e5e5e5' }}";
   window.wishlistAddBtnBgColor = "{{ block.settings.button_bg_color | default: '#111' }}";
   // Fetch metafields and update Button Background Color (in wishlist) and Button Text Color (in wishlist) if present
-  fetch('http://127.0.0.1:8000/api/wishlist-metafields')
+  fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist-metafields')
     .then(response => response.json())
     .then(function(metafieldsEdges) {
       var metafields = {};

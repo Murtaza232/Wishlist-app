@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WishlistConfigurationController;
+use App\Http\Controllers\WishlistController;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,4 +26,7 @@ Route::get('/wishlist-editor-collectionsurl', [WishlistConfigurationController::
 Route::get('/theme-editor-url', [WishlistConfigurationController::class, 'getThemeEditorUrl']);
 Route::any('/wishlist-features-store', [WishlistConfigurationController::class, 'storeOrUpdateFeatures']);
 Route::get('/wishlist-metafields', [WishlistConfigurationController::class, 'getWishlistMetafields']);
-Route::any('/proxy/wishlist', [App\Http\Controllers\WishlistConfigurationController::class, 'showWishlistPage']);
+Route::any('/proxy/wishlist', [WishlistController::class, 'showWishlistPage']);
+Route::any('/shop',[WishlistConfigurationController::class,'shop']);
+Route::post('/wishlist/add', [WishlistController::class, 'add']);
+Route::get('/wishlist/products', [WishlistController::class, 'getWishlistProducts']);

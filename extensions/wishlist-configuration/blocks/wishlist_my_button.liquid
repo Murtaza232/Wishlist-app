@@ -8,6 +8,7 @@
 {% endcomment %}
 
 {% assign launch_position = shop.metafields.wishlist.wishlist_btn_launch_position %}
+{% assign customer_id = customer.id | default: '' %}
 
 {% if launch_position == 'floating_button' %}
   {% assign floating_btn_position = shop.metafields.wishlist.floating_btn_position | default: 'left' %}
@@ -53,85 +54,183 @@
   </style>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      var position = '{{ floating_btn_position }}';
-      var btn = document.createElement('a');
-      btn.href = '/apps/murtaza-wishlist';
-      btn.className = 'wishlist-floating-btn-dynamic';
-      btn.setAttribute('aria-label', 'My Wishlist');
-      // Default colors
-      var primaryColor = '#111';
-      var secondaryColor = '#fff';
-      // Fetch metafields for colors
-      fetch('http://127.0.0.1:8000/api/wishlist-metafields')
-        .then(response => response.json())
-        .then(function(metafieldsEdges) {
-          var metafields = {};
-          metafieldsEdges.forEach(function(edge) {
-            metafields[edge.node.key] = edge.node.value;
-          });
-          primaryColor = metafields['primary_color'] || primaryColor;
-          secondaryColor = metafields['secondary_color'] || secondaryColor;
-          var floatingBtnPosition = metafields['floating_btn_position'] || 'left';
-          // Set content and position based on floatingBtnPosition
-          if (floatingBtnPosition === 'right') {
-            btn.style.top = '50%';
-            btn.style.right = '32px';
-            btn.style.left = '';
-            btn.style.bottom = '';
-            btn.style.transform = 'translateY(-50%)';
-            btn.style.width = '';
-            btn.style.height = '';
-            btn.style.padding = '';
-            btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
-              `<svg width="22" height="22" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
-              `</span><span class="wishlist-btn-text" style="color: ${secondaryColor}; font-size: 2rem; font-weight: 600;">My Wishlist</span>`;
-          } else if (floatingBtnPosition === 'bottom-left') {
-            btn.style.bottom = '32px';
-            btn.style.left = '32px';
-            btn.style.top = '';
-            btn.style.right = '';
-            btn.style.transform = '';
-            btn.style.width = '48px';
-            btn.style.height = '48px';
-            btn.style.padding = '0';
-            btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
-              `<svg width="32" height="32" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
-              '</span>';
-          } else if (floatingBtnPosition === 'bottom-right') {
-            btn.style.bottom = '32px';
-            btn.style.right = '32px';
-            btn.style.top = '';
-            btn.style.left = '';
-            btn.style.transform = '';
-            btn.style.width = '48px';
-            btn.style.height = '48px';
-            btn.style.padding = '0';
-            btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
-              `<svg width="32" height="32" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
-              '</span>';
-          } else { // default to left
-            btn.style.top = '50%';
-            btn.style.left = '32px';
-            btn.style.right = '';
-            btn.style.bottom = '';
-            btn.style.transform = 'translateY(-50%)';
-            btn.style.width = '';
-            btn.style.height = '';
-            btn.style.padding = '';
-            btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
-              `<svg width="22" height="22" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
-              `</span><span class="wishlist-btn-text" style="color: ${secondaryColor}; font-size: 2rem; font-weight: 600;">My Wishlist</span>`;
-          }
-          btn.style.background = primaryColor;
+      // Fetch shop name once on page load
+      var customerId = '{{ customer_id }}';
+      var wishlistUrl = '/a/wishlist/proxy/wishlist';
+      if (customerId) {
+        wishlistUrl += (wishlistUrl.indexOf('?') === -1 ? '?' : '&') + 'customer_id=' + encodeURIComponent(customerId);
+      }
+      fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/shop')
+        .then(response => response.text())
+        .then(function(shopName) {
+          // Floating button
+          var position = '{{ floating_btn_position }}';
+          var btn = document.createElement('a');
+          btn.href = wishlistUrl;
+          btn.className = 'wishlist-floating-btn-dynamic';
+          btn.setAttribute('aria-label', 'My Wishlist');
+          // Default colors
+          var primaryColor = '#111';
+          var secondaryColor = '#fff';
+          // Fetch metafields for colors
+          fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist-metafields')
+            .then(response => response.json())
+            .then(function(metafieldsEdges) {
+              var metafields = {};
+              metafieldsEdges.forEach(function(edge) {
+                metafields[edge.node.key] = edge.node.value;
+              });
+              primaryColor = metafields['primary_color'] || primaryColor;
+              secondaryColor = metafields['secondary_color'] || secondaryColor;
+              var floatingBtnPosition = metafields['floating_btn_position'] || 'left';
+              // Set content and position based on floatingBtnPosition
+              if (floatingBtnPosition === 'right') {
+          btn.style.top = '50%';
+          btn.style.right = '32px';
+          btn.style.left = '';
+          btn.style.bottom = '';
+          btn.style.transform = 'translateY(-50%)';
+                btn.style.width = '';
+                btn.style.height = '';
+                btn.style.padding = '';
+                btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
+                  `<svg width="22" height="22" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
+                  `</span><span class="wishlist-btn-text" style="color: ${secondaryColor}; font-size: 2rem; font-weight: 600;">My Wishlist</span>`;
+              } else if (floatingBtnPosition === 'bottom-left') {
+                btn.style.bottom = '32px';
+                btn.style.left = '32px';
+                btn.style.top = '';
+                btn.style.right = '';
+                btn.style.transform = '';
+                btn.style.width = '48px';
+                btn.style.height = '48px';
+                btn.style.padding = '0';
+                btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
+                  `<svg width="32" height="32" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
+                  '</span>';
+              } else if (floatingBtnPosition === 'bottom-right') {
+                btn.style.bottom = '32px';
+                btn.style.right = '32px';
+                btn.style.top = '';
+                btn.style.left = '';
+                btn.style.transform = '';
+                btn.style.width = '48px';
+                btn.style.height = '48px';
+                btn.style.padding = '0';
+                btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
+                  `<svg width="32" height="32" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
+                  '</span>';
+              } else { // default to left
+                btn.style.top = '50%';
+          btn.style.left = '32px';
+          btn.style.right = '';
+          btn.style.bottom = '';
+                btn.style.transform = 'translateY(-50%)';
+                btn.style.width = '';
+                btn.style.height = '';
+                btn.style.padding = '';
+                btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
+                  `<svg width="22" height="22" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
+                  `</span><span class="wishlist-btn-text" style="color: ${secondaryColor}; font-size: 2rem; font-weight: 600;">My Wishlist</span>`;
+              }
+              btn.style.background = primaryColor;
+            })
+            .catch(function() {
+              btn.style.background = primaryColor;
+              btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
+                `<svg width="22" height="22" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
+                `</span><span class="wishlist-btn-text" style="color: ${secondaryColor}; font-size: 2rem; font-weight: 600;">My Wishlist</span>`;
+            })
+            .finally(function() {
+              document.body.appendChild(btn);
+            });
         })
         .catch(function() {
-          btn.style.background = primaryColor;
-          btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
-            `<svg width="22" height="22" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
-            `</span><span class="wishlist-btn-text" style="color: ${secondaryColor}; font-size: 2rem; font-weight: 600;">My Wishlist</span>`;
-        })
-        .finally(function() {
-          document.body.appendChild(btn);
+          // Fallback if shop name cannot be fetched
+          var customerId = '{{ customer_id }}';
+          var wishlistUrl = '/a/wishlist/proxy/wishlist';
+          if (customerId) {
+            wishlistUrl += (wishlistUrl.indexOf('?') === -1 ? '?' : '&') + 'customer_id=' + encodeURIComponent(customerId);
+          }
+          var btn = document.createElement('a');
+          btn.href = wishlistUrl;
+          btn.className = 'wishlist-floating-btn-dynamic';
+          btn.setAttribute('aria-label', 'My Wishlist');
+          // Default colors
+          var primaryColor = '#111';
+          var secondaryColor = '#fff';
+          // Fetch metafields for colors
+          fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist-metafields')
+            .then(response => response.json())
+            .then(function(metafieldsEdges) {
+              var metafields = {};
+              metafieldsEdges.forEach(function(edge) {
+                metafields[edge.node.key] = edge.node.value;
+              });
+              primaryColor = metafields['primary_color'] || primaryColor;
+              secondaryColor = metafields['secondary_color'] || secondaryColor;
+              var floatingBtnPosition = metafields['floating_btn_position'] || 'left';
+              // Set content and position based on floatingBtnPosition
+              if (floatingBtnPosition === 'right') {
+                btn.style.top = '50%';
+          btn.style.right = '32px';
+          btn.style.left = '';
+          btn.style.bottom = '';
+                btn.style.transform = 'translateY(-50%)';
+                btn.style.width = '';
+                btn.style.height = '';
+                btn.style.padding = '';
+                btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
+                  `<svg width="22" height="22" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
+                  `</span><span class="wishlist-btn-text" style="color: ${secondaryColor}; font-size: 2rem; font-weight: 600;">My Wishlist</span>`;
+              } else if (floatingBtnPosition === 'bottom-left') {
+          btn.style.bottom = '32px';
+          btn.style.left = '32px';
+          btn.style.top = '';
+          btn.style.right = '';
+          btn.style.transform = '';
+                btn.style.width = '48px';
+                btn.style.height = '48px';
+                btn.style.padding = '0';
+                btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
+                  `<svg width="32" height="32" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
+                  '</span>';
+              } else if (floatingBtnPosition === 'bottom-right') {
+          btn.style.bottom = '32px';
+          btn.style.right = '32px';
+          btn.style.top = '';
+          btn.style.left = '';
+          btn.style.transform = '';
+                btn.style.width = '48px';
+                btn.style.height = '48px';
+                btn.style.padding = '0';
+                btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
+                  `<svg width="32" height="32" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
+                  '</span>';
+              } else { // default to left
+          btn.style.top = '50%';
+          btn.style.left = '32px';
+          btn.style.right = '';
+          btn.style.bottom = '';
+          btn.style.transform = 'translateY(-50%)';
+                btn.style.width = '';
+                btn.style.height = '';
+                btn.style.padding = '';
+                btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
+                  `<svg width="22" height="22" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
+                  `</span><span class="wishlist-btn-text" style="color: ${secondaryColor}; font-size: 2rem; font-weight: 600;">My Wishlist</span>`;
+              }
+              btn.style.background = primaryColor;
+            })
+            .catch(function() {
+              btn.style.background = primaryColor;
+              btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
+                `<svg width="22" height="22" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
+                `</span><span class="wishlist-btn-text" style="color: ${secondaryColor}; font-size: 2rem; font-weight: 600;">My Wishlist</span>`;
+            })
+            .finally(function() {
+      document.body.appendChild(btn);
+            });
         });
     });
   </script>
@@ -141,44 +240,53 @@
     document.addEventListener("DOMContentLoaded", function () {
       const cartIcon = document.querySelector('.header__icon--cart');
       if (cartIcon && !document.querySelector('.header__icon--wishlist')) {
+        var customerId = '{{ customer_id }}';
+        var wishlistUrl = '/a/wishlist/proxy/wishlist';
+        if (customerId) {
+          wishlistUrl += (wishlistUrl.indexOf('?') === -1 ? '?' : '&') + 'customer_id=' + encodeURIComponent(customerId);
+        }
+        fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/shop')
+          .then(response => response.text())
+          .then(function(shopName) {
         const wishlistIcon = document.createElement('a');
-        wishlistIcon.href = "/apps/murtaza-wishlist";
+            wishlistIcon.href = wishlistUrl;
         wishlistIcon.className = "header__icon header__icon--wishlist link focus-inset";
         wishlistIcon.style.display = "inline-flex";
         wishlistIcon.style.alignItems = "center";
-        wishlistIcon.style.padding = "0";
-        wishlistIcon.style.margin = "0";
-        wishlistIcon.style.gap = "0";
-        wishlistIcon.style.lineHeight = "1";
-        // Default colors
-        var primaryColor = '#111';
-        var secondaryColor = '#da086f';
-        fetch('http://127.0.0.1:8000/api/wishlist-metafields')
-          .then(response => response.json())
-          .then(function(metafieldsEdges) {
-            var metafields = {};
-            metafieldsEdges.forEach(function(edge) {
-              metafields[edge.node.key] = edge.node.value;
-            });
-            primaryColor = metafields['primary_color'] || primaryColor;
-            secondaryColor = metafields['secondary_color'] || secondaryColor;
-            wishlistIcon.innerHTML = `
-              <svg width="22" height="22" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" viewBox="0 0 24 24">
-                <path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/>
-              </svg>
-              <span class="visually-hidden">My Wishlist</span>
-            `;
-          })
-          .catch(function() {
-            wishlistIcon.innerHTML = `
-              <svg width="22" height="22" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" viewBox="0 0 24 24">
-                <path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/>
-              </svg>
-              <span class="visually-hidden">My Wishlist</span>
-            `;
-          })
-          .finally(function() {
-            cartIcon.parentNode.insertBefore(wishlistIcon, cartIcon);
+            wishlistIcon.style.padding = "0";
+            wishlistIcon.style.margin = "0";
+            wishlistIcon.style.gap = "0";
+            wishlistIcon.style.lineHeight = "1";
+            // Default colors
+            var primaryColor = '#111';
+            var secondaryColor = '#da086f';
+            fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist-metafields')
+              .then(response => response.json())
+              .then(function(metafieldsEdges) {
+                var metafields = {};
+                metafieldsEdges.forEach(function(edge) {
+                  metafields[edge.node.key] = edge.node.value;
+                });
+                primaryColor = metafields['primary_color'] || primaryColor;
+                secondaryColor = metafields['secondary_color'] || secondaryColor;
+                wishlistIcon.innerHTML = `
+                  <svg width="22" height="22" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/>
+                  </svg>
+                  <span class="visually-hidden">My Wishlist</span>
+                `;
+              })
+              .catch(function() {
+        wishlistIcon.innerHTML = `
+                  <svg width="22" height="22" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/>
+          </svg>
+          <span class="visually-hidden">My Wishlist</span>
+        `;
+              })
+              .finally(function() {
+        cartIcon.parentNode.insertBefore(wishlistIcon, cartIcon);
+              });
           });
       }
     });
@@ -210,8 +318,13 @@
           return li.textContent && li.textContent.trim().toLowerCase().includes('catalog');
         });
         if (catalogItem) {
+          var customerId = '{{ customer_id }}';
+          var wishlistUrl = '/a/wishlist/proxy/wishlist';
+          if (customerId) {
+            wishlistUrl += (wishlistUrl.indexOf('?') === -1 ? '?' : '&') + 'customer_id=' + encodeURIComponent(customerId);
+          }
           var wishlistLi = document.createElement('li');
-          wishlistLi.innerHTML = '<a href="/apps/murtaza-wishlist" class="wishlist-nav-link">My Wishlist</a>';
+          wishlistLi.innerHTML = '<a href="' + wishlistUrl + '" class="wishlist-nav-link">My Wishlist</a>';
           catalogItem.insertAdjacentElement('afterend', wishlistLi);
         }
       }

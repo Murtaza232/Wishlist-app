@@ -111,7 +111,27 @@ class WishlistConfigurationController extends HelperController
             'data' => $config->fresh()
         ]);
     }
+    public function shop(Request $request){
+        $shopSession = $this->getShop($request);
+        if (!$shopSession) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Shop domain is required.'
+            ], 400);
+        }
+        // Use the shop domain from the Session model
+        $session = Session::where('shop', $shopSession->shop)
+            ->whereNotNull('access_token')
+            ->first();
 
+        if (!$session) {
+            return response()->json([
+                'status' => false,
+                'message' => 'No valid access token for this shop.'
+            ], 400);
+        }
+        return $shopSession->shop;
+    }
     public function getThemes(Request $request)
     {
         $shopDomain = $this->getShop($request);
@@ -343,9 +363,5 @@ class WishlistConfigurationController extends HelperController
         $result = $api->graph($query);
         return response()->json($result['body']['data']['shop']['metafields']['edges']);
     }
-    public function showWishlistPage(Request $request)
-    {
-        return response(view('wishlist')->render())
-        ->withHeaders(['Content-Type' => 'application/liquid']);
-    }
+    
 }

@@ -3,7 +3,7 @@
 client_id = "9068cf8200dc7a986a7fe4d361fa5948"
 name = "murtaza"
 handle = "murtaza"
-application_url = "https://dryer-beverages-frame-toward.trycloudflare.com"
+application_url = "https://saturn-consequences-filename-amend.trycloudflare.com"
 embedded = true
 
 [build]
@@ -17,9 +17,9 @@ scopes = "read_orders,read_products,read_themes,write_orders,write_products"
 
 [auth]
 redirect_urls = [
-  "https://dryer-beverages-frame-toward.trycloudflare.com/auth/callback",
-  "https://dryer-beverages-frame-toward.trycloudflare.com/auth/shopify/callback",
-  "https://dryer-beverages-frame-toward.trycloudflare.com/api/auth/callback"
+  "https://saturn-consequences-filename-amend.trycloudflare.com/auth/callback",
+  "https://saturn-consequences-filename-amend.trycloudflare.com/auth/shopify/callback",
+  "https://saturn-consequences-filename-amend.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]

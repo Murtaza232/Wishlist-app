@@ -16,7 +16,7 @@
   margin: 0 auto;
   border-radius: 0;
   margin-bottom: 16px;
-">
+" data-product-id="{{ product.id }}" data-customer-id="{{ customer.id }}">
   <span id="wishlist-add-icon-container" style="display:inline-block;vertical-align:middle;"></span>
   <span id="wishlist-add-btn-text">Add To Wishlist</span>
 </button>
@@ -45,7 +45,7 @@ function getWishlistIconSvg(iconType, color, thickness, size) {
   var btn = document.getElementById('wishlist-add-btn');
   var iconContainer = document.getElementById('wishlist-add-icon-container');
   var btnText = document.getElementById('wishlist-add-btn-text');
-  fetch('http://127.0.0.1:8000/api/wishlist-metafields')
+  fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist-metafields')
     .then(response => response.json())
     .then(function(metafieldsEdges) {
       var metafields = {};
@@ -163,7 +163,7 @@ function getWishlistIconSvg(iconType, color, thickness, size) {
 })();
 
 (function() {
-  fetch('http://127.0.0.1:8000/api/wishlist-metafields')
+  fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist-metafields')
     .then(response => response.json())
     .then(function(metafieldsEdges) {
       var metafields = {};
@@ -204,6 +204,55 @@ document.addEventListener("DOMContentLoaded", function() {
   var btn = document.getElementById('wishlist-add-btn');
   if (btn) btn.style.display = 'none'; // Ensure hidden by default
   if (btn) btn.style.height = '48px'; // Set consistent height
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const button = document.getElementById('wishlist-add-btn');
+    if (button) {
+        button.addEventListener('click', function() {
+            const productId = this.dataset.productId;
+            const customerId = this.dataset.customerId;
+
+            if (!customerId || !productId) {
+                alert('Could not add to wishlist. Customer or Product not found.');
+                return;
+            }
+
+            // Show loading state
+            this.querySelector('#wishlist-add-btn-text').textContent = 'Adding...';
+            this.disabled = true;
+
+            fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                    customer_id: customerId,
+                    product_id: productId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    this.querySelector('#wishlist-add-btn-text').textContent = 'Added to Wishlist!';
+                    // The button remains disabled to prevent re-adding
+                } else {
+                    // Handle error
+                    this.querySelector('#wishlist-add-btn-text').textContent = 'Add to Wishlist';
+                    this.disabled = false;
+                    alert(data.message || 'An error occurred.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                this.querySelector('#wishlist-add-btn-text').textContent = 'Add to Wishlist';
+                this.disabled = false;
+                alert('An error occurred while adding to your wishlist.');
+            });
+        });
+    }
 });
 </script>
 

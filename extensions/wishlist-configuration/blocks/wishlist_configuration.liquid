@@ -29,7 +29,7 @@ function isProductPage() {
     primaryFontSize: window.wishlistPrimaryFontSize || 14,
     secondaryFontSize: window.wishlistSecondaryFontSize || 12
   };
-  fetch('http://127.0.0.1:8000/api/wishlist-metafields')
+  fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist-metafields')
     .then(response => response.json())
     .then(function(metafieldsEdges) {
       var metafields = {};

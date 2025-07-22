@@ -21,7 +21,7 @@ export default function App() {
     // const apiUrl = "https://phpstack-1447206-5423860.cloudwaysapps.com/api/";
     const appUrl = window.location.origin;
     // const apiUrl = `${appUrl}/api/`;
-    const apiUrl = 'http://127.0.0.1:8000/api/';
+    const apiUrl = 'https://phpstack-362288-5709690.cloudwaysapps.com/api/';
     return (
         <PolarisProvider>
             <BrowserRouter>
