@@ -29,6 +29,19 @@ export default function App() {
                     <QueryProvider>
                         <NavigationMenu
                             navigationLinks={[
+
+                                {
+                                    label: 'Configurations',
+                                    destination: "/Configurations",
+                                },
+                                {
+                                    label: 'Dashboard',
+                                    destination: "/Dashboard",
+                                },
+                                {
+                                    label: 'Customers',
+                                    destination: "/Customers",
+                                },
                                 {
                                     label: 'Features',
                                     destination: "/Features",

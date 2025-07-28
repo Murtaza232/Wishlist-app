@@ -31,7 +31,7 @@ class WishlistConfigurationController extends HelperController
             ], 400);
         }
 
-        $data = $request->validate([
+        $validated = $request->validate([
             'primary_color' => 'nullable|string',
             'secondary_color' => 'nullable|string',
             'icon_type' => 'nullable|in:heart,star,bookmark',
@@ -48,6 +48,7 @@ class WishlistConfigurationController extends HelperController
             'add_items_wishlist_collections_page' => 'nullable|boolean',
             'btn_group_position_collections_page' => 'nullable|in:top_left,top_right,bottom_left,bottom_right',
             'wishlist_page_appearance' => 'nullable|in:side_drawer,separate_page,pop_up_modal',
+            'wishlist_drawer_appearance' => 'nullable|in:left,right',
             'wishlist_page_title' => 'nullable|string',
             'wishlist_btn_launch_position' => 'nullable|in:header,floating_button,navigation_menu',
             'other_settings_wishlist_page' => 'nullable|boolean',
@@ -58,9 +59,16 @@ class WishlistConfigurationController extends HelperController
             'permission_cart_page' => 'nullable|in:ask,always',
             'show_count_floating_btn' => 'nullable|boolean',
             'floating_btn_position' => 'nullable|in:left,right,bottom-left,bottom-right',
+            'button_size_product_page' => 'nullable|integer',
+            'icon_thickness_product_page' => 'nullable|integer',
+            'floating_btn_primary_color' => 'nullable|string',
+            'floating_btn_secondary_color' => 'nullable|string',
+            'floating_btn_corner_radius' => 'nullable|integer',
+            'text_color' => 'nullable|string',
         ]);
-
+        $data = $validated;
         $data['shop_id'] = $session->id;
+        
 
         $config = WishlistConfiguration::where('shop_id', $session->id)->first();
         if ($config) {
@@ -74,7 +82,7 @@ class WishlistConfigurationController extends HelperController
             $shopGidQuery = '{ shop { id } }';
             $shopGidResp = $api->graph($shopGidQuery);
             $shopGid = $shopGidResp['body']['data']['shop']['id'];
-
+            // return $data;
             // 2. Prepare metafields input
             $metafieldsInput = [];
             foreach ($data as $key => $value) {
@@ -96,19 +104,37 @@ class WishlistConfigurationController extends HelperController
                     'ownerId' => $shopGid,
                 ];
             }
-            // 3. Send in batches of 25
+
+            // 3. Send in batches of 25 (Shopify limit)
             $chunks = array_chunk($metafieldsInput, 25);
-            foreach ($chunks as $chunk) {
+            $totalChunks = count($chunks);
+            $successfulChunks = 0;
+            
+            foreach ($chunks as $index => $chunk) {
                 $metafieldsString = implode(',', array_map(function($m) {
                     return '{namespace: "'.$m['namespace'].'", key: "'.$m['key'].'", type: "'.$m['type'].'", value: "'.addslashes($m['value']).'", ownerId: "'.$m['ownerId'].'"}';
                 }, $chunk));
                 $mutation = "mutation metafieldsSet { metafieldsSet(metafields: [$metafieldsString]) { metafields { id key namespace value type } userErrors { field message } } }";
-                $response=$api->graph($mutation);
-               
+                $response = $api->graph($mutation);
+                
+                // Check for errors in the response
+                if (isset($response['body']['data']['metafieldsSet']['userErrors']) && 
+                    !empty($response['body']['data']['metafieldsSet']['userErrors'])) {
+                    // Log the errors but continue with other chunks
+                    \Log::error('Metafields batch ' . ($index + 1) . ' failed: ' . json_encode($response['body']['data']['metafieldsSet']['userErrors']));
+                } else {
+                    $successfulChunks++;
+                }
             }
+        
         return response()->json([
             'success' => true,
-            'data' => $config->fresh()
+            'data' => $config->fresh(),
+            'metafields_processing' => [
+                'total_chunks' => $totalChunks,
+                'successful_chunks' => $successfulChunks,
+                'total_fields' => count($metafieldsInput)
+            ]
         ]);
     }
     public function shop(Request $request){
@@ -345,23 +371,92 @@ class WishlistConfigurationController extends HelperController
         $shopSession = $this->getShop($request);
         $session = Session::where('shop', $shopSession->shop)->first();
         $api = $this->shopifyApiClient($session->shop);
-        $query = '{
-          shop {
-            metafields(first: 30, namespace: "wishlist") {
-              edges {
-                node {
-                  id
-                  namespace
-                  key
-                  value
-                  type
+        
+        $allMetafields = [];
+        $hasNextPage = true;
+        $cursor = null;
+        
+        while ($hasNextPage) {
+            $cursorParam = $cursor ? ', after: "' . $cursor . '"' : '';
+            $query = '{
+              shop {
+                metafields(first: 250, namespace: "wishlist"' . $cursorParam . ') {
+                  edges {
+                    node {
+                      id
+                      namespace
+                      key
+                      value
+                      type
+                    }
+                    cursor
+                  }
+                  pageInfo {
+                    hasNextPage
+                    endCursor
+                  }
                 }
               }
+            }';
+            
+            $result = $api->graph($query);
+            $metafields = $result['body']['data']['shop']['metafields'];
+            
+            // Add metafields to our collection
+            foreach ($metafields['edges'] as $edge) {
+                $allMetafields[] = $edge;
             }
-          }
-        }';
-        $result = $api->graph($query);
-        return response()->json($result['body']['data']['shop']['metafields']['edges']);
+            
+            // Check if there are more pages
+            $hasNextPage = $metafields['pageInfo']['hasNextPage'];
+            $cursor = $metafields['pageInfo']['endCursor'];
+        }
+        
+        $productCardClasses = [
+            'card__inner', 'product-card', 'card', 'product-grid-item', 'grid__item', 'product-item',
+            'product-grid', 'product-list', 'product-box', 'product-container', 'media-wrapper',
+            'image-wrapper', 'product-card__container', 'product-card__main', 'product-card-wrapper',
+            'card-wrapper', 'card--standard', 'card--media', 'product-card__info'
+        ];
+        
+        return response()->json([
+            'metafields' => $allMetafields,
+            'product_card_classes' => $productCardClasses,
+            'total_metafields' => count($allMetafields)
+        ]);
     }
     
+    /**
+     * Get the wishlist configuration for the current shop (GET endpoint)
+     */
+    public function show(Request $request)
+    {
+        $shopSession = $this->getShop($request);
+        if (!$shopSession) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Shop domain is required.'
+            ], 400);
+        }
+        $session = Session::where('shop', $shopSession->shop)
+            ->whereNotNull('access_token')
+            ->first();
+        if (!$session) {
+            return response()->json([
+                'status' => false,
+                'message' => 'No valid access token for this shop.'
+            ], 400);
+        }
+        $config = WishlistConfiguration::where('shop_id', $session->id)->first();
+        if (!$config) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No configuration found.'
+            ], 404);
+        }
+        return response()->json([
+            'success' => true,
+            'data' => $config,
+        ]);
+    }
 }

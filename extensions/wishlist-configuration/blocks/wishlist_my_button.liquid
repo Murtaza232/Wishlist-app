@@ -7,6 +7,15 @@
   Only one button is shown at a time according to metafield.
 {% endcomment %}
 
+<script>
+  var SHOP_DOMAIN = null;
+  fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/shop')
+    .then(response => response.text())
+    .then(function(shopDomain) {
+      SHOP_DOMAIN = shopDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    });
+</script>
+
 {% assign launch_position = shop.metafields.wishlist.wishlist_btn_launch_position %}
 {% assign customer_id = customer.id | default: '' %}
 
@@ -15,6 +24,9 @@
   <style>
     .wishlist-floating-btn-dynamic {
       position: fixed !important;
+      /* Ensure relative positioning for badge */
+      position: fixed !important;
+      position: relative;
       z-index: 9999;
       padding: 14px 28px 14px 20px;
       background: #111;
@@ -26,10 +38,30 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      font-size: 1.1rem;
+      font-size: 1.5rem;
       border: none;
       cursor: pointer;
       transition: background 0.18s, color 0.18s;
+    }
+    .wishlist-floating-btn-badge {
+      position: absolute;
+      top: -12px;
+      left: -12px;
+      background: #ff0000;
+      color: #fff;
+      border-radius: 50%;
+      font-size: 1rem;
+      font-weight: bold;
+      padding: 2px 7px;
+      z-index: 10001;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      min-height: 22px;
+      line-height: 1;
+      border: 2px solid #fff;
     }
     .wishlist-floating-btn-dynamic:hover {
       filter: brightness(0.95);
@@ -51,208 +83,338 @@
         height: 18px;
       }
     }
+    .wishlist-dropdown {
+      display: none;
+      /* position will be set per context */
+      /* top and left will be set dynamically in JS */
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      border-radius: 8px;
+      min-width: 220px;
+      z-index: 10000;
+      padding: 8px 0;
+      font-size: 1.35rem;
+      font-family: inherit;
+      direction: ltr;
+      text-align: left;
+    }
+    .wishlist-dropdown div {
+      padding: 12px 20px;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+      font-size: 1.22rem;
+      direction: ltr;
+      text-align: left;
+      font-weight: 400;
+      transition: background 0.18s, font-weight 0.18s;
+    }
+    .wishlist-dropdown div:last-child {
+      border-bottom: none;
+    }
+    .wishlist-dropdown div:hover {
+      background: #f0f0f0;
+      font-weight: 700;
+      color: #111;
+    }
+    /* HEADER DROPDOWN: Place this at the end for highest specificity */
+
   </style>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      // Fetch shop name once on page load
       var customerId = '{{ customer_id }}';
-      var wishlistUrl = '/a/wishlist/proxy/wishlist';
-      if (customerId) {
-        wishlistUrl += (wishlistUrl.indexOf('?') === -1 ? '?' : '&') + 'customer_id=' + encodeURIComponent(customerId);
+      var metafields = null; // Store metafields globally for this scope
+      var maxWait = 1000; // ms
+      var interval = 50; // ms
+      var waited = 0;
+      function isValidColor(color) {
+        return color && color !== '' && color !== 'transparent' && color !== '#00000000' && color !== 'none' && color !== 'null' && color !== null && color !== 'rgba(0,0,0,0)';
       }
-      fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/shop')
-        .then(response => response.text())
-        .then(function(shopName) {
-          // Floating button
-          var position = '{{ floating_btn_position }}';
-          var btn = document.createElement('a');
-          btn.href = wishlistUrl;
-          btn.className = 'wishlist-floating-btn-dynamic';
-          btn.setAttribute('aria-label', 'My Wishlist');
-          // Default colors
-          var primaryColor = '#111';
-          var secondaryColor = '#fff';
-          // Fetch metafields for colors
-          fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist-metafields')
-            .then(response => response.json())
-            .then(function(metafieldsEdges) {
-              var metafields = {};
-              metafieldsEdges.forEach(function(edge) {
-                metafields[edge.node.key] = edge.node.value;
-              });
-              primaryColor = metafields['primary_color'] || primaryColor;
-              secondaryColor = metafields['secondary_color'] || secondaryColor;
-              var floatingBtnPosition = metafields['floating_btn_position'] || 'left';
-              // Set content and position based on floatingBtnPosition
-              if (floatingBtnPosition === 'right') {
+      function getTextColor(metafields) {
+        var extTextColor = (typeof window.wishlistAddBtnTextColor !== 'undefined' && isValidColor(window.wishlistAddBtnTextColor)) ? window.wishlistAddBtnTextColor : null;
+        return extTextColor || metafields['secondary_color'] || '#fff';
+      }
+      function renderWishlistButton(metafields) {
+        console.log('[WISHLIST] Metafields received:', metafields);
+        metafields = metafields || {};
+        var primaryColor = metafields['floating_btn_primary_color'] || '#111';
+        var secondaryColor = metafields['floating_btn_secondary_color'] || '#fff';
+        var floatingBtnPosition = metafields['floating_btn_position'] || 'left';
+        var extCornerRadius = !isNaN(parseInt(metafields['floating_btn_corner_radius'])) ? parseInt(metafields['floating_btn_corner_radius']) : 0;
+        var btn = document.createElement('a');
+        btn.href = '#';
+        btn.className = 'wishlist-floating-btn-dynamic';
+        btn.setAttribute('aria-label', 'My Wishlist');
+        btn.style.background = primaryColor;
+        btn.style.color = secondaryColor;
+        btn.style.borderRadius = extCornerRadius + 'px';
+        // Set content and position based on floatingBtnPosition
+        if (floatingBtnPosition === 'right') {
           btn.style.top = '50%';
           btn.style.right = '32px';
           btn.style.left = '';
           btn.style.bottom = '';
           btn.style.transform = 'translateY(-50%)';
-                btn.style.width = '';
-                btn.style.height = '';
-                btn.style.padding = '';
-                btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
-                  `<svg width="22" height="22" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
-                  `</span><span class="wishlist-btn-text" style="color: ${secondaryColor}; font-size: 2rem; font-weight: 600;">My Wishlist</span>`;
-              } else if (floatingBtnPosition === 'bottom-left') {
-                btn.style.bottom = '32px';
-                btn.style.left = '32px';
-                btn.style.top = '';
-                btn.style.right = '';
-                btn.style.transform = '';
-                btn.style.width = '48px';
-                btn.style.height = '48px';
-                btn.style.padding = '0';
-                btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
-                  `<svg width="32" height="32" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
-                  '</span>';
-              } else if (floatingBtnPosition === 'bottom-right') {
-                btn.style.bottom = '32px';
-                btn.style.right = '32px';
-                btn.style.top = '';
-                btn.style.left = '';
-                btn.style.transform = '';
-                btn.style.width = '48px';
-                btn.style.height = '48px';
-                btn.style.padding = '0';
-                btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
-                  `<svg width="32" height="32" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
-                  '</span>';
-              } else { // default to left
-                btn.style.top = '50%';
+          btn.style.width = '';
+          btn.style.height = '';
+          btn.style.padding = '';
+          btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
+            `<svg width="22" height="22" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
+              `</span><span class="wishlist-btn-text" style=\"color: ${secondaryColor}; font-size: 2rem; font-weight: 600;\">My Wishlist</span>`;
+        } else if (floatingBtnPosition === 'left') {
+          btn.style.top = '50%';
           btn.style.left = '32px';
           btn.style.right = '';
           btn.style.bottom = '';
-                btn.style.transform = 'translateY(-50%)';
-                btn.style.width = '';
-                btn.style.height = '';
-                btn.style.padding = '';
-                btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
-                  `<svg width="22" height="22" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
-                  `</span><span class="wishlist-btn-text" style="color: ${secondaryColor}; font-size: 2rem; font-weight: 600;">My Wishlist</span>`;
+          btn.style.transform = 'translateY(-50%)';
+          btn.style.width = '';
+          btn.style.height = '';
+          btn.style.padding = '';
+          btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
+            `<svg width="22" height="22" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
+            `</span><span class="wishlist-btn-text" style=\"color: ${secondaryColor}; font-size: 2rem; font-weight: 600;\">My Wishlist</span>`;
+        } else if (floatingBtnPosition === 'bottom-left') {
+          btn.style.bottom = '32px';
+          btn.style.left = '32px';
+          btn.style.top = '';
+          btn.style.right = '';
+          btn.style.transform = '';
+          btn.style.width = '48px';
+          btn.style.height = '48px';
+          btn.style.padding = '0';
+          btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
+            `<svg width="32" height="32" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
+            '</span>';
+        } else if (floatingBtnPosition === 'bottom-right') {
+          btn.style.bottom = '32px';
+          btn.style.right = '32px';
+          btn.style.top = '';
+          btn.style.left = '';
+          btn.style.transform = '';
+          btn.style.width = '48px';
+          btn.style.height = '48px';
+          btn.style.padding = '0';
+          btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
+            `<svg width="32" height="32" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
+            '</span>';
+        } else { // default to left
+          btn.style.top = '50%';
+          btn.style.left = '32px';
+          btn.style.right = '';
+          btn.style.bottom = '';
+          btn.style.transform = 'translateY(-50%)';
+          btn.style.width = '';
+          btn.style.height = '';
+          btn.style.padding = '';
+          btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
+            `<svg width="22" height="22" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
+              `</span><span class="wishlist-btn-text" style=\"color: ${secondaryColor}; font-size: 2rem; font-weight: 600;\">My Wishlist</span>`;
+        }
+        // Show badge if metafield is true
+        var showCount = metafields['show_count_floating_btn'] === 'true';
+        if (showCount) {
+          fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist-count?customer_id=' + encodeURIComponent(customerId))
+            .then(res => res.json())
+            .then(data => {
+              var count = data.count || 0;
+              if (count > 0) {
+                var badge = document.createElement('span');
+                badge.className = 'wishlist-floating-btn-badge';
+                badge.textContent = count;
+                btn.appendChild(badge);
               }
-              btn.style.background = primaryColor;
-            })
-            .catch(function() {
-              btn.style.background = primaryColor;
-              btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
-                `<svg width="22" height="22" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
-                `</span><span class="wishlist-btn-text" style="color: ${secondaryColor}; font-size: 2rem; font-weight: 600;">My Wishlist</span>`;
-            })
-            .finally(function() {
-              document.body.appendChild(btn);
             });
-        })
-        .catch(function() {
-          // Fallback if shop name cannot be fetched
-          var customerId = '{{ customer_id }}';
-          var wishlistUrl = '/a/wishlist/proxy/wishlist';
-          if (customerId) {
-            wishlistUrl += (wishlistUrl.indexOf('?') === -1 ? '?' : '&') + 'customer_id=' + encodeURIComponent(customerId);
+        }
+        document.body.appendChild(btn);
+
+
+        // Dropdown logic
+        var dropdown = document.createElement('div');
+        dropdown.className = 'wishlist-dropdown';
+        btn.parentNode.style.position = 'relative';
+        btn.parentNode.appendChild(dropdown);
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (dropdown.style.display === 'block') {
+            dropdown.style.display = 'none';
+            return;
           }
-          var btn = document.createElement('a');
-          btn.href = wishlistUrl;
-          btn.className = 'wishlist-floating-btn-dynamic';
-          btn.setAttribute('aria-label', 'My Wishlist');
-          // Default colors
-          var primaryColor = '#111';
-          var secondaryColor = '#fff';
-          // Fetch metafields for colors
-          fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist-metafields')
-            .then(response => response.json())
-            .then(function(metafieldsEdges) {
-              var metafields = {};
-              metafieldsEdges.forEach(function(edge) {
-                metafields[edge.node.key] = edge.node.value;
-              });
-              primaryColor = metafields['primary_color'] || primaryColor;
-              secondaryColor = metafields['secondary_color'] || secondaryColor;
-              var floatingBtnPosition = metafields['floating_btn_position'] || 'left';
-              // Set content and position based on floatingBtnPosition
-              if (floatingBtnPosition === 'right') {
-                btn.style.top = '50%';
-          btn.style.right = '32px';
-          btn.style.left = '';
-          btn.style.bottom = '';
-                btn.style.transform = 'translateY(-50%)';
-                btn.style.width = '';
-                btn.style.height = '';
-                btn.style.padding = '';
-                btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
-                  `<svg width="22" height="22" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
-                  `</span><span class="wishlist-btn-text" style="color: ${secondaryColor}; font-size: 2rem; font-weight: 600;">My Wishlist</span>`;
-              } else if (floatingBtnPosition === 'bottom-left') {
-          btn.style.bottom = '32px';
-          btn.style.left = '32px';
-          btn.style.top = '';
-          btn.style.right = '';
-          btn.style.transform = '';
-                btn.style.width = '48px';
-                btn.style.height = '48px';
-                btn.style.padding = '0';
-                btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
-                  `<svg width="32" height="32" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
-                  '</span>';
-              } else if (floatingBtnPosition === 'bottom-right') {
-          btn.style.bottom = '32px';
-          btn.style.right = '32px';
-          btn.style.top = '';
-          btn.style.left = '';
-          btn.style.transform = '';
-                btn.style.width = '48px';
-                btn.style.height = '48px';
-                btn.style.padding = '0';
-                btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
-                  `<svg width="32" height="32" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
-                  '</span>';
-              } else { // default to left
-          btn.style.top = '50%';
-          btn.style.left = '32px';
-          btn.style.right = '';
-          btn.style.bottom = '';
-          btn.style.transform = 'translateY(-50%)';
-                btn.style.width = '';
-                btn.style.height = '';
-                btn.style.padding = '';
-                btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
-                  `<svg width="22" height="22" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
-                  `</span><span class="wishlist-btn-text" style="color: ${secondaryColor}; font-size: 2rem; font-weight: 600;">My Wishlist</span>`;
+          if (!SHOP_DOMAIN) { alert('Shop domain not loaded yet. Please try again.'); return; }
+          fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlists?customer_id=' + encodeURIComponent(customerId))
+            .then(res => res.json())
+            .then(data => {
+              dropdown.innerHTML = '';
+              if (!Array.isArray(data) || data.length === 0) {
+                dropdown.innerHTML = '<div style="padding:10px 16px;color:#888;">No wishlists found</div>';
+              } else {
+                data.forEach(wl => {
+                  var item = document.createElement('div');
+                  item.style.display = 'flex';
+                  item.style.alignItems = 'center';
+                  item.style.justifyContent = 'space-between';
+                  item.style.gap = '12px';
+                  item.style.paddingRight = '12px';
+
+                  var titleSpan = document.createElement('span');
+                  titleSpan.textContent = wl.title;
+                  titleSpan.style.flex = '1 1 auto';
+                  titleSpan.style.overflow = 'hidden';
+                  titleSpan.style.textOverflow = 'ellipsis';
+                  titleSpan.style.whiteSpace = 'nowrap';
+
+                  // Create delete icon
+                  var deleteIcon = document.createElement('span');
+                  deleteIcon.innerHTML = `<svg width="18" height="18" style="cursor:pointer;vertical-align:middle;display:inline-block;" fill="#e00" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`;
+                  deleteIcon.title = 'Delete wishlist';
+                  deleteIcon.style.flex = '0 0 auto';
+                  deleteIcon.addEventListener('click', function(ev) {
+                    ev.stopPropagation();
+                    if (confirm('Are you sure you want to delete this wishlist and all its items?')) {
+                      fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlists/' + wl.id, {
+                        method: 'DELETE'
+                      })
+                      .then(res => res.json())
+                      .then(data => {
+                        if (data.status === 'success' || data.success) {
+                          item.remove();
+                          alert('Wishlist deleted.');
+                        } else {
+                          alert('Failed to delete wishlist.');
+                        }
+                      });
+                    }
+                  });
+
+                  item.appendChild(titleSpan);
+                  item.appendChild(deleteIcon);
+
+                  item.addEventListener('mouseover', function() {
+                    item.style.background = '#f5f5f5';
+                  });
+                  item.addEventListener('mouseout', function() {
+                    item.style.background = '#fff';
+                  });
+                  item.addEventListener('click', function(ev) {
+                    ev.stopPropagation();
+                    dropdown.style.display = 'none';
+                    if (!SHOP_DOMAIN) { alert('Shop domain not loaded yet. Please try again.'); return; }
+                    window.location.href = 'https://' + SHOP_DOMAIN + '/a/wishlist/proxy/wishlist?wishlist_id=' + wl.id + '&customer_id=' + encodeURIComponent(customerId);
+                  });
+                  dropdown.appendChild(item);
+                });
               }
-              btn.style.background = primaryColor;
-            })
-            .catch(function() {
-              btn.style.background = primaryColor;
-              btn.innerHTML = '<span class="wishlist-heart-icon" aria-hidden="true">' +
-                `<svg width="22" height="22" viewBox="0 0 24 24" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>` +
-                `</span><span class="wishlist-btn-text" style="color: ${secondaryColor}; font-size: 2rem; font-weight: 600;">My Wishlist</span>`;
-            })
-            .finally(function() {
-      document.body.appendChild(btn);
+              // Position dropdown below the button
+              var rect = btn.getBoundingClientRect();
+              var floatingBtnPosition = metafields && metafields['floating_btn_position'] ? metafields['floating_btn_position'] : 'left';
+              dropdown.style.minWidth = '260px';
+              dropdown.style.maxWidth = '340px';
+              dropdown.style.width = '280px';
+              dropdown.style.position = 'fixed';
+              dropdown.style.display = 'block';
+              dropdown.style.visibility = 'hidden'; // Hide while measuring
+              setTimeout(function() {
+                if (floatingBtnPosition === 'bottom-left' || floatingBtnPosition === 'bottom-right') {
+                  var top = rect.top - dropdown.offsetHeight - 8;
+                  if (top < 8) top = 8; // Prevent overflow above the viewport
+                  dropdown.style.top = top + 'px';
+                  dropdown.style.minWidth = '260px';
+                  dropdown.style.maxWidth = '340px';
+                  dropdown.style.width = '280px';
+                  if (floatingBtnPosition === 'bottom-right') {
+                    dropdown.style.right = (window.innerWidth - rect.right + 16) + 'px'; // 16px margin from right
+                    dropdown.style.left = '';
+                  } else {
+                    dropdown.style.left = rect.left + 'px';
+                    dropdown.style.right = '';
+                  }
+                  // Prevent horizontal overflow
+                  var dropdownRect = dropdown.getBoundingClientRect();
+                  if (dropdownRect.right > window.innerWidth) {
+                    dropdown.style.left = (window.innerWidth - dropdown.offsetWidth - 8) + 'px';
+                    dropdown.style.right = '';
+                  }
+                  if (dropdownRect.left < 0) {
+                    dropdown.style.left = '8px';
+                    dropdown.style.right = '';
+                  }
+                } else {
+                  dropdown.style.top = (rect.bottom) + 'px';
+                  dropdown.style.left = rect.left + 'px';
+                  dropdown.style.right = '';
+                  dropdown.style.minWidth = rect.width + 'px';
+                  dropdown.style.maxWidth = '';
+                  dropdown.style.width = '';
+                }
+                dropdown.style.visibility = 'visible';
+              }, 0);
             });
         });
+        document.addEventListener('click', function() {
+          if (dropdown.style.display === 'block') dropdown.style.display = 'none';
+        });
+      }
+      function waitForExtensionColor() {
+        var extBgColor = (typeof window.wishlistAddBtnBgColor !== 'undefined' && isValidColor(window.wishlistAddBtnBgColor)) ? window.wishlistAddBtnBgColor : null;
+        if (extBgColor) {
+          // Only call renderWishlistButton after metafields are loaded:
+          fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist-metafields')
+            .then(response => response.json())
+            .then(function(response) {
+              var metafields = {};
+              var metafieldsEdges = response.metafields || [];
+              metafieldsEdges.forEach(function(edge) {
+                metafields[edge.node.key] = edge.node.value;
+              });
+              console.log('[WISHLIST] Metafields received:', metafields);
+              renderWishlistButton(metafields);
+            })
+            .catch(function(err) {
+              console.error('[WishlistMyButton] Error fetching metafields:', err);
+              renderWishlistButton({}); // Pass an empty object or default values
+            });
+        } else if (waited >= maxWait) {
+          // Only call renderWishlistButton after metafields are loaded:
+          fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist-metafields')
+            .then(response => response.json())
+            .then(function(response) {
+              var metafields = {};
+              var metafieldsEdges = response.metafields || [];
+              metafieldsEdges.forEach(function(edge) {
+                metafields[edge.node.key] = edge.node.value;
+              });
+              console.log('[WISHLIST] Metafields received:', metafields);
+              renderWishlistButton(metafields);
+            })
+            .catch(function(err) {
+              console.error('[WishlistMyButton] Error fetching metafields:', err);
+              renderWishlistButton({}); // Pass an empty object or default values
+            });
+        } else {
+          waited += interval;
+          setTimeout(waitForExtensionColor, interval);
+        }
+      }
+      waitForExtensionColor();
     });
   </script>
 
 {% elsif launch_position == 'header' %}
   <script>
     document.addEventListener("DOMContentLoaded", function () {
-      const cartIcon = document.querySelector('.header__icon--cart');
+      const headerSelector = (typeof window.wishlistHeaderSelector !== 'undefined' && window.wishlistHeaderSelector && window.wishlistHeaderSelector !== '-' && window.wishlistHeaderSelector.trim() !== '') ? window.wishlistHeaderSelector : '.header__icon--cart';
+      console.debug('[WISHLIST] Header selector used:', headerSelector, (headerSelector === window.wishlistHeaderSelector ? 'from extension setting' : 'fallback'));
+      const cartIcon = document.querySelector(headerSelector);
       if (cartIcon && !document.querySelector('.header__icon--wishlist')) {
         var customerId = '{{ customer_id }}';
-        var wishlistUrl = '/a/wishlist/proxy/wishlist';
-        if (customerId) {
-          wishlistUrl += (wishlistUrl.indexOf('?') === -1 ? '?' : '&') + 'customer_id=' + encodeURIComponent(customerId);
-        }
         fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/shop')
           .then(response => response.text())
-          .then(function(shopName) {
-        const wishlistIcon = document.createElement('a');
-            wishlistIcon.href = wishlistUrl;
-        wishlistIcon.className = "header__icon header__icon--wishlist link focus-inset";
-        wishlistIcon.style.display = "inline-flex";
-        wishlistIcon.style.alignItems = "center";
+          .then(function(shopDomain) {
+            SHOP_DOMAIN = shopDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+            const wishlistIcon = document.createElement('a');
+            wishlistIcon.href = '#';
+            wishlistIcon.className = "header__icon header__icon--wishlist link focus-inset";
+            wishlistIcon.style.display = "inline-flex";
+            wishlistIcon.style.alignItems = "center";
             wishlistIcon.style.padding = "0";
             wishlistIcon.style.margin = "0";
             wishlistIcon.style.gap = "0";
@@ -262,13 +424,16 @@
             var secondaryColor = '#da086f';
             fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist-metafields')
               .then(response => response.json())
-              .then(function(metafieldsEdges) {
+              .then(function(response) {
                 var metafields = {};
+                var metafieldsEdges = response.metafields || [];
                 metafieldsEdges.forEach(function(edge) {
                   metafields[edge.node.key] = edge.node.value;
                 });
                 primaryColor = metafields['primary_color'] || primaryColor;
                 secondaryColor = metafields['secondary_color'] || secondaryColor;
+                // Force icon container to be relative for dropdown
+                wishlistIcon.style.position = "relative";
                 wishlistIcon.innerHTML = `
                   <svg width="22" height="22" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" viewBox="0 0 24 24">
                     <path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/>
@@ -277,7 +442,7 @@
                 `;
               })
               .catch(function() {
-        wishlistIcon.innerHTML = `
+                wishlistIcon.innerHTML = `
                   <svg width="22" height="22" fill="${secondaryColor}" stroke="${secondaryColor}" stroke-width="2" viewBox="0 0 24 24">
                     <path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/>
           </svg>
@@ -285,7 +450,125 @@
         `;
               })
               .finally(function() {
-        cartIcon.parentNode.insertBefore(wishlistIcon, cartIcon);
+                cartIcon.parentNode.insertBefore(wishlistIcon, cartIcon);
+
+                // Dropdown logic
+                var dropdown = document.createElement('div');
+                dropdown.className = 'wishlist-dropdown';
+                wishlistIcon.style.position = 'relative';
+                wishlistIcon.appendChild(dropdown);
+                // Apply dropdown styles directly via JS for header
+                dropdown.style.display = 'none';
+                dropdown.style.position = 'absolute';
+                dropdown.style.top = '36px';
+                dropdown.style.left = '50%';
+                dropdown.style.transform = 'translateX(-50%)';
+                dropdown.style.minWidth = '220px';
+                dropdown.style.background = '#fff';
+                dropdown.style.boxShadow = '0 4px 16px rgba(0,0,0,0.18)';
+                dropdown.style.borderRadius = '10px';
+                dropdown.style.zIndex = '10000';
+                dropdown.style.padding = '8px 0';
+                dropdown.style.fontSize = '1.35rem';
+                dropdown.style.fontFamily = 'inherit';
+                dropdown.style.direction = 'ltr';
+                dropdown.style.textAlign = 'left';
+                dropdown.style.marginTop = '6px';
+                dropdown.style.border = 'none';
+                wishlistIcon.addEventListener('click', function(e) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (dropdown.style.display === 'block') {
+                    dropdown.style.display = 'none';
+                    return;
+                  }
+                  if (!SHOP_DOMAIN) { alert('Shop domain not loaded yet. Please try again.'); return; }
+                  fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlists?customer_id=' + encodeURIComponent(customerId))
+                    .then(res => res.json())
+                    .then(data => {
+                      dropdown.innerHTML = '';
+                      if (!Array.isArray(data) || data.length === 0) {
+                        dropdown.innerHTML = '<div style="padding:10px 16px;color:#888;">No wishlists found</div>';
+                      } else {
+                        data.forEach(wl => {
+                          var item = document.createElement('div');
+                          item.className = 'wishlist-header-dropdown-item';
+                          item.style.display = 'flex';
+                          item.style.justifyContent = 'space-between';
+                          item.style.alignItems = 'center';
+                          item.style.gap = '12px';
+                          item.style.padding = '12px 20px';
+                          item.style.cursor = 'pointer';
+                          item.style.borderBottom = '1px solid #eee';
+                          item.style.fontSize = '1.22rem';
+                          item.style.fontWeight = '400';
+                          item.style.transition = 'background 0.18s, font-weight 0.18s';
+                          item.style.whiteSpace = 'normal';
+                          item.style.width = '100%';
+                          item.style.boxSizing = 'border-box';
+
+                          var titleSpan = document.createElement('span');
+                          titleSpan.textContent = wl.title;
+                          titleSpan.style.flex = '1 1 auto';
+                          titleSpan.style.overflow = 'hidden';
+                          titleSpan.style.textOverflow = 'ellipsis';
+                          titleSpan.style.whiteSpace = 'nowrap';
+
+                          // Create delete icon
+                          var deleteIcon = document.createElement('span');
+                          deleteIcon.innerHTML = `<svg width="18" height="18" style="cursor:pointer;vertical-align:middle;display:inline-block;" fill="#e00" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`;
+                          deleteIcon.title = 'Delete wishlist';
+                          deleteIcon.style.flex = '0 0 auto';
+                          deleteIcon.addEventListener('click', function(ev) {
+                            ev.stopPropagation();
+                            if (confirm('Are you sure you want to delete this wishlist and all its items?')) {
+                              fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlists/' + wl.id, {
+                                method: 'DELETE'
+                              })
+                              .then(res => res.json())
+                              .then(data => {
+                                if (data.status === 'success' || data.success) {
+                                  item.remove();
+                                  alert('Wishlist deleted.');
+                                } else {
+                                  alert('Failed to delete wishlist.');
+                                }
+                              });
+                            }
+                          });
+
+                          item.appendChild(titleSpan);
+                          item.appendChild(deleteIcon);
+
+                          item.addEventListener('mouseover', function() {
+                            item.style.background = '#f0f0f0';
+                            item.style.fontWeight = '700';
+                            item.style.color = '#111';
+                          });
+                          item.addEventListener('mouseout', function() {
+                            item.style.background = '#fff';
+                            item.style.fontWeight = '400';
+                            item.style.color = '';
+                          });
+                          item.addEventListener('click', function(ev) {
+                            ev.stopPropagation();
+                            dropdown.style.display = 'none';
+                            if (!SHOP_DOMAIN) { alert('Shop domain not loaded yet. Please try again.'); return; }
+                            window.location.href = 'https://' + SHOP_DOMAIN + '/a/wishlist/proxy/wishlist?wishlist_id=' + wl.id + '&customer_id=' + encodeURIComponent(customerId);
+                          });
+                          dropdown.appendChild(item);
+                        });
+                        // Remove border from last item
+                        if (dropdown.lastChild) {
+                          dropdown.lastChild.style.borderBottom = 'none';
+                        }
+                      }
+                      dropdown.style.display = 'block';
+                    });
+                });
+                document.addEventListener('click', function() {
+                  if (dropdown.style.display === 'block') dropdown.style.display = 'none';
+                });
               });
           });
       }
@@ -297,7 +580,6 @@
     .wishlist-nav-link {
       font-weight: 600;
       color:rgb(3, 2, 3);
-      font-size: 1rem;
       text-decoration: none;
       padding: 0 12px;
       display: inline-flex;
@@ -309,22 +591,142 @@
       color:rgb(0, 0, 0);
       text-decoration: underline;
     }
+    .wishlist-dropdown {
+      display: none;
+      position: absolute;
+      top: 40px;
+      left: 0;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      border-radius: 8px;
+      min-width: 220px;
+      z-index: 10000;
+      padding: 8px 0;
+      font-size: 1.35rem;
+      font-family: inherit;
+      direction: ltr;
+      text-align: left;
+    }
+    .wishlist-dropdown div {
+      padding: 12px 20px;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+      font-size: 1.22rem;
+      direction: ltr;
+      text-align: left;
+      font-weight: 400;
+      transition: background 0.18s, font-weight 0.18s;
+    }
+    .wishlist-dropdown div:last-child {
+      border-bottom: none;
+    }
+    .wishlist-dropdown div:hover {
+      background: #f0f0f0;
+      font-weight: 700;
+      color: #111;
+    }
   </style>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      var nav = document.querySelector('.list-menu--inline');
+      const navSelector = (typeof window.wishlistNavSelector !== 'undefined' && window.wishlistNavSelector && window.wishlistNavSelector !== '-' && window.wishlistNavSelector.trim() !== '') ? window.wishlistNavSelector : '.list-menu--inline';
+      console.debug('[WISHLIST] Nav selector used:', navSelector, (navSelector === window.wishlistNavSelector ? 'from extension setting' : 'fallback'));
+      var nav = document.querySelector(navSelector);
       if (nav) {
         var catalogItem = Array.from(nav.children).find(function(li) {
           return li.textContent && li.textContent.trim().toLowerCase().includes('catalog');
         });
         if (catalogItem) {
           var customerId = '{{ customer_id }}';
-          var wishlistUrl = '/a/wishlist/proxy/wishlist';
-          if (customerId) {
-            wishlistUrl += (wishlistUrl.indexOf('?') === -1 ? '?' : '&') + 'customer_id=' + encodeURIComponent(customerId);
-          }
           var wishlistLi = document.createElement('li');
-          wishlistLi.innerHTML = '<a href="' + wishlistUrl + '" class="wishlist-nav-link">My Wishlist</a>';
+          var wishlistBtn = document.createElement('a');
+          wishlistBtn.href = '#';
+          wishlistBtn.className = 'wishlist-nav-link';
+          wishlistBtn.textContent = 'My Wishlist';
+          wishlistBtn.style.fontSize = '1.3rem';
+          wishlistBtn.style.marginTop='2px';
+           wishlistBtn.style.color ='rgb(122, 113, 113)';
+          wishlistLi.appendChild(wishlistBtn);
+          var dropdown = document.createElement('div');
+          dropdown.className = 'wishlist-dropdown';
+          wishlistLi.style.position = 'relative';
+          wishlistLi.appendChild(dropdown);
+          wishlistBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (dropdown.style.display === 'block') {
+              dropdown.style.display = 'none';
+              return;
+            }
+            if (!SHOP_DOMAIN) { alert('Shop domain not loaded yet. Please try again.'); return; }
+            fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlists?customer_id=' + encodeURIComponent(customerId))
+              .then(res => res.json())
+              .then(data => {
+                dropdown.innerHTML = '';
+                if (!Array.isArray(data) || data.length === 0) {
+                  dropdown.innerHTML = '<div style="padding:10px 16px;color:#888;">No wishlists found</div>';
+                } else {
+                  data.forEach(wl => {
+                    var item = document.createElement('div');
+                    item.style.display = 'flex';
+                    item.style.alignItems = 'center';
+                    item.style.justifyContent = 'space-between';
+                    item.style.gap = '12px';
+                    item.style.paddingRight = '12px';
+
+                    var titleSpan = document.createElement('span');
+                    titleSpan.textContent = wl.title;
+                    titleSpan.style.flex = '1 1 auto';
+                    titleSpan.style.overflow = 'hidden';
+                    titleSpan.style.textOverflow = 'ellipsis';
+                    titleSpan.style.whiteSpace = 'nowrap';
+
+                    // Create delete icon
+                    var deleteIcon = document.createElement('span');
+                    deleteIcon.innerHTML = `<svg width="18" height="18" style="cursor:pointer;vertical-align:middle;display:inline-block;" fill="#e00" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`;
+                    deleteIcon.title = 'Delete wishlist';
+                    deleteIcon.style.flex = '0 0 auto';
+                    deleteIcon.addEventListener('click', function(ev) {
+                      ev.stopPropagation();
+                      if (confirm('Are you sure you want to delete this wishlist and all its items?')) {
+                        fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlists/' + wl.id, {
+                          method: 'DELETE'
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                          if (data.status === 'success' || data.success) {
+                            item.remove();
+                            alert('Wishlist deleted.');
+                          } else {
+                            alert('Failed to delete wishlist.');
+                          }
+                        });
+                      }
+                    });
+
+                    item.appendChild(titleSpan);
+                    item.appendChild(deleteIcon);
+
+                    item.addEventListener('mouseover', function() {
+                      item.style.background = '#f5f5f5';
+                    });
+                    item.addEventListener('mouseout', function() {
+                      item.style.background = '#fff';
+                    });
+                    item.addEventListener('click', function(ev) {
+                      ev.stopPropagation();
+                      dropdown.style.display = 'none';
+                      if (!SHOP_DOMAIN) { alert('Shop domain not loaded yet. Please try again.'); return; }
+                      window.location.href = 'https://' + SHOP_DOMAIN + '/a/wishlist/proxy/wishlist?wishlist_id=' + wl.id + '&customer_id=' + encodeURIComponent(customerId);
+                    });
+                    dropdown.appendChild(item);
+                  });
+                }
+                dropdown.style.display = 'block';
+              });
+          });
+          document.addEventListener('click', function() {
+            if (dropdown.style.display === 'block') dropdown.style.display = 'none';
+          });
           catalogItem.insertAdjacentElement('afterend', wishlistLi);
         }
       }

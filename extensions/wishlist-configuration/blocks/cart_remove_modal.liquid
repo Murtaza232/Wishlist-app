@@ -1,0 +1,52 @@
+{% schema %}
+{
+  "name": "Cart Remove Modal",
+  "target": "section",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "enable_modal",
+      "label": "Enable Remove Modal on Cart Page",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "modal_title",
+      "label": "Modal Title",
+      "default": "Item Removed"
+    },
+    {
+      "type": "text",
+      "id": "modal_message",
+      "label": "Modal Message",
+      "default": "The item has been removed from your cart."
+    },
+    {
+      "type": "text",
+      "id": "primary_btn_text",
+      "label": "Primary Button Text",
+      "default": "Save For later"
+    },
+    {
+      "type": "text",
+      "id": "secondary_btn_text",
+      "label": "Secondary Button Text",
+      "default": "No, thanks!"
+    }
+  ]
+}
+{% endschema %}
+
+{{ 'remove-cart-modal.js' | asset_url | script_tag }}
+
+<div id="wishlist-cart-customer" data-customer-id="{{ customer.id | default: '' }}" style="display:none;"></div>
+{% for item in cart.items %}
+  <div class="cart-item">
+    <!-- Other cart item markup can go here if needed -->
+    <div class="wishlist-cart-product" data-product-id="{{ item.product.id }}" style="display:none;"></div>
+  </div>
+{% endfor %}
+
+{% if block.settings.enable_modal %}
+
+{% endif %} 

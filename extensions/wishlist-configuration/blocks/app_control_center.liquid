@@ -62,38 +62,30 @@
 {%- endcomment -%}
 
 <script>
+  // Set from extension setting first
   window.wishlistAddBtnTextColor = "{{ block.settings.button_text_color | default: '#e5e5e5' }}";
   window.wishlistAddBtnBgColor = "{{ block.settings.button_bg_color | default: '#111' }}";
-  // Fetch metafields and update Button Background Color (in wishlist) and Button Text Color (in wishlist) if present
+  window.wishlistAddBtnCornerRadius = "{{ block.settings.corner_radius | default: 0 }}";
+  window.wishlistDrawerDirection = "{{ block.settings.drawer_slide_direction | default: 'left' }}";
+
+  // Only use metafields if extension setting is not set
   fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist-metafields')
-    .then(response => response.json())
-    .then(function(metafieldsEdges) {
+      .then(response => response.json())
+      .then(function(response) {
       var metafields = {};
+      var metafieldsEdges = response.metafields || [];
       metafieldsEdges.forEach(function(edge) {
         metafields[edge.node.key] = edge.node.value;
       });
-      var primaryColor = metafields['primary_color'] || window.wishlistAddBtnBgColor;
-      var secondaryColor = metafields['secondary_color'] || window.wishlistAddBtnTextColor;
-      // Update the color input for Button Background Color (in wishlist)
-      var bgColorInput = document.querySelector('input[name="button_bg_color"], input#button_bg_color');
-      if (bgColorInput) {
-        bgColorInput.value = primaryColor;
-        var event = new Event('change', { bubbles: true });
-        bgColorInput.dispatchEvent(event);
+      // Only override if extension setting is empty
+      if (!window.wishlistAddBtnBgColor || window.wishlistAddBtnBgColor === '' || window.wishlistAddBtnBgColor === '#111') {
+        window.wishlistAddBtnBgColor = metafields['primary_color'] || '#111';
       }
-      // Update the color input for Button Text Color (in wishlist)
-      var textColorInput = document.querySelector('input[name="button_text_color"], input#button_text_color');
-      if (textColorInput) {
-        textColorInput.value = secondaryColor;
-        var event = new Event('change', { bubbles: true });
-        textColorInput.dispatchEvent(event);
+      if (!window.wishlistAddBtnTextColor || window.wishlistAddBtnTextColor === '' || window.wishlistAddBtnTextColor === '#e5e5e5') {
+        window.wishlistAddBtnTextColor = metafields['secondary_color'] || '#e5e5e5';
       }
-      // Set the global variables for use in Add to Wishlist button
-      window.wishlistAddBtnBgColor = primaryColor;
-      window.wishlistAddBtnTextColor = secondaryColor;
     })
     .finally(function() {
-      // Show the button after the API call completes (success or fail)
       var btn = document.getElementById('wishlist-add-btn');
       if (btn) btn.style.display = 'flex';
     });

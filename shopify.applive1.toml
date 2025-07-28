@@ -1,0 +1,41 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "e2592af5e6244cf46a34eefeeb3a3f90"
+name = "Wishlist"
+handle = "wishlist-825"
+application_url = "https://phpstack-362288-5709690.cloudwaysapps.com/"
+embedded = true
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_orders,read_products,read_themes,write_orders,write_products"
+
+
+[webhooks]
+api_version = "2025-07"
+
+[auth]
+redirect_urls = [
+  "https://phpstack-362288-5709690.cloudwaysapps.com/auth/callback",
+  "https://phpstack-362288-5709690.cloudwaysapps.com/auth/shopify/callback",
+  "https://phpstack-362288-5709690.cloudwaysapps.com/api/auth/callback"
+]
+
+[app_proxy]
+url = "https://phpstack-362288-5709690.cloudwaysapps.com/api"
+subpath = "wishlist"
+prefix = "a"
+
+[pos]
+embedded = false
+
+[build]
+include_config_on_deploy = true
+automatically_update_urls_on_dev = false
+
+
+
+
+
+
+

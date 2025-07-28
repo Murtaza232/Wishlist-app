@@ -1,0 +1,19 @@
+{% comment %}
+  Smart-Save Snippet for Wishlist App
+{% endcomment %}
+
+{% assign smart_save_enabled = shop.metafields.wishlist.smart_save | default: 'false' %}
+{% assign smart_save_visit_count = shop.metafields.wishlist.smart_save_visit_count | default: '3' %}
+
+{% if smart_save_enabled == 'true' %}
+  <script>
+    window.WishlistSmartSaveConfig = {
+      enabled: true,
+      visitThreshold: parseInt('{{ smart_save_visit_count }}') || 3,
+      customerId: {{ customer.id | default: 'null' | json }},
+      shopId: {{ shop.id | json }},
+      productId: {{ product.id | default: 'null' | json }}
+    };
+  </script>
+  {{ 'smart-save.js' | asset_url | script_tag }}
+{% endif %} 

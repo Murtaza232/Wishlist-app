@@ -4,7 +4,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WishlistConfigurationController;
 use App\Http\Controllers\WishlistController;
-
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -30,3 +29,10 @@ Route::any('/proxy/wishlist', [WishlistController::class, 'showWishlistPage']);
 Route::any('/shop',[WishlistConfigurationController::class,'shop']);
 Route::post('/wishlist/add', [WishlistController::class, 'add']);
 Route::get('/wishlist/products', [WishlistController::class, 'getWishlistProducts']);
+Route::get('/wishlists', [WishlistController::class, 'listWishlists']);
+Route::post('/wishlists', [WishlistController::class, 'createWishlist']);
+Route::post('/wishlist-items', [WishlistController::class, 'addItemToWishlist']);
+Route::any('/wishlist-items-delete', [WishlistController::class, 'deleteWishlistItem']);
+Route::get('/wishlist-count', [WishlistController::class, 'getWishlistCount']);
+Route::delete('/wishlists/{id}', [WishlistController::class, 'destroy']);
+Route::any('/wishlists/store-items', [WishlistController::class, 'storeWishlistAndItems']);

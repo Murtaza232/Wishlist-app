@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Icon, Divider, Card, Checkbox } from "@shopify/polaris";
+import { Icon, Divider, Box,Card, Checkbox } from "@shopify/polaris";
 import { HeartIcon, StarIcon, BillFilledIcon, ShareIcon, CartIcon } from "@shopify/polaris-icons";
 import imagemodal from '../assets/modalimage.svg';
 
@@ -8,6 +8,19 @@ const ICONS = {
     Star: StarIcon,
     Bookmark: BillFilledIcon,
 };
+
+// Utility to clone and override fill/color on SVG icon
+function withFill(Component, fill, size, thickness) {
+  return (
+    <Component
+      style={{ width: size, height: size, minWidth: size, minHeight: size }}
+      fill={fill}
+      color={fill}
+      stroke={fill}
+      strokeWidth={thickness || 2}
+    />
+  );
+}
 
 function WishlistButton({
     primaryColor,
@@ -20,36 +33,44 @@ function WishlistButton({
     width = '100%',
     buttonTextTab = 'before',
     isFullWidthIcon = false,
+    buttonSize = 40,
+    renderRawIcon = false,
+    iconThickness = 2,
 }) {
     const isIconOnly = buttonType === 'icon' || buttonType === 'only-icon';
     const isIconTextOrText = buttonType === 'icon-text' || buttonType === 'text';
     const isAdded = buttonLabel.trim().toLowerCase() === 'added to wishlist' && buttonTextTab === 'after';
+    // Icon and text size logic
+    const iconSize = buttonSize || 24;
+    const textSize = buttonSize ? Math.max(12, Math.round(buttonSize * 0.35)) : (isAdded ? 12 : (isIconTextOrText ? 14 : 16));
     let style = {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         gap: isIconTextOrText ? 8 : (buttonType === 'icon-text' ? 6 : 0),
         fontWeight: 600,
-        fontSize: isAdded ? 12 : (isIconTextOrText ? 14 : 16),
+        fontSize: isIconOnly ? undefined : textSize,
         borderRadius: isFullWidthIcon ? 0 : (isIconTextOrText ? 0 : borderRadius),
-        height: isFullWidthIcon ? 48 : (isIconTextOrText ? 40 : 48),
+        height: buttonSize || (isFullWidthIcon ? 48 : (isIconTextOrText ? 40 : 48)),
+        minHeight: buttonSize || 40,
         padding: isFullWidthIcon ? 0 : (isIconOnly ? 0 : '0 18px'),
         border: buttonStyle === 'outline' ? `2px solid ${primaryColor}` : 'none',
         background: buttonStyle === 'solid' ? primaryColor : buttonStyle === 'plain' ? 'transparent' : '#fff',
         color: buttonStyle === 'solid' ? secondaryColor : primaryColor,
         minWidth: isFullWidthIcon ? 0 : (isIconOnly ? 48 : 100),
-        minHeight: 48,
         boxShadow: 'none',
         width: isFullWidthIcon ? '100%' : (isIconOnly ? 48 : (isIconTextOrText ? 170 : width)),
-        height: isFullWidthIcon ? 48 : (isIconOnly ? 48 : (isIconTextOrText ? 40 : 48)),
     };
+    const IconComponent = ICONS[selectedIcon] || HeartIcon;
     return (
         <div style={style}>
             {(buttonType === 'icon-text' || isIconOnly) && (
-                <Icon source={ICONS[selectedIcon] || HeartIcon} color="base" style={isFullWidthIcon ? { width: 32, height: 32 } : {}} />
+                renderRawIcon
+                  ? withFill(IconComponent, buttonStyle === 'solid' ? secondaryColor : primaryColor, iconSize, iconThickness)
+                  : <Icon source={ICONS[selectedIcon] || HeartIcon} color={buttonStyle === 'solid' ? 'critical' : 'base'} style={{ width: iconSize, height: iconSize, minWidth: iconSize, minHeight: iconSize, strokeWidth: iconThickness }} />
             )}
             {(buttonType === 'icon-text' || buttonType === 'text') && (
-                <span style={{ fontWeight: 600 }}>{buttonLabel}</span>
+                <span style={{ fontWeight: 600, fontSize: isIconOnly ? undefined : textSize }}>{buttonLabel}</span>
             )}
         </div>
     );
@@ -80,6 +101,14 @@ export default function MockPreview({
     floatingButtonPosition,
     showCount,
     saveForLaterPermission = undefined,
+    previewWidth,
+    buttonSize,
+    iconThickness = 2,
+    drawerAlignment = 'left', // Added for drawer alignment
+    floatingButtonCornerRadius = 10, // Add this prop
+    textColor = '#222222',
+    floatingButtonPrimaryColor = '#ff0000',
+    floatingButtonSecondaryColor = '#ffffff',
 }) {
     // Fix: define these for use in overlay logic
     const isIconOnly = buttonType === 'icon' || buttonType === 'only-icon';
@@ -217,6 +246,8 @@ export default function MockPreview({
                                                 buttonLabel={buttonLabel}
                                                 buttonTextTab={buttonTextTab}
                                                 isFullWidthIcon={false}
+                                                renderRawIcon={true}
+                                                iconThickness={iconThickness}
                                             />
                                         </div>
                                     )}
@@ -269,8 +300,8 @@ export default function MockPreview({
         alignItems: 'stretch',
         padding: 0,
         margin: 0,
-        width: 'calc(100% - 10px)',
-        maxWidth: '100%',
+        width: previewWidth || 'calc(100% - 10px)',
+        maxWidth: previewWidth || '100%',
     };
 
     // For product tab, show button in correct position
@@ -310,6 +341,9 @@ export default function MockPreview({
                                                 buttonLabel={buttonLabel}
                                                 buttonTextTab={buttonTextTab}
                                                 isFullWidthIcon={false}
+                                                buttonSize={buttonSize}
+                                                renderRawIcon={true}
+                                                iconThickness={iconThickness}
                                             />
                                         }
                                         <div style={{ width: 120, height: 40, background: '#e5e5e5', borderRadius: 8 }} />
@@ -323,6 +357,9 @@ export default function MockPreview({
                                                 buttonLabel={buttonLabel}
                                                 buttonTextTab={buttonTextTab}
                                                 isFullWidthIcon={false}
+                                                buttonSize={buttonSize}
+                                                renderRawIcon={true}
+                                                iconThickness={iconThickness}
                                             />
                                         }
                                     </div>
@@ -338,6 +375,9 @@ export default function MockPreview({
                                                 buttonLabel={buttonLabel}
                                                 buttonTextTab={buttonTextTab}
                                                 isFullWidthIcon={isIconOnly && (buttonPosition === 'above' || buttonPosition === 'below')}
+                                                buttonSize={buttonSize}
+                                                renderRawIcon={true}
+                                                iconThickness={iconThickness}
                                             />
                                         }
                                         <div style={{ height: 40, background: '#e5e5e5', borderRadius: 8, margin: buttonPosition === 'above' ? '12px 0 0 0' : '0 0 12px 0' }} />
@@ -351,6 +391,9 @@ export default function MockPreview({
                                                 buttonLabel={buttonLabel}
                                                 buttonTextTab={buttonTextTab}
                                                 isFullWidthIcon={isIconOnly && (buttonPosition === 'above' || buttonPosition === 'below')}
+                                                buttonSize={buttonSize}
+                                                renderRawIcon={true}
+                                                iconThickness={iconThickness}
                                             />
                                         }
                                     </>
@@ -391,6 +434,9 @@ export default function MockPreview({
                                                 width={isIconOnly ? 48 : 170}
                                                 buttonTextTab={buttonTextTab}
                                                 isFullWidthIcon={isIconOnly}
+                                                buttonSize={buttonSize}
+                                                renderRawIcon={true}
+                                                iconThickness={iconThickness}
                                             />
                                         </div>
                                     ) : (
@@ -406,6 +452,9 @@ export default function MockPreview({
                                                 width={isIconOnly ? 48 : 170}
                                                 buttonTextTab={buttonTextTab}
                                                 isFullWidthIcon={isIconOnly}
+                                                buttonSize={buttonSize}
+                                                renderRawIcon={true}
+                                                iconThickness={iconThickness}
                                             />
                                         </div>
                                     )
@@ -424,6 +473,9 @@ export default function MockPreview({
                                                 width={isIconOnly ? 48 : 170}
                                                 buttonTextTab={buttonTextTab}
                                                 isFullWidthIcon={isIconOnly}
+                                                buttonSize={buttonSize}
+                                                renderRawIcon={true}
+                                                iconThickness={iconThickness}
                                             />
                                         </div>
                                     ) : (
@@ -439,6 +491,9 @@ export default function MockPreview({
                                                 width={isIconOnly ? 48 : 170}
                                                 buttonTextTab={buttonTextTab}
                                                 isFullWidthIcon={isIconOnly}
+                                                buttonSize={buttonSize}
+                                                renderRawIcon={true}
+                                                iconThickness={iconThickness}
                                             />
                                         </div>
                                     )
@@ -457,6 +512,9 @@ export default function MockPreview({
                                                 width={isIconOnly ? 48 : 170}
                                                 buttonTextTab={buttonTextTab}
                                                 isFullWidthIcon={isIconOnly}
+                                                buttonSize={buttonSize}
+                                                renderRawIcon={true}
+                                                iconThickness={iconThickness}
                                             />
                                         </div>
                                     ) : (
@@ -472,6 +530,9 @@ export default function MockPreview({
                                                 width={isIconOnly ? 48 : 170}
                                                 buttonTextTab={buttonTextTab}
                                                 isFullWidthIcon={isIconOnly}
+                                                buttonSize={buttonSize}
+                                                renderRawIcon={true}
+                                                iconThickness={iconThickness}
                                             />
                                         </div>
                                     )
@@ -490,6 +551,9 @@ export default function MockPreview({
                                                 width={isIconOnly ? 48 : 170}
                                                 buttonTextTab={buttonTextTab}
                                                 isFullWidthIcon={isIconOnly}
+                                                buttonSize={buttonSize}
+                                                renderRawIcon={true}
+                                                iconThickness={iconThickness}
                                             />
                                         </div>
                                     ) : (
@@ -505,6 +569,9 @@ export default function MockPreview({
                                                 width={isIconOnly ? 48 : 170}
                                                 buttonTextTab={buttonTextTab}
                                                 isFullWidthIcon={isIconOnly}
+                                                buttonSize={buttonSize}
+                                                renderRawIcon={true}
+                                                iconThickness={iconThickness}
                                             />
                                         </div>
                                     )
@@ -525,13 +592,30 @@ export default function MockPreview({
             );
         }
     }
+    // Helper: should use primary color for title/share/add to cart/nav
+    const usePrimaryColorForHeaderFields = activeTab === 'wishlist' && wishlistLaunchFrom === 'header';
+    const usePrimaryColorForFloatingFields = activeTab === 'wishlist' && wishlistLaunchFrom === 'floating';
+    const usePrimaryColorForMenuFields = activeTab === 'wishlist' && wishlistLaunchFrom === 'menu';
+
     // Helper for navigation items
     const navItems = [
         <span key="home" style={{ fontWeight: 500, fontSize: 16, color: '#888', letterSpacing: 0.2 }}>HOME</span>,
         <span key="categories" style={{ fontWeight: 500, fontSize: 16, color: '#888', letterSpacing: 0.2 }}>CATEGORIES</span>,
     ];
     if (wishlistLaunchFrom === 'menu') {
-        navItems.push(<span key="wishlist" style={{ fontWeight: 500, fontSize: 16, color: '#888', letterSpacing: 0.2 }}>WISHLIST</span>);
+        navItems.push(
+            <span
+                key="wishlist"
+                style={{
+                    fontWeight: 500,
+                    fontSize: 16,
+                    color: '#888',
+                    letterSpacing: 0.2,
+                }}
+            >
+                WISHLIST
+            </span>
+        );
     }
 
     // Header row (always shown)
@@ -542,6 +626,7 @@ export default function MockPreview({
                     Mock Preview
                 </span>
             </div>
+            
             <Divider style={{ margin: 0 }} />
             {/* Wishlist header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '28px 32px 0 32px', gap: 24 }}>
@@ -585,13 +670,13 @@ export default function MockPreview({
                 padding: wishlistType === 'modal' ? '28px 24px 0 24px' : '28px 32px 0 32px',
                 gap: 24
             }}>
-                <span style={{ fontWeight: 700, fontSize: 18, color: '#222', textAlign: 'left' }}>{wishlistPageTitle || 'My Wishlist'}</span>
+                <span style={{ fontWeight: 700, fontSize: 18, color: textColor, textAlign: 'left' }}>{wishlistPageTitle || 'My Wishlist'}</span>
                 {wishlistShareEnabled && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#f3f3f3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <Icon source={ShareIcon} tone="base" />
                         </div>
-                        <span style={{ color: '#222', fontWeight: 500, fontSize: 15 }}>Share</span>
+                        <span style={{ color: textColor, fontWeight: 500, fontSize: 15 }}>Share</span>
                     </div>
                 )}
             </div>
@@ -602,7 +687,7 @@ export default function MockPreview({
                     {[...Array(wishlistType === 'drawer' ? 4 : 8)].map((_, i) => (
                         <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                             <div style={{ width: wishlistType === 'drawer' ? 90 : wishlistType === 'modal' ? 100 : 120, height: wishlistType === 'drawer' ? 120 : wishlistType === 'modal' ? 130 : 160, background: '#e5e5e5', borderRadius: 10, marginBottom: wishlistType === 'drawer' ? 10 : 12 }} />
-                            <span style={{ color: '#222', fontWeight: 500, fontSize: wishlistType === 'drawer' ? 13 : 14, marginTop: 2 }}>+ Add to Cart</span>
+                            <span style={{ color: textColor, fontWeight: 500, fontSize: wishlistType === 'drawer' ? 13 : 14, marginTop: 2 }}>+ Add to Cart</span>
                         </div>
                     ))}
                 </div>
@@ -616,7 +701,7 @@ export default function MockPreview({
             <div style={{
                 position: 'absolute',
                 left: 20,
-                top: '45%',
+                top: '50%',
                 transform: 'translateY(-50%)',
                 zIndex: 10,
                 display: 'flex',
@@ -625,20 +710,21 @@ export default function MockPreview({
                 <div style={{
                     width: 180,
                     height: 48,
-                    background: '#111',
+                    background: floatingButtonPrimaryColor,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'flex-start',
                     position: 'relative',
                     paddingLeft: 16,
-                    color: '#fff',
+                    color: floatingButtonSecondaryColor,
                     fontWeight: 600,
                     fontSize: 18,
+                    borderRadius: floatingButtonCornerRadius,
                 }}>
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill={floatingButtonSecondaryColor} xmlns="http://www.w3.org/2000/svg">
                       <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                     </svg>
-                    <span style={{ marginLeft: 10 }}>My Wishlist</span>
+                    <span style={{ marginLeft: 10, color: floatingButtonSecondaryColor }}>My Wishlist</span>
                     {showCount && <div style={badgeStyle}>4</div>}
                 </div>
             </div>
@@ -646,7 +732,7 @@ export default function MockPreview({
             <div style={{
                 position: 'absolute',
                 right: 0,
-                top: '45%',
+                top: '50%',
                 transform: 'translateY(-50%)',
                 zIndex: 10,
                 display: 'flex',
@@ -655,21 +741,21 @@ export default function MockPreview({
                 <div style={{
                     width: 180,
                     height: 48,
-                    background: '#111',
+                    background: floatingButtonPrimaryColor,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'flex-end',
                     position: 'relative',
                     paddingRight: 16,
-                    color: '#fff',
+                    color: floatingButtonSecondaryColor,
                     fontWeight: 600,
                     fontSize: 18,
+                    borderRadius: floatingButtonCornerRadius,
                 }}>
-                      <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: 10 }}>
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill={floatingButtonSecondaryColor} xmlns="http://www.w3.org/2000/svg" style={{ marginRight: 10 }}>
                       <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                     </svg>
-                    <span style={{ marginRight: 10 }}>My Wishlist</span>
-                  
+                    <span style={{ marginRight: 10, color: floatingButtonSecondaryColor }}>My Wishlist</span>
                     {showCount && <div style={badgeStyle}>4</div>}
                 </div>
             </div>
@@ -677,7 +763,7 @@ export default function MockPreview({
             <div style={{
                 position: 'absolute',
                 right: 32,
-                bottom: 130,
+                bottom: 10,
                 zIndex: 10,
                 display: 'flex',
                 alignItems: 'center',
@@ -685,13 +771,14 @@ export default function MockPreview({
                 <div style={{
                     width: 48,
                     height: 48,
-                    background: '#111',
+                    background: floatingButtonPrimaryColor,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     position: 'relative',
+                    borderRadius: floatingButtonCornerRadius,
                 }}>
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill={floatingButtonSecondaryColor} xmlns="http://www.w3.org/2000/svg">
                       <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                     </svg>
                     {showCount && <div style={badgeStyle}>4</div>}
@@ -701,7 +788,7 @@ export default function MockPreview({
             <div style={{
                 position: 'absolute',
                 left: 32,
-                bottom: 130,
+                bottom: 10,
                 zIndex: 10,
                 display: 'flex',
                 alignItems: 'center',
@@ -709,13 +796,14 @@ export default function MockPreview({
                 <div style={{
                     width: 48,
                     height: 48,
-                    background: '#111',
+                    background: floatingButtonPrimaryColor,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     position: 'relative',
+                    borderRadius: floatingButtonCornerRadius,
                 }}>
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill={floatingButtonSecondaryColor} xmlns="http://www.w3.org/2000/svg">
                       <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                     </svg>
                     {showCount && <div style={badgeStyle}>4</div>}
@@ -728,29 +816,35 @@ export default function MockPreview({
             return (
                 <div style={{
                     padding: 0,
-                    width: '100%',
+                    width: previewWidth || '100%',
                     border: '1px solid #e3e3e3',
                     borderRadius: 12,
                     boxSizing: 'border-box',
                     background: '#fff',
                     position: 'relative',
+                    minHeight: 500,
+                    overflow: 'hidden',
                 }}>
                     {headerRow}
+                    {/* Drawer panel absolutely positioned left or right */}
                     <div style={{
-                        marginTop: 32, // Add margin below header
-                        marginLeft: 24,
-                        width: 420,
+                        position: 'absolute',
+                        marginTop:30,
+                        top: 80, // adjust as needed for header height
+                        bottom: 0,
+                        left: drawerAlignment === 'left' ? 0 : 'auto',
+                        right: drawerAlignment === 'right' ? 0 : 'auto',
+                        width: 380,
                         background: '#fff',
-                        boxShadow: 'none', // Remove shadow for border-only look
+                        boxShadow: '0 2px 16px rgba(0,0,0,0.04)',
                         border: '1px solid #e3e3e3',
-                        boxSizing: 'border-box',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        minHeight: 400,
+                        borderRadius: 12,
+                        zIndex: 2,
                         overflow: 'hidden',
                     }}>
                         {wishlistContent}
                     </div>
+                    {/* Floating button remains unchanged */}
                     {floatingButton}
                 </div>
             );
@@ -765,6 +859,7 @@ export default function MockPreview({
                 padding: 0,
                 minHeight: 400,
                 position: 'relative',
+                width: previewWidth || '100%',
             }}>
                 {headerRow}
                 {wishlistContent}
@@ -844,13 +939,12 @@ export default function MockPreview({
                         Mock Preview
                     </span>
                 </div>
-                <Divider style={{ margin: '0 0 24px 0' }} />
+                
                 <div style={{
                     width: '100%',
                     display: 'flex',
                     flexDirection: 'row',
                     justifyContent: 'flex-end',
-                    marginTop: 32,
                 }}>
                     <div style={{
                         width: 220,
@@ -880,6 +974,8 @@ export default function MockPreview({
                         <div style={{ width: '100%', height: 38, background: '#bdbdbd', borderRadius: 6, marginTop: 'auto' }} />
                     </div>
                 </div>
+                {/* Divider after mock preview card */}
+                <Divider style={{ margin: '24px 0 0 0', width: '100%' }} />
                 {/* Modal overlay: only show if saveForLaterEnabled is true */}
                 {typeof saveForLaterEnabled === 'undefined' || saveForLaterEnabled ? (
                   <div style={{
@@ -926,8 +1022,8 @@ export default function MockPreview({
                                 </div>
                               )}
                               <div style={{ display: 'flex', gap: 16 }}>
-                                  <button style={{ padding: '10px 24px', border: '1.5px solid #d3d3d3', borderRadius: 6, background: '#fff', color: '#222', fontWeight: 500, fontSize: 16, cursor: 'pointer' }}>{saveForLaterSecondary || 'No, thanks!'}</button>
-                                  <button style={{ padding: '10px 24px', border: 'none', borderRadius: 6, background: '#111', color: '#fff', fontWeight: 600, fontSize: 16, cursor: 'pointer' }}>{saveForLaterPrimary || 'Save For later'}</button>
+                                  <button style={{ padding: '10px 24px', border: '1.5px solid #d3d3d3', borderRadius: 6, background: '#fff', color: primaryColor, fontWeight: 500, fontSize: 16, cursor: 'pointer' }}>{saveForLaterSecondary || 'No, thanks!'}</button>
+                                  <button style={{ padding: '10px 24px', border: 'none', borderRadius: 6, background: primaryColor, color: '#fff', fontWeight: 600, fontSize: 16, cursor: 'pointer' }}>{saveForLaterPrimary || 'Save For later'}</button>
                               </div>
                           </div>
                           
@@ -962,7 +1058,7 @@ export default function MockPreview({
                         <div style={{ width: '70%', height: 10, background: '#e5e5e5', borderRadius: 4, marginBottom: 4 }} />
                         <div style={{ width: '60%', height: 10, background: '#e5e5e5', borderRadius: 4, marginBottom: 10 }} />
                         {/* Wishlist Button Skeleton */}
-                        <WishlistButton primaryColor={primaryColor} secondaryColor={secondaryColor} selectedIcon={selectedIcon} buttonType={buttonType} buttonStyle={buttonStyle} buttonLabel={buttonLabel} buttonTextTab={buttonTextTab} isFullWidthIcon={isIconOnly} />
+                        <WishlistButton primaryColor={primaryColor} secondaryColor={secondaryColor} selectedIcon={selectedIcon} buttonType={buttonType} buttonStyle={buttonStyle} buttonLabel={buttonLabel} buttonTextTab={buttonTextTab} isFullWidthIcon={isIconOnly} buttonSize={buttonSize} renderRawIcon={true} iconThickness={iconThickness} />
                     </div>
                 </div>
             </div>

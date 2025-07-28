@@ -1,4 +1,10 @@
-<button type="button" class="wishlist-add-btn" style="display:none;
+{% render 'smart-save' %}
+
+<button
+  type="button"
+  class="wishlist-add-btn"
+  data-customer-id="{{ customer.id | default: 'guest' }}"
+  style="display:none;
   background: #111;
   color: #e5e5e5;
   border: none;
@@ -16,21 +22,167 @@
   <span class="wishlist-add-icon-container" style="display:inline-block;vertical-align:middle;"></span>
   <span class="wishlist-add-btn-text">Add to Wishlist</span>
 </button>
+<!-- Wishlist Modal (No faded background, always centered) -->
 <style>
-  /* Fix anchor link overlay issue in Shopify product cards */
-  .card__inner {
-    position: relative;
-    z-index: 1;
+#wishlist-modal {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  left: 0; top: 0; width: 100vw; height: 100vh;
+  background: transparent;
+}
+#wishlist-modal .wishlist-modal-content {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  padding: 40px 32px 32px 32px;
+  border-radius: 18px;
+  width: 100%;
+  max-width: 440px;
+  min-width: 320px;
+  min-height: 440px;
+  max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  font-family: inherit;
+  font-size: 1.18rem;
+}
+#wishlist-modal h3 {
+  margin: 0 0 12px 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.01em;
+}
+#wishlist-modal .wishlist-section-title {
+  font-size: 1.18rem;
+  font-weight: 600;
+  margin: 0 0 10px 0;
+  color: #444;
+}
+#wishlist-modal select,
+#wishlist-modal input[type="text"] {
+  width: 100%;
+  direction: ltr;
+  padding: 14px 14px;
+  font-size: 1.18rem;
+  border: 1.5px solid #ccc;
+  border-radius: 7px;
+  margin-bottom: 14px;
+  box-sizing: border-box;
+  background: #fafafa;
+  transition: border 0.18s;
+}
+#wishlist-modal select:focus,
+#wishlist-modal input[type="text"]:focus {
+  border: 2px solid #111;
+  outline: none;
+}
+#wishlist-modal button {
+  width: 100%;
+  padding: 15px 0;
+  font-size: 1.18rem;
+  border: none;
+  border-radius: 7px;
+  margin-bottom: 14px;
+  background: #111;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.18s;
+  letter-spacing: 0.01em;
+}
+#wishlist-section-title{
+  direction: ltr;
+  font-size:1.18rem;
+  font-weight:700;
+}
+#wishlist-modal button#wishlist-modal-close {
+  background: #eee;
+  color: #222;
+  margin-top: 6px;
+}
+#wishlist-modal button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+@media (max-width: 500px) {
+  #wishlist-modal .wishlist-modal-content {
+    min-width: 90vw;
+    padding: 22px 6vw 22px 6vw;
+    font-size: 1.05rem;
   }
+}
 
-  .card__inner a.full-unstyled-link {
-    z-index: 1;
-    position: relative;
-  }
-
+/* Make wishlist-add-btn always clickable and on top, like collection page icon */
   .wishlist-add-btn {
-    z-index: 10 !important;
-  }
+    position: absolute !important;
+  z-index: 99999 !important;
+    pointer-events: auto !important;
+  cursor: pointer !important;
+    display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+    background: var(--wishlist-btn-bg, #111);
+    color: var(--wishlist-btn-color, #fff);
+    border: none;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    box-sizing: border-box;
+    width: 45px;
+    height: 45px;
+
+  transition: background 0.2s;
+}
+/* Cleaned up: Only the button blocks propagation, anchors are clickable, and card allows overflow */
+.card__inner a.full-unstyled-link,
+.card__heading a.full-unstyled-link,
+.card__heading a.full-unstyled-link:after {
+  pointer-events: auto !important;
+  z-index: 1 !important;
+}
+.card-wrapper, .product-card-wrapper {
+  position: relative !important;
+  box-sizing: border-box !important;
+  outline: none !important;
+  overflow: visible !important;
+  padding: 20px !important;
+  background: none !important;
+  border: none !important;
+  min-height: 200px !important;
+}
+
+.wishlist-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+  min-width: 90px;
+  max-width: 180px;
+  height: 40px;
+  background: var(--wishlist-btn-bg, #ff0000);
+  color: var(--wishlist-btn-color, #fff);
+  border: none;
+  border-radius: 20px;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  z-index: 99999;
+  position: absolute;
+}
+.wishlist-add-btn .wishlist-add-icon-container {
+  display: inline-flex;
+  align-items: center;
+}
 </style>
 {% schema %}
 {
@@ -41,22 +193,20 @@
 {% endschema %}
 
 <script>
-var wishlistButtonIcon = window.wishlistButtonIcon || '';
-var wishlistCustomIcon = window.wishlistCustomIcon || '';
-var wishlistIconThickness = parseFloat(window.wishlistIconThickness) || 1.7;
-var wishlistButtonPosition = window.wishlistButtonPosition || '';
-var wishlistButtonSize = parseInt(window.wishlistButtonSize) || 140;
-var wishlistPrimaryFontSize = parseInt(window.wishlistPrimaryFontSize) || 13;
-
-function getWishlistIconSvg(iconType, color, thickness, size) {
-  thickness = thickness || 1.7;
-  size = size || 18; // Default size for SVG
+function getWishlistIconSvgOrImg(iconType, customIcon, iconColor, iconThickness, size) {
+  if (customIcon && customIcon.trim() !== '') {
+    console.log('[WISHLIST] Using custom icon from extension settings:', customIcon);
+    return '<img src="' + customIcon + '" alt="Wishlist Icon" style="width:' + size + 'px;height:' + size + 'px;object-fit:contain;" />';
+  }
   if (iconType === "star") {
-    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${thickness}" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+    console.log('[WISHLIST] Using metafield icon: star');
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="${iconThickness}" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
   } else if (iconType === "bookmark") {
-    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${thickness}" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
+    console.log('[WISHLIST] Using metafield icon: bookmark');
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="${iconThickness}" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
   } else if (iconType === "heart") {
-    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${thickness}" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>`;
+    console.log('[WISHLIST] Using metafield icon: heart');
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="${iconThickness}" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>`;
   }
   return '';
 }
@@ -67,194 +217,280 @@ document.addEventListener('DOMContentLoaded', function() {
 
   fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist-metafields')
     .then(response => response.json())
-    .then(function(metafieldsEdges) {
+    .then(function(response) {
       var metafields = {};
+      var metafieldsEdges = response.metafields || [];
       metafieldsEdges.forEach(function(edge) {
         metafields[edge.node.key] = edge.node.value;
       });
+      // Debug: Log all metafields and key variables
       var iconTypeApi = metafields['icon_type'] || 'star';
-      var iconThicknessApi = parseFloat(metafields['icon_thickness']) || 1.7;
-      // Button background color logic: extension first (if valid), then metafield, then fallback
-      var extBgColor = (typeof window.add_to_wishlist_btn_bg_color !== 'undefined' && window.add_to_wishlist_btn_bg_color && window.add_to_wishlist_btn_bg_color !== '' && window.add_to_wishlist_btn_bg_color !== 'transparent' && window.add_to_wishlist_btn_bg_color !== '#00000000' && window.add_to_wishlist_btn_bg_color !== 'none' && window.add_to_wishlist_btn_bg_color !== 'null' && window.add_to_wishlist_btn_bg_color !== null && window.add_to_wishlist_btn_bg_color !== 'rgba(0,0,0,0)') ? window.add_to_wishlist_btn_bg_color : null;
-      var bgColor = extBgColor || metafields['primary_color'] || '#111';
-      // Font color logic: extension first (if valid), then metafield, then fallback
-      var extFontColor = (typeof window.wishlistAddBtnFontColor !== 'undefined' && window.wishlistAddBtnFontColor && window.wishlistAddBtnFontColor !== '' && window.wishlistAddBtnFontColor !== 'transparent' && window.wishlistAddBtnFontColor !== '#00000000' && window.wishlistAddBtnFontColor !== 'none' && window.wishlistAddBtnFontColor !== 'null' && window.wishlistAddBtnFontColor !== null && window.wishlistAddBtnFontColor !== 'rgba(0,0,0,0)') ? window.wishlistAddBtnFontColor : null;
-      var fontColor = extFontColor || metafields['secondary_color'] || '#e5e5e5';
+      var iconThicknessApi = parseFloat(metafields['icon_thickness_product_page']) || 1.7;
+      var bgColor = metafields['primary_color'] || '#111';
+      var fontColor = metafields['secondary_color'] || '#e5e5e5';
       var buttonText = metafields['btn_text_product_page_before'] || 'Add to Wishlist';
       var buttonTextAfter = metafields['btn_text_product_page_after'] || 'Added to wishlist';
+      var customIcon = (typeof window !== 'undefined' && window.wishlistCustomIcon && window.wishlistCustomIcon !== '') ? window.wishlistCustomIcon : '';
+      // --- DYNAMIC POSITION LOGIC ---
+      // Priority: extension setting > metafield > fallback
+      var btnPositionSetting = window.wishlistButtonPosition;
       var btnPositionApi = metafields['btn_position_on_product_image'] || 'bottom_right';
+      var btnPositionToUse = (btnPositionSetting && btnPositionSetting !== '' && btnPositionSetting !== 'Select Position')
+        ? btnPositionSetting
+        : btnPositionApi.replace(/_/g, '-');
+      // --- END DYNAMIC POSITION LOGIC ---
       var btnType = metafields['btn_type_product_page'] || 'icon_and_text';
       var appearance = metafields['appearance_btn_product_page'] || 'solid';
-
-      var cards = document.querySelectorAll('.card__inner');
+      var btnHeight = parseInt(metafields['button_size_product_page']) || 45;
+      var fontSize = Math.round(btnHeight * 0.4);
+      var iconSize = Math.round(btnHeight * 0.6);
+      var btnWidth;
+      if (btnType === 'icon_and_text') {
+        btnWidth = Math.round(btnHeight * 2.8);
+      } else if (btnType === 'text' || btnType === 'only_text') {
+        btnWidth = Math.round(btnHeight * 3.2);
+      } else {
+        btnWidth = btnHeight;
+      }
+      // --- DYNAMIC SELECTOR LOGIC ---
+      // Priority: extension settings > metafields > fallback
+      var selectorsToTry = [];
+      if (window.wishlistProductLinkSelectorForProductPage && window.wishlistProductLinkSelectorForProductPage !== '-') {
+        selectorsToTry.push(window.wishlistProductLinkSelectorForProductPage);
+      }
+      if (window.wishlistProductTileSelector && window.wishlistProductTileSelector !== '-') {
+        selectorsToTry.push(window.wishlistProductTileSelector);
+      }
+      var productCardClasses = response.product_card_classes || [];
+      if (typeof productCardClasses === 'string') {
+        try {
+          productCardClasses = JSON.parse(productCardClasses);
+        } catch {
+          productCardClasses = productCardClasses.split(',').map(s => s.trim()).filter(Boolean);
+        }
+      }
+      selectorsToTry = selectorsToTry.concat(productCardClasses);
+      if (!selectorsToTry.length) {
+        selectorsToTry = ['.card__inner', '.product-card', '.card-wrapper', '.product-card-wrapper'];
+      }
+      var cards = [];
+      var selectorSource = '';
+      for (var i = 0; i < selectorsToTry.length; i++) {
+        var selector = selectorsToTry[i];
+        var normalizedSelector = selector;
+        if (selector && !selector.startsWith('.') && !selector.startsWith('#')) {
+          normalizedSelector = '.' + selector;
+        }
+        var foundCards = Array.from(document.querySelectorAll(normalizedSelector));
+        if (foundCards.length) {
+          cards = foundCards;
+          // Debug: log which selector is being used and its source
+          if (window.wishlistProductLinkSelectorForProductPage && normalizedSelector === (window.wishlistProductLinkSelectorForProductPage.startsWith('.') ? window.wishlistProductLinkSelectorForProductPage : '.' + window.wishlistProductLinkSelectorForProductPage)) {
+            selectorSource = 'extension setting: product_link_selector_product_page';
+          } else if (window.wishlistProductTileSelector && normalizedSelector === (window.wishlistProductTileSelector.startsWith('.') ? window.wishlistProductTileSelector : '.' + window.wishlistProductTileSelector)) {
+            selectorSource = 'extension setting: product_tile_selector';
+          } else {
+            selectorSource = 'metafield or default';
+          }
+          console.log('[WISHLIST] Using selector:', normalizedSelector, 'Source:', selectorSource);
+          break;
+        }
+      }
+      if (!cards.length) {
+        console.warn('No matching product selector found for wishlist button.');
+      }
+      // --- END DYNAMIC SELECTOR LOGIC ---
       cards.forEach(function(card) {
         if (card.querySelector('.wishlist-add-btn')) return;
         card.style.position = 'relative';
         var btn = templateBtn.cloneNode(true);
         btn.type = 'button';
-        btn.style.display = 'flex';
-        // Button size logic: use extension field only
-        var btnSize = (typeof window.wishlistButtonSize !== 'undefined' && window.wishlistButtonSize && !isNaN(parseInt(window.wishlistButtonSize))) ? parseInt(window.wishlistButtonSize) : 45;
-        // Primary font size logic: use extension field only
-        var primaryFontSize = (typeof window.wishlistPrimaryFontSize !== 'undefined' && window.wishlistPrimaryFontSize && !isNaN(parseInt(window.wishlistPrimaryFontSize))) ? parseInt(window.wishlistPrimaryFontSize) : 14;
-
-        // Use btnSize for button width/height, icon size; use primaryFontSize for text size
-        var buttonWidth, buttonHeight, iconSize, textSize;
-      if (btnType === 'icon_and_text') {
-          buttonWidth = btnSize * 2.8; // wider for icon+text
-          buttonHeight = btnSize;
-          iconSize = btnSize * 0.9;
-          textSize = primaryFontSize;
-          } else {
-          buttonWidth = buttonHeight = btnSize;
-          iconSize = btnSize * 0.9;
-          textSize = primaryFontSize;
+        // Ensure customer id is copied from template
+        btn.setAttribute('data-customer-id', templateBtn.getAttribute('data-customer-id'));
+        // Try to get product id from card context
+        var productId = card.getAttribute('data-product-id');
+        if (!productId) {
+          var hiddenId = card.querySelector("input[name='product_id']");
+          if (hiddenId && hiddenId.value) {
+            productId = hiddenId.value;
+          }
+          // Try to extract from anchor id (numeric product ID)
+          if (!productId) {
+            var anchor = card.querySelector('a.full-unstyled-link');
+            if (anchor && anchor.id) {
+              var idMatch = anchor.id.match(/(?:featured_collection|product-grid|product-card|product-template)[-_](\d{8,})/i);
+              if (idMatch) {
+                productId = idMatch[1];
+              }
+            }
+          }
         }
-        btn.style.width = buttonWidth + 'px';
-        btn.style.height = buttonHeight + 'px';
+        btn.setAttribute('data-product-id', productId || '');
+        btn.style.display = 'flex';
+        btn.style.height = btnHeight + 'px';
+        btn.style.width = btnWidth + 'px';
+        btn.style.minWidth = 'unset';
+        btn.style.maxWidth = 'unset';
+        btn.style.background = bgColor;
+        btn.style.color = fontColor;
+        btn.style.fontSize = fontSize + 'px';
+        btn.style.fontWeight = '600';
+        btn.style.border = (appearance === 'outline') ? '2px solid ' + bgColor : 'none';
+        btn.style.boxShadow = 'none';
+        btn.style.borderRadius = '0';
+        btn.style.padding = '0 18px';
         var iconContainer = btn.querySelector('.wishlist-add-icon-container');
         var btnText = btn.querySelector('.wishlist-add-btn-text');
-        // For icon SVG or img
-        if (iconContainer && iconContainer.children.length > 0) {
-          var iconEl = iconContainer.children[0];
-          if (iconEl.tagName === 'IMG') {
-            iconEl.style.width = iconSize + 'px';
-            iconEl.style.height = iconSize + 'px';
-          } else if (iconEl.tagName === 'svg' || iconEl.tagName === 'SVG') {
-            iconEl.setAttribute('width', iconSize);
-            iconEl.setAttribute('height', iconSize);
-            iconEl.style.fontSize = iconSize + 'px';
-          }
-        }
-        // Appearance logic
-        if (appearance === 'outline' || appearance === 'plain') {
-          btn.style.background = 'none';
-          btn.style.border = (appearance === 'outline') ? '2px solid ' + bgColor : 'none';
-          btn.style.color = bgColor;
-        } else {
-          btn.style.background = bgColor;
-          btn.style.border = 'none';
-          btn.style.color = fontColor;
-        }
-        // Icon selection logic
-        var iconCol = (appearance === 'outline' || appearance === 'plain') ? bgColor : fontColor;
-        var iconTypeToUse;
-        var useCustomIcon = wishlistCustomIcon && wishlistCustomIcon.trim() !== '';
-        var isApiIcon = (!wishlistButtonIcon || wishlistButtonIcon === '' || wishlistButtonIcon === 'icon' || wishlistButtonIcon === 'Select icon');
-        if (useCustomIcon) {
-          iconTypeToUse = null;
-        } else if (isApiIcon) {
-          iconTypeToUse = iconTypeApi;
-        } else {
-          iconTypeToUse = wishlistButtonIcon;
-        }
-        var thicknessToUse = wishlistIconThickness;
-        // Button type logic
-        if (btnType === 'only_text') {
+        // Icon/Text logic based on btnType
           if (iconContainer) {
-            iconContainer.style.display = 'none';
+          var svgOrImg = getWishlistIconSvgOrImg(iconTypeApi, customIcon, fontColor, iconThicknessApi, iconSize);
+          iconContainer.innerHTML = svgOrImg;
+          iconContainer.style.display = (btnType === 'icon_and_text' || btnType === 'icon' || btnType === 'only_icon') ? 'inline-block' : 'none';
         }
         if (btnText) {
+          if (btnType === 'icon_and_text') {
           btnText.textContent = buttonText;
           btnText.style.display = 'inline-block';
-            btnText.style.color = (appearance === 'outline' || appearance === 'plain') ? bgColor : fontColor;
-            btnText.style.fontSize = primaryFontSize + 'px';
-        }
-        } else if (btnType === 'only_icon') {
-        if (iconContainer) {
-            if (useCustomIcon) {
-              iconContainer.innerHTML = '<img src="' + wishlistCustomIcon + '" alt="Wishlist Icon" style="width:' + buttonHeight + 'px;height:' + buttonHeight + 'px;object-fit:contain;" />';
-          } else {
-              var svg = getWishlistIconSvg(iconTypeToUse, iconCol, thicknessToUse, buttonHeight);
-              iconContainer.innerHTML = svg;
-          }
-            iconContainer.style.display = 'inline-flex';
-            iconContainer.style.alignItems = 'center';
-            iconContainer.style.verticalAlign = 'middle';
-        }
-        if (btnText) {
+            btnText.style.color = fontColor;
+            btnText.style.fontSize = fontSize + 'px';
+        } else if (btnType === 'icon' || btnType === 'only_icon') {
           btnText.style.display = 'none';
-        }
-        } else {
-        if (iconContainer) {
-            if (useCustomIcon) {
-              iconContainer.innerHTML = '<img src="' + wishlistCustomIcon + '" alt="Wishlist Icon" style="width:' + buttonHeight + 'px;height:' + buttonHeight + 'px;object-fit:contain;" />';
-            } else {
-              var svg = getWishlistIconSvg(iconTypeToUse, iconCol, thicknessToUse, buttonHeight);
-              iconContainer.innerHTML = svg;
-            }
-            iconContainer.style.display = 'inline-flex';
-            iconContainer.style.alignItems = 'center';
-            iconContainer.style.verticalAlign = 'middle';
-        }
-        if (btnText) {
+        } else if (btnType === 'text' || btnType === 'only_text') {
           btnText.textContent = buttonText;
           btnText.style.display = 'inline-block';
-            btnText.style.color = (appearance === 'outline' || appearance === 'plain') ? bgColor : fontColor;
-            btnText.style.fontSize = primaryFontSize + 'px';
+            btnText.style.color = fontColor;
+            btnText.style.fontSize = fontSize + 'px';
+            if (iconContainer) iconContainer.style.display = 'none';
           }
         }
-        // Positioning logic
-        // Prefer extension's button position if set and not 'Select Position', otherwise API, otherwise fallback
-        var btnPositionToUse = (
-          wishlistButtonPosition &&
-          wishlistButtonPosition !== '' &&
-          wishlistButtonPosition !== 'Select Position'
-        )
-          ? wishlistButtonPosition
-          : (metafields['btn_position_on_product_image'] && metafields['btn_position_on_product_image'] !== ''
-              ? metafields['btn_position_on_product_image'].replace(/_/g, '-')
-              : 'bottom-right');
+        // --- DYNAMIC POSITION CSS ---
         btn.style.position = 'absolute';
+        btn.style.top = '';
+        btn.style.right = '';
+        btn.style.bottom = '';
+        btn.style.left = '';
         if (btnPositionToUse === 'bottom-right') {
           btn.style.bottom = '12px';
           btn.style.right = '12px';
-          btn.style.left = '';
-          btn.style.top = '';
         } else if (btnPositionToUse === 'bottom-left') {
           btn.style.bottom = '12px';
           btn.style.left = '12px';
-          btn.style.right = '';
-          btn.style.top = '';
         } else if (btnPositionToUse === 'top-right') {
           btn.style.top = '12px';
           btn.style.right = '12px';
-          btn.style.left = '';
-          btn.style.bottom = '';
         } else if (btnPositionToUse === 'top-left') {
           btn.style.top = '12px';
           btn.style.left = '12px';
-          btn.style.right = '';
-          btn.style.bottom = '';
         } else {
           btn.style.bottom = '12px';
           btn.style.right = '12px';
-          btn.style.left = '';
-          btn.style.top = '';
         }
+        // --- END DYNAMIC POSITION CSS ---
+        // Positioning and style logic based on button type
+        if (btnType === 'only_icon' || btnType === 'icon') {
+          // Make button size responsive to icon size and thickness
+          var iconBtnSize = iconSize + 16; // 8px padding on each side
+          btn.style.width = iconBtnSize + 'px';
+          btn.style.height = iconBtnSize + 'px';
+          btn.style.borderRadius = '50%';
+          btn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)';
+          btn.style.padding = '0';
+          btn.style.minWidth = iconBtnSize + 'px';
+          btn.style.maxWidth = iconBtnSize + 'px';
+        } else {
+          btn.style.width = btnWidth + 'px';
+          btn.style.height = btnHeight + 'px';
+          btn.style.borderRadius = '0';
+          btn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.10)';
+          btn.style.padding = '0 18px';
+          btn.style.minWidth = '90px';
+          btn.style.maxWidth = '180px';
+        }
+        // Attach full modal logic to each button
         btn.addEventListener('click', function(event) {
           event.preventDefault();
           event.stopPropagation();
-          if (btnType === 'only_icon') {
-            return;
-          } else if (btnType === 'only_text') {
-            if (btnText) {
-              btnText.textContent = buttonTextAfter;
-            }
-          } else if (btnType === 'icon_and_text') {
-            if (btnText) {
-              btnText.textContent = buttonTextAfter;
-            }
+          event.stopImmediatePropagation();
+          var modal = document.getElementById('wishlist-modal');
+          var select = document.getElementById('wishlist-select');
+          var customerId = btn.getAttribute('data-customer-id') || (window.wishlistCustomerId || '');
+          var productId = btn.getAttribute('data-product-id') || '';
+          window.currentWishlistProductId = productId; // Store for modal use
+          if (modal && select && customerId) {
+            modal.style.display = 'flex';
+            select.innerHTML = '<option>Loading...</option>';
+            fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlists?customer_id=' + encodeURIComponent(customerId))
+              .then(res => res.json())
+              .then(data => {
+                select.innerHTML = '';
+                if (!Array.isArray(data) || data.length === 0) {
+                  select.innerHTML = '<option disabled>No wishlists yet</option>';
+                } else {
+                  data.forEach(wl => {
+                    const opt = document.createElement('option');
+                    opt.value = wl.id;
+                    opt.textContent = wl.title;
+                    select.appendChild(opt);
+                  });
+                }
+              });
+          } else {
+            console.warn('Modal, select, or customerId not found!');
           }
+          return false;
         });
-        card.appendChild(btn);
+        // Debug: Log where the button is appended and its computed style
+        // Find the first matching child inside the card
+        let appendTarget = null;
+        let usedSelector = null;
+        for (let selector of selectorsToTry) {
+          let found = card.querySelector(selector);
+          if (!found && !selector.startsWith('.') && !selector.startsWith('#')) {
+            found = card.querySelector('.' + selector);
+          }
+          if (found) {
+            appendTarget = found;
+            usedSelector = selector;
+            break;
+          }
+        }
+        if (!appendTarget) appendTarget = card;
+        appendTarget.style.position = 'relative';
+        appendTarget.appendChild(btn);
+        // Ensure button and parent are always clickable
+        btn.style.pointerEvents = 'auto';
+        btn.style.zIndex = '99999';
+        appendTarget.style.pointerEvents = 'auto';
+        appendTarget.style.zIndex = '999';
       });
       if (templateBtn.parentNode) {
         templateBtn.parentNode.removeChild(templateBtn);
       }
     })
     .catch(function() {
-      var cards = document.querySelectorAll('.card__inner');
+      // fallback: try extension selectors, then default
+      var selectorsToTry = [];
+      if (window.wishlistProductLinkSelectorForProductPage && window.wishlistProductLinkSelectorForProductPage !== '-') {
+        selectorsToTry.push(window.wishlistProductLinkSelectorForProductPage);
+      }
+      if (window.wishlistProductTileSelector && window.wishlistProductTileSelector !== '-') {
+        selectorsToTry.push(window.wishlistProductTileSelector);
+      }
+      if (!selectorsToTry.length) {
+        selectorsToTry = ['.card__inner', '.product-card', '.card-wrapper', '.product-card-wrapper'];
+      }
+      var cards = [];
+      for (var i = 0; i < selectorsToTry.length; i++) {
+        var selector = selectorsToTry[i];
+        if (selector && !selector.startsWith('.') && !selector.startsWith('#')) {
+          selector = '.' + selector;
+        }
+        var foundCards = Array.from(document.querySelectorAll(selector));
+        if (foundCards.length) {
+          cards = foundCards;
+          break;
+        }
+      }
       cards.forEach(function(card) {
         if (card.querySelector('.wishlist-add-btn')) return;
         card.style.position = 'relative';
@@ -270,4 +506,219 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
 });
+</script>
+
+<script>
+function forceWishlistButtonClickable() {
+  document.querySelectorAll('.wishlist-add-btn').forEach(btn => {
+    btn.style.zIndex = '99999';
+    btn.style.pointerEvents = 'auto';
+    btn.style.position = 'absolute';
+    btn.style.cursor = 'pointer';
+  });
+  // No pointer-events: none on anchors!
+}
+
+function attachWishlistBtnHandler() {
+  document.querySelectorAll('.wishlist-add-btn').forEach(btn => {
+    btn.onclick = null; // Remove any previous handler
+    btn.addEventListener('click', function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      var modal = document.getElementById('wishlist-modal');
+      if (modal) {
+        modal.style.display = 'flex';
+      }
+      return false;
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  forceWishlistButtonClickable();
+  attachWishlistBtnHandler();
+  // Shopify themes often rerender product cards dynamically
+  const observer = new MutationObserver(function() {
+    forceWishlistButtonClickable();
+    attachWishlistBtnHandler();
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Move wishlist-add-btn outside of any <a> or <form> parent to prevent navigation
+  document.querySelectorAll('.wishlist-add-btn').forEach(function(btn) {
+    var parent = btn.parentElement;
+    while (parent && (parent.tagName === 'A' || parent.tagName === 'FORM')) {
+      parent = parent.parentElement;
+    }
+    if (btn.parentElement !== parent) {
+      parent.appendChild(btn);
+    }
+  });
+});
+document.addEventListener('click', function(e) {
+}, true);
+document.addEventListener('DOMContentLoaded', function() {
+  var addBtn = document.querySelector('.wishlist-add-btn');
+  var modal = document.getElementById('wishlist-modal');
+  var select = document.getElementById('wishlist-select');
+  var addToSelectedBtn = document.getElementById('wishlist-add-to-selected-btn');
+  var createBtn = document.getElementById('wishlist-create-btn');
+  var titleInput = document.getElementById('wishlist-title-input');
+  var closeBtn = document.getElementById('wishlist-modal-close');
+  // For product page, get customer from data attributes or context
+  var customerId = addBtn ? addBtn.getAttribute('data-customer-id') : null;
+
+  if (!addBtn) return;
+
+  // Show modal and load wishlists
+  addBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    modal.style.display = 'flex';
+    select.innerHTML = '<option>Loading...</option>';
+    fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlists?customer_id=' + encodeURIComponent(customerId))
+      .then(res => res.json())
+      .then(data => {
+        select.innerHTML = '';
+        if (!Array.isArray(data) || data.length === 0) {
+          select.innerHTML = '<option disabled>No wishlists yet</option>';
+        } else {
+          data.forEach(wl => {
+            const opt = document.createElement('option');
+            opt.value = wl.id;
+            opt.textContent = wl.title;
+            select.appendChild(opt);
+          });
+        }
+      });
+  });
+
+  // Add to selected wishlist
+  if (addToSelectedBtn) {
+    addToSelectedBtn.addEventListener('click', function() {
+      const wishlistId = select.value;
+      var productId = window.currentWishlistProductId || null;
+      if (!wishlistId) {
+        alert('Please select a wishlist.');
+        return;
+      }
+      addToSelectedBtn.textContent = 'Adding...';
+      addToSelectedBtn.disabled = true;
+      fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist-items', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ wishlist_id: wishlistId, product_id: productId })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.message && data.message.toLowerCase().includes('already')) {
+          alert('Item already in wishlist.');
+        } else {
+          alert('Added to wishlist!');
+        }
+        modal.style.display = 'none';
+        addToSelectedBtn.textContent = 'Add to Selected';
+        addToSelectedBtn.disabled = false;
+      })
+      .catch(() => {
+        alert('Error adding to wishlist.');
+        addToSelectedBtn.textContent = 'Add to Selected';
+        addToSelectedBtn.disabled = false;
+      });
+    });
+  }
+
+  // Create new wishlist and add item
+  if (createBtn) {
+    createBtn.addEventListener('click', function() {
+      const title = titleInput.value.trim();
+      var productId = window.currentWishlistProductId || null;
+      if (!title) {
+        alert('Please enter a wishlist name.');
+        return;
+      }
+      createBtn.textContent = 'Creating...';
+      createBtn.disabled = true;
+      fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlists', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ customer_id: customerId, title })
+      })
+      .then(res => res.json())
+      .then(data => {
+        // Now add the product to the new wishlist
+        fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist-items', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ wishlist_id: data.id, product_id: productId })
+        })
+        .then(() => {
+          alert('Wishlist created and product added!');
+          modal.style.display = 'none';
+          titleInput.value = '';
+          createBtn.textContent = 'Create and Add';
+          createBtn.disabled = false;
+        });
+      })
+      .catch(() => {
+        alert('Error creating wishlist.');
+        createBtn.textContent = 'Create and Add';
+        createBtn.disabled = false;
+      });
+    });
+  }
+
+  // Close modal
+  if (closeBtn) {
+  closeBtn.addEventListener('click', function() {
+    modal.style.display = 'none';
+  });
+  }
+});
+  function enableWishlistClick() {
+    // No pointer-events: none on anchors!
+    document.querySelectorAll('.card__inner *:not(.wishlist-add-btn)').forEach(el => {
+      el.style.pointerEvents = 'auto';
+    });
+    document.querySelectorAll('.wishlist-add-btn').forEach(btn => {
+      btn.style.pointerEvents = 'auto';
+      btn.style.zIndex = '9999';
+      btn.style.position = 'absolute';
+    });
+  }
+
+  enableWishlistClick();
+
+  // Shopify themes often rerender product cards dynamically
+  const observer = new MutationObserver(enableWishlistClick);
+  observer.observe(document.body, { childList: true, subtree: true });
+</script>
+
+<script>
+// Ensure the modal HTML is present in the DOM
+if (!document.getElementById('wishlist-modal')) {
+  var modalHtml = `
+    <div id="wishlist-modal">
+      <div class="wishlist-modal-content">
+        <h3>Save to Wishlist</h3>
+        <div id="wishlist-list-section">
+          <div class="wishlist-section-title" dir="ltr" style="font-size:15px; font-weight:bold">Select Wishlist:</div>
+          <select id="wishlist-select"></select>
+          <button id="wishlist-add-to-selected-btn">Add to Selected</button>
+        </div>
+        <div id="wishlist-create-section">
+          <div class="wishlist-section-title" dir="ltr" style="font-size:15px; font-weight:bold">Or create new:</div>
+          <input type="text" id="wishlist-title-input" placeholder="Wishlist name" />
+          <button id="wishlist-create-btn">Create and Add</button>
+        </div>
+        <button id="wishlist-modal-close">Cancel</button>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
 </script>

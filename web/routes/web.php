@@ -20,6 +20,7 @@ use Shopify\Webhooks\Registry;
 use Shopify\Webhooks\Topics;
 use App\Http\Controllers\WishlistConfigurationController;
 
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -145,4 +146,7 @@ Route::post('/api/webhooks', function (Request $request) {
         return response()->json(['message' => "Got an exception when handling '$topic' webhook"], 500);
     }
 });
+
+// Wishlist API routes
+
 

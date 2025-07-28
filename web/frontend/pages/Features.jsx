@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext } from "react";
-import { Page, Layout, Card, Icon, LegacyCard, Text, Badge, Box, Select, Divider, BlockStack, InlineGrid} from "@shopify/polaris";
+import { Page,Frame, Layout, Card, Icon, LegacyCard, Text, Badge, Box, Select, Divider, BlockStack, InlineGrid} from "@shopify/polaris";
 import { AlertCircleIcon, ExternalSmallIcon, HeartIcon} from '@shopify/polaris-icons';
 import teapot from "../assets/teapot.svg";
 import Step1 from "../assets/Step1.svg";
@@ -84,10 +84,27 @@ export default function Features() {
     }));
 
     return (
-        <Page title="Features">
+        <div style={{ marginLeft: '32px', marginRight: '32px' }}>
+                           
             <Layout>
                 <Layout.Section>
+                <div style={{
+                            fontSize: 20,
+                            fontWeight: 700,
+                            margin: '20px 0 10px 0', // top right bottom left
+                            padding: '0 24px',
+                            color: '#222',
+                            letterSpacing: 0.5,
+                            display: 'flex',
+                            justifyContent: 'flex-start',
+                            alignItems: 'center',
+                            width: '100%',
+                            // marginLeft: 20
+                        }}>
+                            Features
+                        </div>
                     {!loading ? (
+                        <Box style={{ marginTop: '20px' }}>
                         <CalloutCard
                             title={
                                 <span style={{ display: 'flex', alignItems: 'center' }}>
@@ -120,6 +137,7 @@ export default function Features() {
                         >
                             <p>Spot high shopper interest from browsing behavior and automatically save products to their wishlist if they consent—no clicks needed.</p>
                         </CalloutCard>
+                        </Box>
                     ) : (
                         <Skelton />
                     )}
@@ -472,7 +490,7 @@ export default function Features() {
                     </Box>
                 </Layout.Section>
             </Layout>
-        </Page>
+        </div>
     );
 }
 
