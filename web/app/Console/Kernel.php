@@ -4,6 +4,7 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use App\Jobs\SendWishlistReminderEmailsJob;
 
 class Kernel extends ConsoleKernel
 {
@@ -25,7 +26,9 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         // $schedule->command('inspire')->hourly();
-        $schedule->command('wishlist:send-reminders')->daily();
+        
+        // Dispatch the wishlist reminder job daily
+        $schedule->job(new SendWishlistReminderEmailsJob())->daily();
     }
 
     /**

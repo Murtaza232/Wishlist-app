@@ -5,6 +5,7 @@ use App\Lib\AuthRedirection;
 use App\Lib\EnsureBilling;
 use App\Lib\ProductCreator;
 use App\Models\Session;
+use App\Services\ShopifyProductService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
@@ -67,7 +68,9 @@ Route::get('/api/auth/callback', function (Request $request) {
     $shop = Utils::sanitizeShopDomain($request->query('shop'));
 
     $response = Registry::register('/api/webhooks', Topics::APP_UNINSTALLED, $shop, $session->getAccessToken());
-    $response_order_create = Registry::register('/api/webhooks/order-create', Topics::ORDERS_CREATE, $shop, $session->getAccessToken());
+    $response_product_create = Registry::register('/api/webhooks/product-create', Topics::PRODUCTS_CREATE, $shop, $session->getAccessToken());
+$response_product_update = Registry::register('/api/webhooks/product-update', Topics::PRODUCTS_UPDATE, $shop, $session->getAccessToken());
+$response_product_delete = Registry::register('/api/webhooks/product-delete', Topics::PRODUCTS_DELETE, $shop, $session->getAccessToken());
     if ($response->isSuccess()) {
         Log::debug("Registered APP_UNINSTALLED webhook for shop $shop");
     } else {
@@ -75,6 +78,15 @@ Route::get('/api/auth/callback', function (Request $request) {
             "Failed to register APP_UNINSTALLED webhook for shop $shop with response body: " .
                 print_r($response->getBody(), true)
         );
+    }
+
+    // Fetch products during app installation
+    try {
+        $productService = new ShopifyProductService();
+        $fetchedCount = $productService->fetchProductsForShop($shop);
+        Log::info("Fetched $fetchedCount products during app installation for shop: $shop");
+    } catch (\Exception $e) {
+        Log::error("Failed to fetch products during app installation for shop $shop: " . $e->getMessage());
     }
 
     $redirectUrl = Utils::getEmbeddedAppUrl($host);
@@ -152,9 +164,7 @@ Route::post('/api/webhooks', function (Request $request) {
 // Serve notification images
 
 // Shopify product webhooks
-Route::post('/webhook/shopify/product/create', [\App\Http\Controllers\ShopifyProductWebhookController::class, 'productCreate']);
-Route::post('/webhook/shopify/product/update', [\App\Http\Controllers\ShopifyProductWebhookController::class, 'productUpdate']);
-Route::post('/webhook/shopify/product/delete', [\App\Http\Controllers\ShopifyProductWebhookController::class, 'productDelete']);
+
 
 
 
