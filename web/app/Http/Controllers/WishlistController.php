@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use App\Models\Session;
 use App\Models\Wishlist;
+use App\Services\WishlistNotificationService;
 
 class WishlistController extends HelperController
 {
@@ -20,6 +21,7 @@ class WishlistController extends HelperController
                 return response(view('wishlist', ['products' => []])->render())
                     ->withHeaders(['Content-Type' => 'application/liquid']);
             }
+          
             $shop = \App\Models\Session::whereNotNull('access_token')->first();
             if (!$shop) {
                 return response(view('wishlist', ['products' => []])->render())
@@ -30,7 +32,6 @@ class WishlistController extends HelperController
             if ($wishlistId) {
                 $query->where('wishlist_id', $wishlistId);
             }
-            // return $wishlistId;
             $wishlistItems = $query->get();
             if ($wishlistItems->isEmpty()) {
                 return response(view('wishlist', ['products' => []])->render())
@@ -47,7 +48,7 @@ class WishlistController extends HelperController
 
             $api = $this->shopifyApiClient($shop->shop);
             $response = $api->graph($queryStr);
-
+           
             $products = $response['body']['data']['nodes'] ?? [];
             return response(view('wishlist', [
                 'products' => $products,
@@ -71,6 +72,82 @@ class WishlistController extends HelperController
     $count = \App\Models\WishlistItem::where('customer_id', $customerId)->count();
     return response()->json(['count' => $count]);
 }
+
+    public function getWishlistStats(Request $request)
+    {
+        try {
+           
+            $shopSession = $this->getShop($request);
+            if (!$shopSession) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Shop domain is required.'
+                ], 400);
+            }
+            // Use the shop domain from the Session model
+            $shop = Session::where('shop', $shopSession->shop)
+                ->whereNotNull('access_token')
+                ->first();
+           
+            if (!$shop) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'No valid access token for this shop.'
+                ], 400);
+            }
+            $startDate = $request->input('start_date');
+            $endDate = $request->input('end_date');
+
+            if (!$startDate || !$endDate) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Start date and end date are required.'
+                ], 400);
+            }
+
+            // Convert dates to Carbon instances for proper comparison
+            $startDate = \Carbon\Carbon::parse($startDate)->startOfDay();
+            $endDate = \Carbon\Carbon::parse($endDate)->endOfDay();
+
+            // Get total wishlist items (products) within date range for this shop
+            $totalWishlistProducts = WishlistItem::where('shop_id', $shop->id)
+                ->whereBetween('created_at', [$startDate, $endDate])
+                ->count();
+
+            // Get total unique wishlists within date range for this shop
+            $totalLists = Wishlist::where('shop_id', $shop->id)
+                ->whereBetween('created_at', [$startDate, $endDate])
+                ->count();
+
+            // Get total wishlist clicks (you might need to add this field to your models)
+            $totalWishlistClicks = 0; // This would need to be implemented based on your tracking system
+
+            // Get total wishlist conversions (you might need to add this field to your models)
+            $totalWishlistConversions = 0; // This would need to be implemented based on your tracking system
+
+            return response()->json([
+                'status' => true,
+                'data' => [
+                    'total_wishlist_products' => $totalWishlistProducts,
+                    'total_lists' => $totalLists,
+                    'total_wishlist_clicks' => $totalWishlistClicks,
+                    'total_wishlist_conversions' => $totalWishlistConversions,
+                    'date_range' => [
+                        'start_date' => $startDate->format('Y-m-d'),
+                        'end_date' => $endDate->format('Y-m-d')
+                    ]
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error in getWishlistStats: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'An error occurred while fetching wishlist statistics.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
     public function add(Request $request)
     {
         $request->validate([
@@ -203,10 +280,30 @@ class WishlistController extends HelperController
      */
     public function createWishlist(Request $request)
     {
+        // return 'hello';
         $request->validate([
             'customer_id' => 'required',
             'title' => 'required|string|max:255',
         ]);
+        $shopSession = $this->getShop($request);
+        if (!$shopSession) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Shop domain is required.'
+            ], 400);
+        }
+        // Use the shop domain from the Session model
+        $shop = Session::where('shop', $shopSession->shop)
+            ->whereNotNull('access_token')
+            ->first();
+
+        if (!$shop) {
+            return response()->json([
+                'status' => false,
+                'message' => 'No valid access token for this shop.'
+            ], 400);
+        }
+        
         // Prevent duplicate wishlist titles for the same customer
         $existing = Wishlist::where('customer_id', $request->customer_id)
             ->where('title', $request->title)
@@ -217,16 +314,22 @@ class WishlistController extends HelperController
                 'message' => 'A wishlist with this title already exists.'
             ], 409);
         }
+
         $wishlist = Wishlist::create([
+            'shop_id' => $shop->id,
             'customer_id' => $request->customer_id,
             'title' => $request->title,
         ]);
+
+            if (!class_exists('\\App\\Services\\WishlistNotificationService')) {
+                throw new \Exception('Service class not found');
+            }
+            
+            $notificationService = app(\App\Services\WishlistNotificationService::class);
+            $result = $notificationService->sendSignupConfirmationEmail($request->customer_id, $wishlist, $shop);
+            // return $result;
         return response()->json($wishlist);
     }
-
-    /**
-     * Add an item to a specific wishlist
-     */
     public function addItemToWishlist(Request $request)
     {
         $request->validate([
@@ -319,9 +422,28 @@ class WishlistController extends HelperController
             'title' => 'required|string|max:255',
             'product_id' => 'required|integer',
         ]);
+        $shopSession = $this->getShop($request);
+        if (!$shopSession) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Shop domain is required.'
+            ], 400);
+        }
+        // Use the shop domain from the Session model
+        $shop = Session::where('shop', $shopSession->shop)
+            ->whereNotNull('access_token')
+            ->first();
+
+        if (!$shop) {
+            return response()->json([
+                'status' => false,
+                'message' => 'No valid access token for this shop.'
+            ], 400);
+        }
         // Find or create the wishlist
         $wishlist = Wishlist::firstOrCreate(
             [
+                'shop_id' => $shop->id,
                 'customer_id' => $request->customer_id,
                 'title' => $request->title,
             ]
@@ -350,5 +472,36 @@ class WishlistController extends HelperController
             'wishlist' => $wishlist,
             'item' => $item
         ]);
+    }
+
+    /**
+     * Share a wishlist and send notification email
+     */
+    public function shareWishlist(Request $request)
+    {
+        $request->validate([
+            'customer_id' => 'required',
+            'wishlist_id' => 'required',
+            'shop' => 'required',
+        ]);
+        $customerId = $request->input('customer_id');
+        $wishlistId = $request->input('wishlist_id');
+        $shopDomain = $request->input('shop');
+
+        $wishlist = \App\Models\Wishlist::find($wishlistId);
+        if (!$wishlist) {
+            return response()->json(['status' => false, 'message' => 'Wishlist not found.'], 404);
+        }
+        $shop = \App\Models\Session::where('shop', $shopDomain)->whereNotNull('access_token')->first();
+        if (!$shop) {
+            return response()->json(['status' => false, 'message' => 'Shop not found.'], 404);
+        }
+        $notificationService = app(\App\Services\WishlistNotificationService::class);
+        $result = $notificationService->sendWishlistSharedEmail($customerId, $wishlist, $shop);
+        if ($result) {
+            return response()->json(['status' => true, 'message' => 'Wishlist shared email sent.']);
+        } else {
+            return response()->json(['status' => false, 'message' => 'Failed to send wishlist shared email.'], 500);
+        }
     }
 } 

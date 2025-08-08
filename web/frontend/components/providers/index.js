@@ -2,3 +2,4 @@ export { AppBridgeProvider } from "./AppBridgeProvider";
 export { QueryProvider } from "./QueryProvider";
 export { PolarisProvider } from "./PolarisProvider";
 export {AppContext} from './ContextProvider.jsx'
+export { LanguageProvider, useLanguage } from "./LanguageProvider";

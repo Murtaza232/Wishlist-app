@@ -150,6 +150,18 @@ body, .Polaris-Frame, .Polaris-Frame__Main, .Polaris-Frame-ContextualSaveBar {
   height: 39px !important;
   min-height: 39px !important;
   line-height: 39px !important;
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+}
+
+.Polaris-Frame-ContextualSaveBar--Fullwidth {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+}
+
+.Polaris-ContextualSaveBar {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
 }
 .compact-select.Polaris-Select {
   min-width: 60px !important;

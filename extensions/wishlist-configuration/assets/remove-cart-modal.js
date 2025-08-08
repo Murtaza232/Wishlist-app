@@ -14,7 +14,6 @@
 (function() {
   // Use extension setting or fallback for cart item selector
   var cartItemSelector = (typeof window.wishlistCartItemSelector !== 'undefined' && window.wishlistCartItemSelector && window.wishlistCartItemSelector.trim() !== '') ? window.wishlistCartItemSelector : 'tr.cart-item, div.cart-item';
-  console.debug('[WISHLIST] Cart item selector used:', cartItemSelector, (cartItemSelector === window.wishlistCartItemSelector ? 'from extension setting' : 'fallback'));
   document.querySelectorAll(cartItemSelector).forEach(function(row) {
     // Try to get product ID from a hidden div or data attribute in the cart item
     var productDiv = row.querySelector('.wishlist-cart-product');
@@ -217,7 +216,6 @@ function unescapeSelector(selector) {
           // Use extension setting or fallback for remove button selector
           var rawRemoveBtnSelector = (typeof window.wishlistCartRemoveSelector !== 'undefined' && window.wishlistCartRemoveSelector && window.wishlistCartRemoveSelector.trim() !== '') ? window.wishlistCartRemoveSelector : '.cart-remove-btn, a[aria-label*="Remove"]';
           var removeBtnSelector = unescapeSelector(rawRemoveBtnSelector);
-          console.debug('[WISHLIST] Cart remove button selector used:', removeBtnSelector, (removeBtnSelector === unescapeSelector(window.wishlistCartRemoveSelector) ? 'from extension setting' : 'fallback'));
 
           document.body.addEventListener('click', function(e) {
             var btn = closestOneOf(e.target, removeBtnSelector);

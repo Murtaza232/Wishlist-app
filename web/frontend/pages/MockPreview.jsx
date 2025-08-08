@@ -35,7 +35,7 @@ function WishlistButton({
     isFullWidthIcon = false,
     buttonSize = 40,
     renderRawIcon = false,
-    iconThickness = 2,
+    iconThickness = 0,
 }) {
     const isIconOnly = buttonType === 'icon' || buttonType === 'only-icon';
     const isIconTextOrText = buttonType === 'icon-text' || buttonType === 'text';
@@ -103,12 +103,10 @@ export default function MockPreview({
     saveForLaterPermission = undefined,
     previewWidth,
     buttonSize,
-    iconThickness = 2,
+    iconThickness = 0,
     drawerAlignment = 'left', // Added for drawer alignment
     floatingButtonCornerRadius = 10, // Add this prop
     textColor = '#222222',
-    floatingButtonPrimaryColor = '#ff0000',
-    floatingButtonSecondaryColor = '#ffffff',
 }) {
     // Fix: define these for use in overlay logic
     const isIconOnly = buttonType === 'icon' || buttonType === 'only-icon';
@@ -176,6 +174,8 @@ export default function MockPreview({
                         boxShadow: '0 2px 16px rgba(0,0,0,0.04)',
                         padding: 0,
                         minHeight: 400,
+                        maxWidth: '700px',
+                        margin: '0 auto',
                     }}
                 >
                     <div style={{ marginBottom: 12, padding: '18px 0 0 18px' }}>
@@ -198,10 +198,10 @@ export default function MockPreview({
                         style={{
                             display: 'grid',
                             gridTemplateColumns: 'repeat(3, 1fr)',
-                            gap: 16,
+                            gap: 12,
                             marginTop: 10,
-                            padding: 32,
-                            overflowX: 'auto',
+                            padding: 20,
+                            overflowX: 'hidden',
                         }}
                     >
                         {[...Array(6)].map((_, i) => (
@@ -212,27 +212,27 @@ export default function MockPreview({
                                     background: '#fff',
                                     border: '1px solid #e3e3e3',
                                     borderRadius: 12,
-                                    padding: 16,
+                                    padding: 12,
                                     position: 'relative',
-                                    minHeight: 260,
+                                    minHeight: 240,
                                     display: 'flex',
                                     flexDirection: 'column',
                                     alignItems: 'center',
                                     justifyContent: 'flex-start',
-                                    width: 180,
-                                    maxWidth: 340,
+                                    width: '100%',
+                                    maxWidth: '100%',
                                 }}
                             >
                                 <div
                                     className="collections-mock-img"
                                     style={{
-                                        width: 160,
-                                        height: 160,
+                                        width: '100%',
+                                        height: 140,
                                         background: '#e5e5e5',
                                         borderRadius: 10,
-                                        marginBottom: 16,
+                                        marginBottom: 12,
                                         position: 'relative',
-                                        maxWidth: 300,
+                                        maxWidth: '100%',
                                     }}
                                 >
                                     {collectionsEnabled && (
@@ -671,19 +671,17 @@ export default function MockPreview({
                 gap: 24
             }}>
                 <span style={{ fontWeight: 700, fontSize: 18, color: textColor, textAlign: 'left' }}>{wishlistPageTitle || 'My Wishlist'}</span>
-                {wishlistShareEnabled && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#f3f3f3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Icon source={ShareIcon} tone="base" />
-                        </div>
-                        <span style={{ color: textColor, fontWeight: 500, fontSize: 15 }}>Share</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, visibility: wishlistShareEnabled ? 'visible' : 'hidden' }}>
+                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#f3f3f3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Icon source={ShareIcon} tone="base" />
                     </div>
-                )}
+                    <span style={{ color: textColor, fontWeight: 500, fontSize: 15 }}>Share</span>
+                </div>
             </div>
             <Divider style={{ margin: '24px 0 0 0' }} />
             {/* Wishlist grid */}
             <div style={{ padding: 0, margin: '0 0 0 0', width: '100%' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: wishlistType === 'drawer' ? '1fr 1fr' : 'repeat(4, 1fr)', gap: wishlistType === 'drawer' ? 24 : wishlistType === 'modal' ? 10 : 32, padding: wishlistType === 'drawer' ? 24 : 32 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: wishlistType === 'drawer' ? '1fr 1fr' : 'repeat(4, 1fr)', gap: wishlistType === 'drawer' ? 24 : wishlistType === 'modal' ? 10 : 20, padding: wishlistType === 'drawer' ? 24 : 32 }}>
                     {[...Array(wishlistType === 'drawer' ? 4 : 8)].map((_, i) => (
                         <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                             <div style={{ width: wishlistType === 'drawer' ? 90 : wishlistType === 'modal' ? 100 : 120, height: wishlistType === 'drawer' ? 120 : wishlistType === 'modal' ? 130 : 160, background: '#e5e5e5', borderRadius: 10, marginBottom: wishlistType === 'drawer' ? 10 : 12 }} />
@@ -710,21 +708,21 @@ export default function MockPreview({
                 <div style={{
                     width: 180,
                     height: 48,
-                    background: floatingButtonPrimaryColor,
+                    background: primaryColor,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'flex-start',
                     position: 'relative',
                     paddingLeft: 16,
-                    color: floatingButtonSecondaryColor,
+                    color: secondaryColor,
                     fontWeight: 600,
                     fontSize: 18,
                     borderRadius: floatingButtonCornerRadius,
                 }}>
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill={floatingButtonSecondaryColor} xmlns="http://www.w3.org/2000/svg">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill={secondaryColor} xmlns="http://www.w3.org/2000/svg">
                       <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                     </svg>
-                    <span style={{ marginLeft: 10, color: floatingButtonSecondaryColor }}>My Wishlist</span>
+                    <span style={{ marginLeft: 10, color: secondaryColor }}>My Wishlist</span>
                     {showCount && <div style={badgeStyle}>4</div>}
                 </div>
             </div>
@@ -741,21 +739,21 @@ export default function MockPreview({
                 <div style={{
                     width: 180,
                     height: 48,
-                    background: floatingButtonPrimaryColor,
+                    background: primaryColor,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'flex-end',
                     position: 'relative',
                     paddingRight: 16,
-                    color: floatingButtonSecondaryColor,
+                    color: secondaryColor,
                     fontWeight: 600,
                     fontSize: 18,
                     borderRadius: floatingButtonCornerRadius,
                 }}>
-                      <svg width="28" height="28" viewBox="0 0 24 24" fill={floatingButtonSecondaryColor} xmlns="http://www.w3.org/2000/svg" style={{ marginRight: 10 }}>
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill={secondaryColor} xmlns="http://www.w3.org/2000/svg" style={{ marginRight: 10 }}>
                       <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                     </svg>
-                    <span style={{ marginRight: 10, color: floatingButtonSecondaryColor }}>My Wishlist</span>
+                    <span style={{ marginRight: 10, color: secondaryColor }}>My Wishlist</span>
                     {showCount && <div style={badgeStyle}>4</div>}
                 </div>
             </div>
@@ -771,14 +769,14 @@ export default function MockPreview({
                 <div style={{
                     width: 48,
                     height: 48,
-                    background: floatingButtonPrimaryColor,
+                    background: primaryColor,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     position: 'relative',
                     borderRadius: floatingButtonCornerRadius,
                 }}>
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill={floatingButtonSecondaryColor} xmlns="http://www.w3.org/2000/svg">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill={secondaryColor} xmlns="http://www.w3.org/2000/svg">
                       <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                     </svg>
                     {showCount && <div style={badgeStyle}>4</div>}
@@ -796,14 +794,14 @@ export default function MockPreview({
                 <div style={{
                     width: 48,
                     height: 48,
-                    background: floatingButtonPrimaryColor,
+                    background: primaryColor,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     position: 'relative',
                     borderRadius: floatingButtonCornerRadius,
                 }}>
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill={floatingButtonSecondaryColor} xmlns="http://www.w3.org/2000/svg">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill={secondaryColor} xmlns="http://www.w3.org/2000/svg">
                       <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                     </svg>
                     {showCount && <div style={badgeStyle}>4</div>}
@@ -822,7 +820,8 @@ export default function MockPreview({
                     boxSizing: 'border-box',
                     background: '#fff',
                     position: 'relative',
-                    minHeight: 500,
+                    minHeight: 550,
+                    height: 550,
                     overflow: 'hidden',
                 }}>
                     {headerRow}
@@ -841,6 +840,7 @@ export default function MockPreview({
                         borderRadius: 12,
                         zIndex: 2,
                         overflow: 'hidden',
+                        height: 'calc(100% - 110px)',
                     }}>
                         {wishlistContent}
                     </div>

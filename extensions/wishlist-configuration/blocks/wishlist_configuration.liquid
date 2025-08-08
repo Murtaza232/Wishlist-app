@@ -1,5 +1,8 @@
 {%- comment -%} Wishlist Icon Example and Ratings removed from storefront output {%- endcomment -%}
 
+<!-- Unique div to detect if extension is enabled -->
+<div id="wishlist-extension-status-detector" class="wishlist-extension-enabled" style="display: none; position: absolute; left: -9999px; top: -9999px;"></div>
+
 <script>
   // Removed: window.wishlistIconType, window.wishlistAddBtnIconType, and any icon-related extension settings
   window.wishlistButtonIcon = "{{ block.settings.icon | default: '' }}";
@@ -15,10 +18,10 @@
   window.add_to_wishlist_btn_bg_color="{{block.settings.add_to_wishlist_btn_bg_color | default: '#e5e5e5'}}";
    window.wishlistProductLinkSelector = "{{ block.settings.product_link_selector | escape }}";
   window.wishlistProductLinkSelectorForProductPage = "{{ block.settings.product_link_selector_product_page | escape }}";
-  window.wishlistProductTileSelector = "{{ block.settings.product_tile_selector | escape }}";
   window.wishlistHeaderSelector = "{{ block.settings.wislist_header_selector | escape }}";
   window.wishlistNavSelector = "{{ block.settings.wishlist_nav_selector | escape }}";
-  window.wishlistAddToWishlistSelector = "{{ block.settings.add_wishlist_selector | escape }}"; // Unescape in JS before using as selector
+  window.wishlistAddToWishlistSelector = "{{ block.settings.add_wishlist_selector | escape }}";
+  window.wishlistAddToWishlistProductPage="{{block.settings.add_wishlist_selector_product_image}}";
   window.wishlistCartItemSelector = "{{ block.settings.wishlist_cart_item_selector | escape }}";
   window.wishlistCartRemoveSelector = "{{ block.settings.wishlist_cart_remove_selector | escape }}";
 </script>
@@ -75,13 +78,13 @@ function isProductPage() {
   "target": "body",
   "settings": [
     { "type": "image_picker", "id": "icon_add", "label": "Custom Icon for 'Add to Wishlist'" },
-    { "type": "text", "id": "product_link_selector_product_page", "label": "Product Link Selector Product Page", "default": ".card__inner" },
     { "type": "text", "id": "product_link_selector", "label": "Product Link Selector Collection Page", "default": ".card-wrapper" },
     { "type": "text", "id": "wislist_header_selector", "label": "Wishlist Header Selector", "default": ".header__icon--cart" },
     { "type": "text", "id": "wishlist_nav_selector", "label": "Wishlist Navigation Selector", "default": ".list-menu--inline" },
-     { "type": "text", "id": "add_wishlist_selector", "label": "Add To Wishlist Selector", "default": ".product-form__submit" },
+    { "type": "text", "id": "product_link_selector_product_page", "label": "Product Link Selector Product Image", "default": ".product-media-container" },
+    { "type": "text", "id": "add_wishlist_selector", "label": "Add To Wishlist Selector Near Cart Button", "default": ".product-form__submit" },
     { "type": "text", "id": "wishlist_cart_item_selector", "label": "Cart Item Selector", "default": "tr.cart-item, div.cart-item" },
-{ "type": "text", "id": "wishlist_cart_remove_selector", "label": "Cart Remove Button Selector", "default": "a.button--tertiary[aria-label*='Remove']" }
+    { "type": "text", "id": "wishlist_cart_remove_selector", "label": "Cart Remove Button Selector", "default": "a.button--tertiary[aria-label*='Remove']" }
   ]
 }
 {% endschema %}

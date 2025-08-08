@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext,useRef } from "react";
 import { Popover, RadioButton, LegacyStack, Icon, Checkbox, TextField, Box, Divider, Frame, Card, ContextualSaveBar, Spinner, Icon as PolarisIcon, Page, LegacyCard, RangeSlider } from "@shopify/polaris";
 import { HeartIcon, StarIcon, BillFilledIcon, BookOpenIcon, ArrowLeftIcon, InfoIcon } from "@shopify/polaris-icons";
 import { HexColorPicker } from "react-colorful";
@@ -8,20 +8,9 @@ import { useAppBridge } from "@shopify/app-bridge-react";
 import { getSessionToken } from "@shopify/app-bridge-utils";
 import { AppContext } from "../components";
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useLanguage } from "../components";
 
-const NAV_TABS = [
-  { label: "Basics", key: "basics" },
-  { label: "Product Page", key: "product" },
-  { label: "Collections", key: "collections" },
-  { label: "Wishlist Page", key: "wishlist" },
-  { label: "Cart", key: "cart" },
-];
 
-const ICONS = [
-  { label: "Heart", icon: HeartIcon },
-  { label: "Star", icon: StarIcon },
-  { label: "Bookmark", icon: BillFilledIcon },
-];
 
 function ColorPopover({ color, setColor, active, setActive }) {
   const [hex, setHex] = useState(color);
@@ -37,7 +26,7 @@ function ColorPopover({ color, setColor, active, setActive }) {
             display: 'flex', alignItems: 'center', background: '#fff', border: '1px solid #d6d6d6', borderRadius: 6, height: 40, padding: '0 12px', cursor: 'pointer',
           }}>
             <span style={{ width: 22, height: 22, borderRadius: '50%', background: color, border: '1px solid #ccc', display: 'inline-block', marginRight: 8 }} />
-            <span style={{ fontFamily: 'monospace', fontSize: 15 }}>{color}</span>
+            <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{color}</span>
             <span style={{ marginLeft: 'auto', color: '#888' }}>▼</span>
           </div>
         </div>
@@ -89,8 +78,7 @@ export default function ManageConfiguration() {
   const [iconThickness, setIconThickness] = useState(2); // default thickness
 
   // Add state for before/after button text
-  const [buttonLabelBefore, setButtonLabelBefore] = useState("");
-  const [buttonLabelAfter, setButtonLabelAfter] = useState("");
+
 
   // Collections tab state
   const [collectionsEnabled, setCollectionsEnabled] = useState(true);
@@ -115,10 +103,7 @@ export default function ManageConfiguration() {
 
   const [activeButtonPositionTab, setActiveButtonPositionTab] = useState("near");
 
-  const [floatingButtonPrimaryColor, setFloatingButtonPrimaryColor] = useState("#ff0000");
-  const [floatingPrimaryPopoverActive, setFloatingPrimaryPopoverActive] = useState(false);
-  const [floatingButtonSecondaryColor, setFloatingButtonSecondaryColor] = useState("#ffffff");
-  const [floatingSecondaryPopoverActive, setFloatingSecondaryPopoverActive] = useState(false);
+
 
   // Add state for floating button corner radius
   const [floatingButtonCornerRadius, setFloatingButtonCornerRadius] = useState(24); // default 24px
@@ -136,7 +121,63 @@ export default function ManageConfiguration() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [lastSavedState, setLastSavedState] = useState({});
   const [loading, setLoading] = useState(true);
+  const { t } = useLanguage();
+  const intervalRef = useRef(null);
+  const [buttonLabelBefore, setButtonLabelBefore] = useState(t('Add To Wishlist', 'Configurations'));
+  const [buttonLabelAfter, setButtonLabelAfter] = useState(t('Added To Wishlist', 'Configurations'));
+  useEffect(() => {
+    function enhanceSaveBar() {
+      const saveBar = document.querySelector('.Polaris-Frame-ContextualSaveBar');
+      if (!saveBar) return;
 
+      // Discard Button
+      const discardButton = saveBar.querySelector('button.Polaris-Button--variantTertiary');
+      const discardSpan = discardButton?.querySelector('span.Polaris-Text--medium');
+
+      if (discardButton && discardSpan && discardSpan.textContent !== t("Discard", "Save Bar")) {
+        discardSpan.textContent = t("Discard", "Save Bar");
+        discardButton.style.backgroundColor = "#f1f2f3";
+        discardButton.style.color = "#1c1c1c";
+        discardButton.style.border = "1px solid #d1d1d1";
+        discardButton.style.borderRadius = "8px";
+        discardButton.style.padding = "8px 16px";
+        discardButton.style.fontWeight = "500";
+      }
+
+      // Save Button
+      const saveButton = saveBar.querySelector('button.Polaris-Button--variantPrimary');
+      const saveSpan = saveButton?.querySelector('span.Polaris-Text--medium');
+
+      if (saveSpan && saveSpan.textContent !== t("Save", "Save Bar")) {
+        saveSpan.textContent = t("Save", "Save Bar");
+      }
+    }
+
+    intervalRef.current = setInterval(() => {
+      const saveBarVisible = document.querySelector('.Polaris-Frame-ContextualSaveBar');
+      if (saveBarVisible) {
+        enhanceSaveBar();
+      }
+    }, 300); // Runs every 300ms only when bar is visible
+
+    return () => {
+      clearInterval(intervalRef.current);
+    };
+  }, [t]);
+
+  // Move NAV_TABS inside the component where t is available
+  const NAV_TABS = [
+    { label: t('Basics', 'Configurations'), key: "basics" },
+    { label: t('Product page', 'Configurations'), key: "product" },
+    { label: t('Collections', 'Configurations'), key: "collections" },
+    { label: t('Wishlist Page', 'Configurations'), key: "wishlist" },
+    { label: t('Cart', 'Configurations'), key: "cart" },
+  ];
+  const ICONS = [
+    { value: 'Heart',label: t('Heart', 'Configurations'), icon: HeartIcon },
+    { value: 'Star',label: t('Star', 'Configurations'), icon: StarIcon },
+    { value: 'Bookmark',label: t('Bookmark', 'Configurations'), icon: BillFilledIcon },
+  ];
   // Fetch config and set all state and lastSavedState on mount
   useEffect(() => {
     async function fetchConfig() {
@@ -160,22 +201,31 @@ export default function ManageConfiguration() {
           setButtonStyle(config.appearance_btn_product_page || 'solid');
           setButtonTextTab(config.btn_text_product_page_toggle === 'after_click' ? 'after' : 'before');
           setButtonLabel(config.btn_text_product_page || "");
-          setButtonLabelBefore(config.btn_text_product_page_before || "");
-          setButtonLabelAfter(config.btn_text_product_page_after || "");
+          setButtonLabelBefore(config.btn_text_product_page_before || t("Add To Wishlist",'Configurations'));
+          setButtonLabelAfter(config.btn_text_product_page_after || t("Added To Wishlist",'Configurations'));
           setSmartSave(!!config.smart_save);
           setSocialProof(!!config.social_proof);
-          setButtonPositionNear(
-            config.btn_position_on_product_page === 'above_cart' ? 'above' :
-              config.btn_position_on_product_page === 'below_cart' ? 'below' :
-                config.btn_position_on_product_page === 'left_of_cart' ? 'left' :
-                  config.btn_position_on_product_page === 'right_of_cart' ? 'right' : 'below'
-          );
-          setButtonPositionImage(
-            config.btn_position_on_product_image === 'top_left' ? 'top-left' :
-              config.btn_position_on_product_image === 'top_right' ? 'top-right' :
-                config.btn_position_on_product_image === 'bottom_left' ? 'bottom-left' :
-                  config.btn_position_on_product_image === 'bottom_right' ? 'bottom-right' : 'top-left'
-          );
+          // Set button position based on the stored tab and position value
+          if (config.button_position_tab === 'near_cart' || (!config.button_position_tab && config.btn_position_on_product_page && ['above_cart', 'below_cart', 'left_of_cart', 'right_of_cart'].includes(config.btn_position_on_product_page))) {
+            setActiveButtonPositionTab("near");
+            setButtonPositionNear(
+              config.btn_position_on_product_page === 'above_cart' ? 'above' :
+                config.btn_position_on_product_page === 'below_cart' ? 'below' :
+                  config.btn_position_on_product_page === 'left_of_cart' ? 'left' :
+                    config.btn_position_on_product_page === 'right_of_cart' ? 'right' : 'below'
+            );
+          } else if (config.button_position_tab === 'product_image' || (!config.button_position_tab && config.btn_position_on_product_page && ['top_left', 'top_right', 'bottom_left', 'bottom_right'].includes(config.btn_position_on_product_page))) {
+            setActiveButtonPositionTab("image");
+            setButtonPositionImage(
+              config.btn_position_on_product_page === 'top_left' ? 'top-left' :
+                config.btn_position_on_product_page === 'top_right' ? 'top-right' :
+                  config.btn_position_on_product_page === 'bottom_left' ? 'bottom-left' :
+                    config.btn_position_on_product_page === 'bottom_right' ? 'bottom-right' : 'top-left'
+            );
+          } else {
+            setActiveButtonPositionTab("near"); // Default
+            setButtonPositionNear('below'); // Default
+          }
           setCollectionsEnabled(!!config.add_items_wishlist_collections_page);
           setCollectionsButtonPosition((config.btn_group_position_collections_page || 'top_left').replace('_', '-'));
           setWishlistType(config.wishlist_page_appearance === 'side_drawer' ? 'drawer' : config.wishlist_page_appearance === 'pop_up_modal' ? 'modal' : 'page');
@@ -191,8 +241,7 @@ export default function ManageConfiguration() {
           setShowCount(!!config.show_count_floating_btn);
           setButtonSize(config.button_size_product_page || 40);
           setIconThickness(config.icon_thickness_product_page || 2);
-          setFloatingButtonPrimaryColor(config.floating_btn_primary_color || "#ff0000");
-          setFloatingButtonSecondaryColor(config.floating_btn_secondary_color || "#ffffff");
+
           setFloatingButtonCornerRadius(config.floating_btn_corner_radius || 24);
           setDrawerAlignment(config.wishlist_drawer_appearance || "right"); // Use the correct field name
           setTextColor(config.text_color || "#222222"); // Add this line
@@ -204,18 +253,18 @@ export default function ManageConfiguration() {
             buttonStyle: config.appearance_btn_product_page || 'solid',
             buttonTextTab: config.btn_text_product_page_toggle === 'after_click' ? 'after' : 'before',
             buttonLabel: config.btn_text_product_page || "",
-            buttonLabelBefore: config.btn_text_product_page_before || "",
-            buttonLabelAfter: config.btn_text_product_page_after || "",
+            buttonLabelBefore: config.btn_text_product_page_before || t("Add to Wishlist",'Configurations'),
+            buttonLabelAfter: config.btn_text_product_page_after || t("Added to Wishlist",'Configurations'),
             smartSave: !!config.smart_save,
             socialProof: !!config.social_proof,
             buttonPositionNear: config.btn_position_on_product_page === 'above_cart' ? 'above' :
               config.btn_position_on_product_page === 'below_cart' ? 'below' :
                 config.btn_position_on_product_page === 'left_of_cart' ? 'left' :
                   config.btn_position_on_product_page === 'right_of_cart' ? 'right' : 'below',
-            buttonPositionImage: config.btn_position_on_product_image === 'top_left' ? 'top-left' :
-              config.btn_position_on_product_image === 'top_right' ? 'top-right' :
-                config.btn_position_on_product_image === 'bottom_left' ? 'bottom-left' :
-                  config.btn_position_on_product_image === 'bottom_right' ? 'bottom-right' : 'top-left',
+            buttonPositionImage: config.btn_position_on_product_page === 'top_left' ? 'top-left' :
+              config.btn_position_on_product_page === 'top_right' ? 'top-right' :
+                config.btn_position_on_product_page === 'bottom_left' ? 'bottom-left' :
+                  config.btn_position_on_product_page === 'bottom_right' ? 'bottom-right' : 'top-left',
             collectionsEnabled: !!config.add_items_wishlist_collections_page,
             collectionsButtonPosition: (config.btn_group_position_collections_page || 'top_left').replace('_', '-'),
             wishlistType: config.wishlist_page_appearance === 'side_drawer' ? 'drawer' : config.wishlist_page_appearance === 'pop_up_modal' ? 'modal' : 'page',
@@ -231,11 +280,11 @@ export default function ManageConfiguration() {
             showCount: !!config.show_count_floating_btn,
             buttonSize: config.button_size_product_page || 40,
             iconThickness: config.icon_thickness_product_page || 2,
-            floatingButtonPrimaryColor: config.floating_btn_primary_color || "#ff0000",
-            floatingButtonSecondaryColor: config.floating_btn_secondary_color || "#ffffff",
+
             floatingButtonCornerRadius: config.floating_btn_corner_radius || 24,
             drawerAlignment: config.wishlist_drawer_appearance || "right", // Use the correct field name
             textColor: config.text_color || "#222222", // Add this line
+            activeButtonPositionTab: config.button_position_tab === 'near_cart' ? "near" : config.button_position_tab === 'product_image' ? "image" : "near",
           });
         }
       } catch (e) { /* ignore */ }
@@ -250,14 +299,14 @@ export default function ManageConfiguration() {
     primary_color: primaryColor,
     secondary_color: secondaryColor,
     icon_type: selectedIcon.toLowerCase(),
-    btn_position_on_product_page: buttonPositionNear === 'above' ? 'above_cart' :
+    btn_position_on_product_page: activeButtonPositionTab === "near" ? (buttonPositionNear === 'above' ? 'above_cart' :
       buttonPositionNear === 'below' ? 'below_cart' :
         buttonPositionNear === 'left' ? 'left_of_cart' :
-          buttonPositionNear === 'right' ? 'right_of_cart' : null,
-    btn_position_on_product_image: buttonPositionImage === 'top-left' ? 'top_left' :
-      buttonPositionImage === 'top-right' ? 'top_right' :
-        buttonPositionImage === 'bottom-left' ? 'bottom_left' :
-          buttonPositionImage === 'bottom-right' ? 'bottom_right' : null,
+          buttonPositionNear === 'right' ? 'right_of_cart' : null) : (buttonPositionImage === 'top-left' ? 'top_left' :
+            buttonPositionImage === 'top-right' ? 'top_right' :
+              buttonPositionImage === 'bottom-left' ? 'bottom_left' :
+                buttonPositionImage === 'bottom-right' ? 'bottom_right' : null),
+    button_position_tab: activeButtonPositionTab === "near" ? "near_cart" : "product_image",
     btn_type_product_page: buttonType === 'icon-text' ? 'icon_and_text' : buttonType === 'icon' ? 'only_icon' : 'only_text',
     appearance_btn_product_page: buttonStyle,
     btn_text_product_page_toggle: buttonTextTab === 'before' ? 'before_click' : 'after_click',
@@ -281,8 +330,7 @@ export default function ManageConfiguration() {
     floating_btn_position: floatingButtonPosition,
     button_size_product_page: buttonSize,
     icon_thickness_product_page: iconThickness,
-    floating_btn_primary_color: floatingButtonPrimaryColor,
-    floating_btn_secondary_color: floatingButtonSecondaryColor,
+
     floating_btn_corner_radius: floatingButtonCornerRadius,
     wishlist_drawer_appearance: drawerAlignment || "right", // Use the correct field name with fallback
     text_color: textColor, // Add this line
@@ -321,11 +369,11 @@ export default function ManageConfiguration() {
     setShowCount(lastSavedState.showCount);
     setButtonSize(lastSavedState.buttonSize);
     setIconThickness(lastSavedState.iconThickness);
-    setFloatingButtonPrimaryColor(lastSavedState.floatingButtonPrimaryColor || "#ff0000");
-    setFloatingButtonSecondaryColor(lastSavedState.floatingButtonSecondaryColor || "#ffffff");
+
     setFloatingButtonCornerRadius(lastSavedState.floatingButtonCornerRadius || 24);
     setDrawerAlignment(lastSavedState.drawerAlignment || "right"); // Use the correct field name
     setTextColor(lastSavedState.textColor || "#222222"); // Add this line
+    setActiveButtonPositionTab(lastSavedState.activeButtonPositionTab || "near");
   };
 
   // Save handler
@@ -376,11 +424,11 @@ export default function ManageConfiguration() {
           showCount,
           buttonSize,
           iconThickness,
-          floatingButtonPrimaryColor,
-          floatingButtonSecondaryColor,
+
           floatingButtonCornerRadius,
           drawerAlignment: drawerAlignment, // This maps to wishlist_drawer_appearance
           textColor: textColor, // Add this line
+          activeButtonPositionTab,
         });
         setHasUnsavedChanges(false);
       } else {
@@ -421,96 +469,79 @@ export default function ManageConfiguration() {
       ) : (
         <>
           {hasUnsavedChanges && (
-            <ContextualSaveBar
-              fullWidth
-              alignContentFlush
-              message={
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'flex-start',
-                  width: '100%',
-                  fontWeight: 600,
-                  color: '#222',
-                }}>
-                  <span style={{ color: '#222' }}>Unsaved changes</span>
-                </div>
-              }
-              saveAction={{
-                onAction: handleSave,
-                loading: saving,
-                disabled: saving,
-              }}
-              discardAction={{
-                onAction: resetToLastSaved,
-              }}
-            />
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              zIndex: 1000,
+              background: '#ffffff',
+              borderBottom: '1px solid #e3e3e3',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            }}>
+              <ContextualSaveBar
+                fullWidth
+                alignContentFlush
+                message={
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-start',
+                    width: '100%',
+                    fontWeight: 600,
+                    color: '#222',
+                  }}>
+                    <span style={{ color: '#222' }}>{t('Unsaved Changes', 'Save Bar')}</span>
+                  </div>
+                }
+                saveAction={{
+                  onAction: handleSave,
+                  loading: saving,
+                  disabled: saving,
+                }}
+                discardAction={{
+                  onAction: resetToLastSaved,
+                }}
+              />
+            </div>
           )}
-          {/* Top Navigation Bar */}
-          {/* <Box style={{marginTop:10,
-            border: '1px solid #DFE3E8',
-            background:'#FFFFFF',
-            marginTop:45
-          }}> */}
-          {/* <Card sectioned style={{ margin: '0 0 32px 0', borderRadius: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }} > */}
-          {/* <div
-              style={{
-                display: 'flex',
-                gap: 24,
-                padding: '0',
-                background: 'transparent',
-                flexWrap: 'wrap',
-                marginLeft:10,
-                alignItems: 'center',
-                minHeight: 60,
-              }}
-            > */}
-          {/* Tabs Card */}
-
-          {/* </div> */}
-          {/* </Card> */}
-          {/* </Box> */}
-          {/* Main Card */}
 
           <div
             style={{
               maxWidth: 1400,
               margin: '0 auto 0 auto',
               display: 'flex',
-              justifyContent: 'center',
+              justifyContent: 'flex-start', // <-- align left
               width: '100%',
-              background: '#F1F1F1',
-              border: '1px solid #DFE3E8',
+              background: '#F3F3F3',
               borderTop: 'none',
               borderTopLeftRadius: 0,
               borderTopRightRadius: 0,
               borderBottomLeftRadius: 16,
               borderBottomRightRadius: 16,
-              boxShadow: '0 2px 16px rgba(0,0,0,0.04)',
               padding: 24,
               gap: 24,
               flexDirection: 'row',
               flexWrap: 'wrap',
               minWidth: 0,
-              marginTop: 0, // Remove gap between heading and tabs
+              marginTop: 0,
             }}
           >
             <div style={{
               fontSize: 20,
               fontWeight: 700,
-              margin: '0 0 0 0', // top right bottom left
-              padding: '0 24px',
+              margin: 0,
               color: '#222',
               letterSpacing: 0.5,
-              display: 'flex',
-              justifyContent: 'flex-start',
+
               alignItems: 'center',
-              width: '100%',
-              marginLeft: 20
+              width: '100%'
             }}>
-              Configurations
+              {t('Configurations', 'Configurations')}
+              <br />
+              <span style={{ fontSize: 13, color: '#555', fontWeight: 400, maxWidth: 700, marginTop: 2 }}>{t('Subtitle Configurations', 'Configurations')}</span>
             </div>
-            <div
+            {/* <div
               style={{
                 display: 'flex',
                 // gap: 0,
@@ -519,36 +550,35 @@ export default function ManageConfiguration() {
                 flexWrap: 'wrap',
                 alignItems: 'center',
                 minHeight: 60,
-                border: '1px solid #DFE3E8',
                 borderRadius: 16,
                 margin: '0', // Remove top margin to close gap
                 width: '100%',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
 
               }}
-            >
-              {NAV_TABS.map(tab => (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  style={{
-                    background: activeTab === tab.key ? '#fff' : 'none',
-                    color: activeTab === tab.key ? '#222' : '#222',
-                    fontWeight: activeTab === tab.key ? 600 : 400,
-                    borderRadius: 8,
-                    padding: '5px 12px',
-                    fontSize: 14,
-                    border: activeTab === tab.key ? 'none' : 'none',
-                    boxShadow: activeTab === tab.key ? '0 2px 8px rgba(0,0,0,0.03)' : 'none',
-                    outline: activeTab === tab.key ? '2px solid #e3e3e3' : 'none',
-                    marginBottom: 8,
-                    marginLeft: 20
-                  }}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+            > */}
+            {NAV_TABS.map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                style={{
+                  background: activeTab === tab.key ? '#fff' : 'none',
+                  color: activeTab === tab.key ? '#222' : '#222',
+                  fontWeight: activeTab === tab.key ? 600 : 400,
+                  borderRadius: 8,
+                  padding: '5px 12px',
+                  fontSize: 14,
+                  border: activeTab === tab.key ? 'none' : 'none',
+                  boxShadow: activeTab === tab.key ? '0 2px 8px rgba(0,0,0,0.03)' : 'none',
+                  outline: activeTab === tab.key ? '2px solid #e3e3e3' : 'none',
+                  marginBottom: 0,
+                  cursor: 'pointer',
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+            {/* </div> */}
+
             <div
               style={{
                 display: 'flex',
@@ -561,6 +591,7 @@ export default function ManageConfiguration() {
                 flexDirection: 'row',
                 flexWrap: 'wrap',
                 minWidth: 0,
+                minHeight: '600px',
               }}
             >
               {/* Left Panel: Tab Content */}
@@ -571,8 +602,6 @@ export default function ManageConfiguration() {
                   maxWidth: 600,
                   padding: '16px 24px 24px 24px',
                   minHeight: 0,
-                  maxHeight: '500px',
-                  overflowY: 'auto',
                   width: '100%',
                   boxSizing: 'border-box',
                 }}
@@ -580,31 +609,31 @@ export default function ManageConfiguration() {
                 {activeTab === "basics" && (
                   <>
                     {/* Colors Section */}
-                    <div style={{ fontWeight: 600, fontSize: 20, marginBottom: 24 }}>Colors</div>
+                    <div style={{ fontWeight: 600, fontSize: 20, marginBottom: 24 }}>{t('Colors', 'Configurations')}</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                       {/* Primary Color */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 50 }}>
-                        <span style={{ minWidth: 120, fontSize: 13 }}>Primary Color</span>
+                        <span style={{ minWidth: 120, fontSize: 13 }}>{t('Primary color', 'Configurations')}</span>
                         <ColorPopover color={primaryColor} setColor={c => { setPrimaryColor(c); markUnsaved(); }} active={primaryPopoverActive} setActive={setPrimaryPopoverActive} />
                       </div>
                       <Divider />
                       {/* Secondary Color */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 50 }}>
-                        <span style={{ minWidth: 120, fontSize: 13 }}>Secondary Color</span>
+                        <span style={{ minWidth: 120, fontSize: 13 }}>{t('Secondary color', 'Configurations')}</span>
                         <ColorPopover color={secondaryColor} setColor={c => { setSecondaryColor(c); markUnsaved(); }} active={secondaryPopoverActive} setActive={setSecondaryPopoverActive} />
                       </div>
                     </div>
                     {/* Divider */}
                     <div style={{ borderBottom: '1px solid #e3e3e3', margin: '32px 0 24px 0' }} />
                     {/* Icons Section */}
-                    <div style={{ fontWeight: 600, fontSize: 20, marginBottom: 18 }}>Icons</div>
-                    <div style={{ display: 'flex', gap: 16 }}>
-                      {ICONS.map(({ label, icon }) => {
-                        const isSelected = selectedIcon === label;
+                    <div style={{ fontWeight: 600, fontSize: 20, marginBottom: 18 }}>{t('Icons', 'Configurations')}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {ICONS.map(({ label, icon,value }) => {
+                        const isSelected = selectedIcon === value;
                         return (
                           <div
-                            key={label}
-                            onClick={() => { setSelectedIcon(label); markUnsaved(); }}
+                            key={value}
+                            onClick={() => { setSelectedIcon(value); markUnsaved(); }}
                             style={{
                               display: 'flex',
                               alignItems: 'center',
@@ -615,7 +644,7 @@ export default function ManageConfiguration() {
                               boxShadow: isSelected ? '0 2px 8px rgba(80,180,255,0.10)' : '0 1px 4px rgba(0,0,0,0.03)',
                               padding: '8px 18px 8px 12px',
                               cursor: 'pointer',
-                              minWidth: 80,
+                              width: 170,
                               transition: 'all 0.15s',
                               fontWeight: 500,
                             }}
@@ -640,88 +669,13 @@ export default function ManageConfiguration() {
                         );
                       })}
                     </div>
-                  </>
-                )}
-                {activeTab === "product" && (
-                  <>
-                    {/* Button Position */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 18 }}>
-                      <span style={{ fontWeight: 600, fontSize: 15, minWidth: 140 }}>Button Position</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-                        <button
-                          style={{
-                            background: activeButtonPositionTab === "near" ? '#f5f5f5' : 'none',
-                            color: activeButtonPositionTab === "near" ? '#222' : '#888',
-                            fontWeight: activeButtonPositionTab === "near" ? 600 : 500,
-                            border: 'none',
-                            borderRadius: 16,
-                            padding: '6px 20px',
-                            fontSize: 12,
-                            cursor: 'pointer',
-                            transition: 'background 0.15s',
-                          }}
-                          onClick={() => setActiveButtonPositionTab("near")}
-                        >
-                          Near cart button
-                        </button>
-                        <button
-                          style={{
-                            background: activeButtonPositionTab === "image" ? '#f5f5f5' : 'none',
-                            color: activeButtonPositionTab === "image" ? '#222' : '#888',
-                            fontWeight: activeButtonPositionTab === "image" ? 600 : 500,
-                            border: 'none',
-                            borderRadius: 16,
-                            padding: '6px 20px',
-                            fontSize: 12,
-                            cursor: 'pointer',
-                            transition: 'background 0.15s',
-                          }}
-                          onClick={() => setActiveButtonPositionTab("image")}
-                        >
-                          On product image
-                        </button>
-                      </div>
-                    </div>
-                    {activeButtonPositionTab === "near" && (
-                      <div>
-                        {/* <Box style={{ display: 'flex', gap: 2 }}> */}
-                        <RadioButton label="Above Cart Button" checked={buttonPositionNear === "above"} id="above" name="buttonPositionNear" onChange={() => { setButtonPositionNear("above"); markUnsaved(); }} />
-                        <Box style={{}}>
-                          <RadioButton label="Left of Cart Button" checked={buttonPositionNear === "left"} id="left" name="buttonPositionNear" onChange={() => { setButtonPositionNear("left"); markUnsaved(); }} />
-                        </Box>
-                        {/* </Box> */}
-                        {/* <br /> */}
-                        {/* <Box style={{ display: 'flex', gap: 2 }}> */}
-                        <RadioButton label="Below Cart Button" checked={buttonPositionNear === "below"} id="below" name="buttonPositionNear" onChange={() => { setButtonPositionNear("below"); markUnsaved(); }} />
-                        <Box style={{}}>
-                          <RadioButton label="Right of Cart Button" checked={buttonPositionNear === "right"} id="right" name="buttonPositionNear" onChange={() => { setButtonPositionNear("right"); markUnsaved(); }} />
-                        </Box>
-                        {/* </Box> */}
-                      </div>
-                    )}
-                    {activeButtonPositionTab === "image" && (
-                      <div>
-                        {/* <Box style={{ display: 'flex', gap: 2 }}> */}
-                        <RadioButton label="Top Left" checked={buttonPositionImage === "top-left"} id="top-left" name="buttonPositionImage" onChange={() => { setButtonPositionImage("top-left"); markUnsaved(); }} />
-                        <Box style={{}}>
-                          <RadioButton label="Top Right" checked={buttonPositionImage === "top-right"} id="top-right" name="buttonPositionImage" onChange={() => { setButtonPositionImage("top-right"); markUnsaved(); }} />
-                        </Box>
-                        {/* </Box> */}
-                        {/* <br />
-                        <Box style={{ display: 'flex', gap: 2 }}> */}
-                        <RadioButton label="Bottom Left" checked={buttonPositionImage === "bottom-left"} id="bottom-left" name="buttonPositionImage" onChange={() => { setButtonPositionImage("bottom-left"); markUnsaved(); }} />
-                        <Box style={{}}>
-                          <RadioButton label="Bottom Right" checked={buttonPositionImage === "bottom-right"} id="bottom-right" name="buttonPositionImage" onChange={() => { setButtonPositionImage("bottom-right"); markUnsaved(); }} />
-                        </Box>
-                        {/* </Box> */}
-                      </div>
-                    )}
-                    <div style={{ borderBottom: '1px solid #e3e3e3', margin: '24px 0' }} />
-                    {/* Button Size */}
-                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>Button Size</div>
-                    <Box sectioned title="Button Size">
+                    {/* Divider */}
+                    <div style={{ borderBottom: '1px solid #e3e3e3', margin: '32px 0 24px 0' }} />
+                    {/* Button Size Section */}
+                    <div style={{ fontWeight: 600, fontSize: 20, marginBottom: 18 }}>{t('Button size', 'Configurations')}</div>
+                    <Box sectioned title={t('Button size', 'Configurations')}>
                       <RangeSlider
-                        label="Button Size"
+                        label={t('Button size', 'Configurations')}
                         min={24}
                         max={70}
                         step={1}
@@ -730,51 +684,126 @@ export default function ManageConfiguration() {
                         output
                       />
                     </Box>
-                    <Box style={{ marginTop: 20, marginBottom: 20 }}>
-                      <Divider />
-                    </Box>
-                    {/* Icon Thickness */}
-                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>Icon Thickness</div>
-
-                    <Box sectioned title="Icon Thickness">
+                    {/* Divider */}
+                    <div style={{ borderBottom: '1px solid #e3e3e3', margin: '32px 0 24px 0' }} />
+                    {/* Icon Thickness Section */}
+                    <div style={{ fontWeight: 600, fontSize: 20, marginBottom: 18 }}>{t('Icon thickness', 'Configurations')}</div>
+                    <Box sectioned title={t('Icon thickness', 'Configurations')}>
                       <RangeSlider
-                       
                         min={1}
                         max={8}
                         step={1}
                         value={iconThickness}
                         onChange={val => { setIconThickness(val); markUnsaved(); }}
                         output
-                        helpText="Applies when button type is 'Only Icon' or 'Icon and Text'"
+                        // helpText={t('Applies when button type is \'Only Icon\' or \'Icon and Text\'', 'Configurations')}
                       />
                     </Box>
-                    <div style={{ borderBottom: '1px solid #e3e3e3', margin: '24px 0' }} />
+                  </>
+                )}
+                {activeTab === "product" && (
+                  <>
+                    {/* Button Position */}
+                    <div style={{ marginBottom: 18 }}>
+                      <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>{t('Button Position', 'Configurations')}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+                        <button
+                          style={{
+                            background: activeButtonPositionTab === "near" ? '#f5f5f5' : 'none',
+                            color: activeButtonPositionTab === "near" ? '#222' : '#888',
+                            fontWeight: activeButtonPositionTab === "near" ? 600 : 500,
+                            border: 'none',
+                            borderRadius: 5,
+                            padding: '6px 20px',
+                            fontSize: 12,
+                            cursor: 'pointer',
+                            transition: 'background 0.15s',
+                          }}
+                          onClick={() => setActiveButtonPositionTab("near")}
+                        >
+                          {t('Near cart button', 'Configurations')}
+                        </button>
+                        <button
+                          style={{
+                            background: activeButtonPositionTab === "image" ? '#f5f5f5' : 'none',
+                            color: activeButtonPositionTab === "image" ? '#222' : '#888',
+                            fontWeight: activeButtonPositionTab === "image" ? 600 : 500,
+                            border: 'none',
+                            borderRadius: 5,
+                            padding: '6px 20px',
+                            fontSize: 12,
+                            cursor: 'pointer',
+                            transition: 'background 0.15s',
+                          }}
+                          onClick={() => setActiveButtonPositionTab("image")}
+                        >
+                          {t('On product image', 'Configurations')}
+                        </button>
+                      </div>
+                    </div>
+                    {activeButtonPositionTab === "near" && (
+                      <div>
+                        {/* <Box style={{ display: 'flex', gap: 2 }}> */}
+                        <RadioButton label={t('Above Cart Button', 'Configurations')} checked={buttonPositionNear === "above"} id="above" name="buttonPositionNear" onChange={() => { setButtonPositionNear("above"); markUnsaved(); }} />
+                        <Box style={{}}>
+                          <RadioButton label={t('Left of Cart Button', 'Configurations')} checked={buttonPositionNear === "left"} id="left" name="buttonPositionNear" onChange={() => { setButtonPositionNear("left"); markUnsaved(); }} />
+                        </Box>
+                        {/* </Box> */}
+                        {/* <br /> */}
+                        {/* <Box style={{ display: 'flex', gap: 2 }}> */}
+                        <RadioButton label={t('Below Cart Button', 'Configurations')} checked={buttonPositionNear === "below"} id="below" name="buttonPositionNear" onChange={() => { setButtonPositionNear("below"); markUnsaved(); }} />
+                        <Box style={{}}>
+                          <RadioButton label={t('Right of Cart Button', 'Configurations')} checked={buttonPositionNear === "right"} id="right" name="buttonPositionNear" onChange={() => { setButtonPositionNear("right"); markUnsaved(); }} />
+                        </Box>
+                        {/* </Box> */}
+                      </div>
+                    )}
+                    {activeButtonPositionTab === "image" && (
+                      <div>
+                        {/* <Box style={{ display: 'flex', gap: 2 }}> */}
+                        <RadioButton label={t('Top Left', 'Configurations')} checked={buttonPositionImage === "top-left"} id="top-left" name="buttonPositionImage" onChange={() => { setButtonPositionImage("top-left"); markUnsaved(); }} />
+                        <Box style={{}}>
+                          <RadioButton label={t('Top Right', 'Configurations')} checked={buttonPositionImage === "top-right"} id="top-right" name="buttonPositionImage" onChange={() => { setButtonPositionImage("top-right"); markUnsaved(); }} />
+                        </Box>
+                        {/* </Box> */}
+                        {/* <br />
+                        <Box style={{ display: 'flex', gap: 2 }}> */}
+                        <RadioButton label={t('Bottom Left', 'Configurations')} checked={buttonPositionImage === "bottom-left"} id="bottom-left" name="buttonPositionImage" onChange={() => { setButtonPositionImage("bottom-left"); markUnsaved(); }} />
+                        <Box style={{}}>
+                          <RadioButton label={t('Bottom Right', 'Configurations')} checked={buttonPositionImage === "bottom-right"} id="bottom-right" name="buttonPositionImage" onChange={() => { setButtonPositionImage("bottom-right"); markUnsaved(); }} />
+                        </Box>
+                        {/* </Box> */}
+                      </div>
+                    )}
+                    <Box style={{ marginTop: 20, marginBottom: 20 }}>
+                      <Divider />
+                    </Box>
                     {/* Button Type */}
-                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 40 }}>
-                      <span>Button Type</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-                      <RadioButton label="Icon and Text" checked={buttonType === "icon-text"} id="icon-text" name="buttonType" onChange={() => { setButtonType("icon-text"); markUnsaved(); }} />
-                      <RadioButton label="Only Text" checked={buttonType === "text"} id="text" name="buttonType" onChange={() => { setButtonType("text"); markUnsaved(); }} />
-                      <RadioButton label="Only Icon" checked={buttonType === "icon"} id="icon" name="buttonType" onChange={() => { setButtonType("icon"); markUnsaved(); }} />
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>{t('Button Type', 'Configurations')}</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <RadioButton label={t('Icon and Text', 'Configurations')} checked={buttonType === "icon-text"} id="icon-text" name="buttonType" onChange={() => { setButtonType("icon-text"); markUnsaved(); }} />
+                        <RadioButton label={t('Only Text', 'Configurations')} checked={buttonType === "text"} id="text" name="buttonType" onChange={() => { setButtonType("text"); markUnsaved(); }} />
+                        <RadioButton label={t('Only Icon', 'Configurations')} checked={buttonType === "icon"} id="icon" name="buttonType" onChange={() => { setButtonType("icon"); markUnsaved(); }} />
                       </div>
                     </div>
                     <div style={{ borderBottom: '1px solid #e3e3e3', margin: '24px 0' }} />
                     {/* Appearance */}
-                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>Appearance</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 18 }}>
-                      <span style={{ fontWeight: 600, fontSize: 15, minWidth: 120 }}>Button Style</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-                        <RadioButton label="Solid" checked={buttonStyle === "solid"} id="solid" name="buttonStyle" onChange={() => { setButtonStyle("solid"); markUnsaved(); }} />
-                        <RadioButton label="Outline" checked={buttonStyle === "outline"} id="outline" name="buttonStyle" onChange={() => { setButtonStyle("outline"); markUnsaved(); }} />
-                        <RadioButton label="Plain" checked={buttonStyle === "plain"} id="plain" name="buttonStyle" onChange={() => { setButtonStyle("plain"); markUnsaved(); }} />
+                    {/* <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>Appearance</div> */}
+                    <div style={{ marginBottom: 18 }}>
+                      <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>{t('Button Style', 'Configurations')}</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <RadioButton label={t('Solid', 'Configurations')} checked={buttonStyle === "solid"} id="solid" name="buttonStyle" onChange={() => { setButtonStyle("solid"); markUnsaved(); }} />
+                        <RadioButton label={t('Outline', 'Configurations')} checked={buttonStyle === "outline"} id="outline" name="buttonStyle" onChange={() => { setButtonStyle("outline"); markUnsaved(); }} />
+                        <RadioButton label={t('Plain', 'Configurations')} checked={buttonStyle === "plain"} id="plain" name="buttonStyle" onChange={() => { setButtonStyle("plain"); markUnsaved(); }} />
                       </div>
                     </div>
                     <div style={{ borderBottom: '1px solid #e3e3e3', margin: '24px 0' }} />
                     {/* Button Text */}
-                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 24 }}>
-                      <span>Button Text</span>
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>{t('Button text', 'Configurations')}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <button
+                        <button
                           style={{
                             background: buttonTextTab === "before" ? '#ececec' : 'none',
                             border: 'none',
@@ -788,11 +817,11 @@ export default function ManageConfiguration() {
                             outline: 'none',
                             transition: 'background 0.15s',
                           }}
-                        onClick={() => { setButtonTextTab("before"); markUnsaved(); }}
-                      >
-                        Before Click
-                      </button>
-                      <button
+                          onClick={() => { setButtonTextTab("before"); markUnsaved(); }}
+                        >
+                          {t('Before Click', 'Configurations')}
+                        </button>
+                        <button
                           style={{
                             background: buttonTextTab === "after" ? '#ececec' : 'none',
                             border: 'none',
@@ -806,38 +835,38 @@ export default function ManageConfiguration() {
                             outline: 'none',
                             transition: 'background 0.15s',
                           }}
-                        onClick={() => { setButtonTextTab("after"); markUnsaved(); }}
-                      >
-                        After Click
-                      </button>
+                          onClick={() => { setButtonTextTab("after"); markUnsaved(); }}
+                        >
+                          {t('After Click', 'Configurations')}
+                        </button>
                       </div>
                     </div>
-                    <div style={{ marginBottom: 8 }}>Label</div>
+                    <div style={{ marginBottom: 8 }}>{t('Label', 'Configurations')}</div>
                     {buttonTextTab === "before" ? (
                       <TextField
                         value={buttonLabelBefore}
                         onChange={val => { setButtonLabelBefore(val); markUnsaved(); }}
                         autoComplete="off"
-                        placeholder="Add To Wishlist"
+                        placeholder={t('Add To Wishlist', 'Configurations')}
                       />
                     ) : (
                       <TextField
                         value={buttonLabelAfter}
                         onChange={val => { setButtonLabelAfter(val); markUnsaved(); }}
                         autoComplete="off"
-                        placeholder="Added To Wishlist"
+                        placeholder={t('Added To Wishlist', 'Configurations')}
                       />
                     )}
                     <div style={{ borderBottom: '1px solid #e3e3e3', margin: '24px 0' }} />
                     {/* Other Settings */}
-                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>Other Settings</div>
+                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>{t('Other Settings', 'Configurations')}</div>
                     <Checkbox
-                      label="Smart-Save: Auto-wishlist products visited thrice or more by the shopper"
+                      label={t('Smart Save', 'Configurations')}
                       checked={smartSave}
                       onChange={val => { setSmartSave(val); markUnsaved(); }}
                     />
                     <Checkbox
-                      label="Social Proof: Show number of times the product has been added to wishlists by other shoppers"
+                      label={t('Social Proof', 'Configurations')}
                       checked={socialProof}
                       onChange={val => { setSocialProof(val); markUnsaved(); }}
                     />
@@ -850,7 +879,7 @@ export default function ManageConfiguration() {
 
                     <div style={{ marginBottom: 24 }}>
                       <Checkbox
-                        label="Enable shoppers to add items to wishlist from Collections pages"
+                        label={t('Add item to wishlist from collection page', 'Configurations')}
                         checked={collectionsEnabled}
                         onChange={val => { setCollectionsEnabled(val); markUnsaved(); }}
                       />
@@ -858,19 +887,19 @@ export default function ManageConfiguration() {
 
                     <div style={{ borderBottom: '1px solid #e3e3e3', margin: '24px 0' }} />
                     {/* Button Position */}
-                    <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 16 }}>Button Position</div>
+                    <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 16 }}>{t('Button Position', 'Configurations')}</div>
                     <div>
                       {/* <Box style={{ display: 'flex', gap: 2 }}> */}
-                      <RadioButton label="Top Left" checked={collectionsButtonPosition === "top-left"} id="collections-top-left" name="collectionsButtonPosition" onChange={() => { setCollectionsButtonPosition("top-left"); markUnsaved(); }} disabled={!collectionsEnabled} />
+                      <RadioButton label={t('Top Left', 'Configurations')} checked={collectionsButtonPosition === "top-left"} id="collections-top-left" name="collectionsButtonPosition" onChange={() => { setCollectionsButtonPosition("top-left"); markUnsaved(); }} disabled={!collectionsEnabled} />
                       <Box style={{}}>
-                        <RadioButton label="Top Right" checked={collectionsButtonPosition === "top-right"} id="collections-top-right" name="collectionsButtonPosition" onChange={() => { setCollectionsButtonPosition("top-right"); markUnsaved(); }} disabled={!collectionsEnabled} />
+                        <RadioButton label={t('Top Right', 'Configurations')} checked={collectionsButtonPosition === "top-right"} id="collections-top-right" name="collectionsButtonPosition" onChange={() => { setCollectionsButtonPosition("top-right"); markUnsaved(); }} disabled={!collectionsEnabled} />
                       </Box>
                       {/* </Box> */}
                       {/* <br /> */}
                       {/* <Box style={{ display: 'flex', gap: 2 }}> */}
-                      <RadioButton label="Bottom Left" checked={collectionsButtonPosition === "bottom-left"} id="collections-bottom-left" name="collectionsButtonPosition" onChange={() => { setCollectionsButtonPosition("bottom-left"); markUnsaved(); }} disabled={!collectionsEnabled} />
+                      <RadioButton label={t('Bottom Left', 'Configurations')} checked={collectionsButtonPosition === "bottom-left"} id="collections-bottom-left" name="collectionsButtonPosition" onChange={() => { setCollectionsButtonPosition("bottom-left"); markUnsaved(); }} disabled={!collectionsEnabled} />
                       <Box style={{}}>
-                        <RadioButton label="Bottom Right" checked={collectionsButtonPosition === "bottom-right"} id="collections-bottom-right" name="collectionsButtonPosition" onChange={() => { setCollectionsButtonPosition("bottom-right"); markUnsaved(); }} disabled={!collectionsEnabled} />
+                        <RadioButton label={t('Bottom Right', 'Configurations')} checked={collectionsButtonPosition === "bottom-right"} id="collections-bottom-right" name="collectionsButtonPosition" onChange={() => { setCollectionsButtonPosition("bottom-right"); markUnsaved(); }} disabled={!collectionsEnabled} />
                       </Box>
                       {/* </Box> */}
                     </div>
@@ -879,89 +908,85 @@ export default function ManageConfiguration() {
                 {activeTab === "wishlist" && (
                   <>
                     {/* Appearance Section */}
-                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 18 }}>Appearance</div>
+
+                    <div style={{ marginBottom: 16, marginTop: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>{t('Page Title', 'Configurations')}</div>
+                      <TextField
+                        value={wishlistPageTitle}
+                        onChange={val => { setWishlistPageTitle(val); markUnsaved(); }}
+                        autoComplete="off"
+                        placeholder={t('My Wishlist')}
+                        style={{
+                          width: '100%',
+                          borderRadius: 12,
+                          border: '1.5px solid #bfc5c9',
+                          boxShadow: 'none',
+                          fontSize: 16,
+                          padding: '8px 14px',
+                          background: '#fff',
+                        }}
+                      />
+                    </div>
                     <Box style={{ marginTop: 10, marginBottom: 10 }}>
-                          <Divider />
-                        </Box>
-                                          {/* Text Color */}
-                                          <div style={{ display: 'flex', alignItems: 'center', gap: 55, marginTop: 0, marginBottom: 0 }}>
-                        <span style={{ minWidth: 120, fontSize: 13 }}>Text Color</span>
-                        <ColorPopover color={textColor} setColor={c => { setTextColor(c); markUnsaved(); }} active={textColorPopoverActive} setActive={setTextColorPopoverActive} />
-                      </div>
-                        <Box style={{ marginTop: 10, marginBottom: 10 }}>
-                          <Divider />
-                        </Box>
+                      <Divider />
+                    </Box>
+                    {/* Text Color */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 55, marginTop: 0, marginBottom: 0 }}>
+                      <span style={{ minWidth: 120, fontSize: 13 }}>{t('Text Color', 'Configurations')}</span>
+                      <ColorPopover color={textColor} setColor={c => { setTextColor(c); markUnsaved(); }} active={textColorPopoverActive} setActive={setTextColorPopoverActive} />
+                    </div>
+                    <Box style={{ marginTop: 10, marginBottom: 10 }}>
+                      <Divider />
+                    </Box>
                     <div style={{ marginBottom: 15, marginTop: 10 }}>
-                      <div style={{ alignItems: 'center', gap: 28, marginBottom: 10 }}>
-                        <span style={{ fontSize: 15, fontWeight: 600, minWidth: 60 }}>Type</span>
-                        <div style={{ display: 'flex', gap: 28, marginTop: 10 }}>
-                          <RadioButton label="Side Drawer" checked={wishlistType === "drawer"} id="wishlist-drawer" name="wishlistType" onChange={() => { setWishlistType("drawer"); markUnsaved(); }} />
-                          <RadioButton label="Separate Page" checked={wishlistType === "page"} id="wishlist-page" name="wishlistType" onChange={() => { setWishlistType("page"); markUnsaved(); }} />
-                          <RadioButton label="Pop-up Modal" checked={wishlistType === "modal"} id="wishlist-modal" name="wishlistType" onChange={() => { setWishlistType("modal"); markUnsaved(); }} />
+                      <div style={{ marginBottom: 10 }}>
+                        <span style={{ fontSize: 15, fontWeight: 600, minWidth: 60 }}>{t('Type', 'Configurations')}</span>
+                        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <RadioButton label={t('Side Drawer', 'Configurations')} checked={wishlistType === "drawer"} id="wishlist-drawer" name="wishlistType" onChange={() => { setWishlistType("drawer"); markUnsaved(); }} />
+                          <RadioButton label={t('Separate Page', 'Configurations')} checked={wishlistType === "page"} id="wishlist-page" name="wishlistType" onChange={() => { setWishlistType("page"); markUnsaved(); }} />
+                          <RadioButton label={t('Pop-up Modal', 'Configurations')} checked={wishlistType === "modal"} id="wishlist-modal" name="wishlistType" onChange={() => { setWishlistType("modal"); markUnsaved(); }} />
                         </div>
                       </div>
                       <Box style={{ marginTop: 10, marginBottom: 10 }}>
                         <Divider />
                       </Box>
-                      {/* Page Title Field */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 80, marginBottom: 16, marginTop: 0, maxWidth: 420 }}>
-                        <span style={{ minWidth: 90, fontSize: 14 }}>Page Title</span>
-                        <TextField
-                          value={wishlistPageTitle}
-                          onChange={val => { setWishlistPageTitle(val); markUnsaved(); }}
-                          autoComplete="off"
-                          placeholder="My Wishlist"
-                          style={{
-                            width: '100%',
-                            borderRadius: 12,
-                            border: '1.5px solid #bfc5c9',
-                            boxShadow: 'none',
-                            fontSize: 16,
-                            padding: '8px 14px',
-                            background: '#fff',
-                          }}
-                        />
-                        </div>
-                    </div>
-                    
-                    {/* Alignment section appears only if Side Drawer is selected */}
-                      {/* Debug: wishlistType = {wishlistType} */}
                       {wishlistType === "drawer" && (
                         <div style={{ alignItems: 'center', marginTop: 12, marginBottom: 12, display: 'block' }}>
-                          <Box style={{ marginTop: 10, marginBottom: 10 }}>
-                            <Divider />
-                          </Box>
-                          <div style={{ fontWeight: 600, fontSize: 15, minWidth: 110 }}>Side Drawer Alignment</div>
+                          {/* <div style={{ fontWeight: 600, fontSize: 15, minWidth: 110 }}>Side Drawer Alignment</div> */}
 
-                          <div style={{ display: 'flex', gap: 24, marginTop: 10 }}>
+                          <div style={{ marginTop: 10 }}>
                             <RadioButton
-                              label="Left"
+                              label={t('Left')}
                               checked={drawerAlignment === "left"}
                               name="drawerAlignment"
                               id="drawerAlignmentLeft"
                               onChange={() => { setDrawerAlignment("left"); markUnsaved(); }}
                             />
+                            <br />
                             <RadioButton
-                              label="Right"
+                              label={t('Right')}
                               checked={drawerAlignment === "right"}
                               name="drawerAlignment"
                               id="drawerAlignmentRight"
                               onChange={() => { setDrawerAlignment("right"); markUnsaved(); }}
                             />
-                      </div>
+                          </div>
+                          <Box style={{ marginTop: 10, marginBottom: 10 }}>
+                            <Divider />
+                          </Box>
                         </div>
+
                       )}
 
-                    <Box style={{ marginTop: 20, marginBottom: 20 }}>
-                      <Divider />
-                    </Box>
-                    {/* Launch From Section */}
 
-                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 16, marginTop: 10 }}>Launch From</div>
-                    <div style={{ display: 'flex', gap: 28, marginBottom: 10 }}>
-                      <RadioButton label="Header" checked={wishlistLaunchFrom === "header"} id="wishlist-header" name="wishlistLaunchFrom" onChange={() => { setWishlistLaunchFrom("header"); markUnsaved(); }} />
-                      <RadioButton label="Floating Button" checked={wishlistLaunchFrom === "floating"} id="wishlist-floating" name="wishlistLaunchFrom" onChange={() => { setWishlistLaunchFrom("floating"); markUnsaved(); }} />
-                      <RadioButton label="Navigation Menu" checked={wishlistLaunchFrom === "menu"} id="wishlist-menu" name="wishlistLaunchFrom" onChange={() => { setWishlistLaunchFrom("menu"); markUnsaved(); }} />
+
+                    </div>
+
+                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 16, marginTop: 10 }}>{t('Launch From', 'Configurations')}</div>
+                    <div style={{ marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <RadioButton label={t('Header', 'Configurations')} checked={wishlistLaunchFrom === "header"} id="wishlist-header" name="wishlistLaunchFrom" onChange={() => { setWishlistLaunchFrom("header"); markUnsaved(); }} />
+                      <RadioButton label={t('Floating Button', 'Configurations')} checked={wishlistLaunchFrom === "floating"} id="wishlist-floating" name="wishlistLaunchFrom" onChange={() => { setWishlistLaunchFrom("floating"); markUnsaved(); }} />
+                      <RadioButton label={t('Navigation Menu', 'Configurations')} checked={wishlistLaunchFrom === "menu"} id="wishlist-menu" name="wishlistLaunchFrom" onChange={() => { setWishlistLaunchFrom("menu"); markUnsaved(); }} />
                     </div>
 
                     {wishlistLaunchFrom === 'menu' && (
@@ -980,65 +1005,58 @@ export default function ManageConfiguration() {
                         <div style={{ background: '#b6e0fe', borderRadius: 6, width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
                           <PolarisIcon source={InfoIcon} color="base" />
                         </div>
-                        <span style={{ flex: 1, fontSize: 15, color: '#222' }}>This needs to be set up manually</span>
+                        <span style={{ flex: 1, fontSize: 15, color: '#222' }}>{t('This needs to be set up manually', 'Configurations')}</span>
                         <button style={{ border: '1px solid #e3e3e3', background: '#f7f7f7', borderRadius: 6, padding: '4px 10px', fontWeight: 500, fontSize: 14, color: '#222', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                          <PolarisIcon source={BookOpenIcon} color="base" /> Help
+                          <PolarisIcon source={BookOpenIcon} color="base" /> {t('Help', 'Configurations')}
                         </button>
                       </div>
                     )}
                     {activeTab === 'wishlist' && wishlistLaunchFrom === 'floating' && (
                       <>
-                        <Divider style={{ margin: '24px 0' }} />
-                        <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 16, marginTop: 10 }}>Floating Button</div>
-                        <div
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: '160px 1fr',
-                            alignItems: 'center',
-                            gap: 18,
-                            marginBottom: 18,
-                            maxWidth: 420,
-                          }}
-                        >
-                          <span style={{  minWidth: 120, fontSize: 13  }}>Position</span>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, maxWidth: 320 }}>
-                              <RadioButton
-                                label="Left"
-                                checked={floatingButtonPosition === 'left'}
-                                name="floatingButtonPosition"
-                                id="floatingButtonPositionLeft"
-                                onChange={() => { setFloatingButtonPosition('left'); markUnsaved(); }}
-                              />
-                                <RadioButton
-                                  label="Right"
-                                  checked={floatingButtonPosition === 'right'}
-                                  name="floatingButtonPosition"
-                                  id="floatingButtonPositionRight"
-                                  onChange={() => { setFloatingButtonPosition('right'); markUnsaved(); }}
-                                />
-                              <RadioButton
-                                label="Bottom Left"
-                                checked={floatingButtonPosition === 'bottom-left'}
-                                name="floatingButtonPosition"
-                                id="floatingButtonPositionBottomLeft"
-                                onChange={() => { setFloatingButtonPosition('bottom-left'); markUnsaved(); }}
-                              />
-                                <RadioButton
-                                  label="Bottom Right"
-                                  checked={floatingButtonPosition === 'bottom-right'}
-                                  name="floatingButtonPosition"
-                                  id="floatingButtonPositionBottomRight"
-                                  onChange={() => { setFloatingButtonPosition('bottom-right'); markUnsaved(); }}
-                                />
+                        <Box style={{ marginTop: 20, marginBottom: 20 }}>
+                          <Divider />
+                        </Box>
+
+                        <div style={{ marginBottom: 18 }}>
+                          <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>{t('Position', 'Configurations')}</div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            <RadioButton
+                              label={t('Left', 'Configurations')}
+                              checked={floatingButtonPosition === 'left'}
+                              name="floatingButtonPosition"
+                              id="floatingButtonPositionLeft"
+                              onChange={() => { setFloatingButtonPosition('left'); markUnsaved(); }}
+                            />
+                            <RadioButton
+                              label={t('Right', 'Configurations')}
+                              checked={floatingButtonPosition === 'right'}
+                              name="floatingButtonPosition"
+                              id="floatingButtonPositionRight"
+                              onChange={() => { setFloatingButtonPosition('right'); markUnsaved(); }}
+                            />
+                            <RadioButton
+                              label={t('Bottom Left', 'Configurations')}
+                              checked={floatingButtonPosition === 'bottom-left'}
+                              name="floatingButtonPosition"
+                              id="floatingButtonPositionBottomLeft"
+                              onChange={() => { setFloatingButtonPosition('bottom-left'); markUnsaved(); }}
+                            />
+                            <RadioButton
+                              label={t('Bottom Right', 'Configurations')}
+                              checked={floatingButtonPosition === 'bottom-right'}
+                              name="floatingButtonPosition"
+                              id="floatingButtonPositionBottomRight"
+                              onChange={() => { setFloatingButtonPosition('bottom-right'); markUnsaved(); }}
+                            />
                           </div>
                         </div>
-                        <Box style={{ marginTop: 10, marginBottom: 10}}>
+                        <Box style={{ marginTop: 10, marginBottom: 10 }}>
                           <Divider />
-                              </Box>
+                        </Box>
 
                         {/* Floating Button Corner Radius Field */}
-                        <div style={{ marginBottom: 16, maxWidth: 350 }}>
-                          <span style={{  minWidth: 120, fontSize: 13 , display: 'block', marginBottom: 8 }}>Corner Radius</span>
+                        <div style={{ marginBottom: 16 }}>
+                          <span style={{ minWidth: 120, fontSize: 13, display: 'block', marginBottom: 8 }}>{t('Corner Radius', 'Configurations')}</span>
                           <RangeSlider
                             min={0}
                             max={24}
@@ -1048,57 +1066,13 @@ export default function ManageConfiguration() {
                             output
                           />
                         </div>
-                        <Box style={{ marginTop: 10, marginBottom: 10}}>
-                          <Divider />
-                        </Box>
-                        {/* Floating Button Primary Color Field */}
-                        <div style={{
-                          display: 'grid',
-                          gridTemplateColumns: '120px 1fr',
-                          alignItems: 'center',
-                          gap: 8,
-                          marginBottom: 16,
-                          maxWidth: 350
-                        }}>
-                          <span style={{  minWidth: 120, fontSize: 13  }}>Primary Color</span>
-                          <Box style={{ marginLeft: 50 }}>
-                            <ColorPopover
-                              color={floatingButtonPrimaryColor}
-                              setColor={c => { setFloatingButtonPrimaryColor(c); markUnsaved(); }}
-                              active={floatingPrimaryPopoverActive}
-                              setActive={setFloatingPrimaryPopoverActive}
-                            />
-                            </Box>
-                          </div>
                         <Box style={{ marginTop: 10, marginBottom: 10 }}>
                           <Divider />
                         </Box>
-                        {/* Floating Button Secondary Color Field */}
-                        <div style={{
-                          display: 'grid',
-                          gridTemplateColumns: '120px 1fr',
-                          alignItems: 'center',
-                          gap: 8,
-                          marginBottom: 16,
-                          maxWidth: 350
-                        }}>
 
-                          <span style={{  minWidth: 120, fontSize: 13  }}>Secondary Color</span>
-                          <Box style={{ marginLeft: 50 }}>
-                            <ColorPopover
-                              color={floatingButtonSecondaryColor}
-                              setColor={c => { setFloatingButtonSecondaryColor(c); markUnsaved(); }}
-                              active={floatingSecondaryPopoverActive}
-                              setActive={setFloatingSecondaryPopoverActive}
-                            />
-                          </Box>
-                        </div>
-                        <Box style={{ marginTop: 10, marginBottom: 10 }}>
-                          <Divider />
-                        </Box>
 
                         <Checkbox
-                          label="Show count"
+                          label={t('Show Count', 'Configurations')}
                           checked={showCount}
                           onChange={() => { setShowCount(!showCount); markUnsaved(); }}
                         />
@@ -1108,13 +1082,13 @@ export default function ManageConfiguration() {
                     )}
                     <br />
                     <Box style={{ marginTop: 10, marginBottom: 10 }}>
-                    <Divider />
+                      <Divider />
                     </Box>
                     {/* Other Settings Section */}
 
-                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 16, marginTop: 15 }}>Other Settings</div>
+                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 16, marginTop: 15 }}>{t('Other Settings', 'Configurations')}</div>
                     <Checkbox
-                      label="Allow shoppers to Share Wishlist"
+                      label={t('Allow shoppers to Share Wishlist', 'Configurations')}
                       checked={wishlistShareEnabled}
                       onChange={val => { setWishlistShareEnabled(val); markUnsaved(); }}
                     />
@@ -1124,9 +1098,9 @@ export default function ManageConfiguration() {
                 {activeTab === 'cart' && (
                   <>
 
-                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 18 }}>Save for later pop-up</div>
+                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 18 }}>{t('Save for later pop-up', 'Configurations')}</div>
                     <Checkbox
-                      label="Allow shoppers to save items before removing them from the cart"
+                      label={t('Allow shoppers to save items', 'Configurations')}
                       checked={saveForLaterEnabled}
                       onChange={val => { setSaveForLaterEnabled(val); markUnsaved(); }}
                       style={{ marginBottom: 18 }}
@@ -1135,12 +1109,12 @@ export default function ManageConfiguration() {
                       <Divider />
                     </Box>
                     <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16, maxWidth: 600, marginTop: 10, }}>
-                      <div style={{ fontWeight: 500, minWidth: 150, marginRight: 18 }}>Pop-up title</div>
+                      <div style={{ fontWeight: 500, minWidth: 150, marginRight: 18 }}>{t('Pop-up title', 'Configurations')}</div>
                       <div style={{ flex: 1 }}>
                         <TextField
                           value={saveForLaterTitle}
                           onChange={val => { setSaveForLaterTitle(val); markUnsaved(); }}
-                          placeholder="Do you want to save this product for later?"
+                          placeholder={t('Do you want to save this product for later?', 'Configurations')}
                           autoComplete="off"
                           style={{ width: '100%' }}
                           disabled={!saveForLaterEnabled}
@@ -1151,12 +1125,12 @@ export default function ManageConfiguration() {
                       <Divider />
                     </Box>
                     <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16, maxWidth: 600, marginTop: 10, }}>
-                      <div style={{ fontWeight: 500, minWidth: 150, marginRight: 18 }}>Primary button text</div>
+                      <div style={{ fontWeight: 500, minWidth: 150, marginRight: 18 }}>{t('Primary button text', 'Configurations')}</div>
                       <div style={{ flex: 1 }}>
                         <TextField
                           value={saveForLaterPrimary}
                           onChange={val => { setSaveForLaterPrimary(val); markUnsaved(); }}
-                          placeholder="Save For later"
+                          placeholder={t('Save For later', 'Configurations')}
                           autoComplete="off"
                           style={{ width: '100%' }}
                           disabled={!saveForLaterEnabled}
@@ -1167,12 +1141,12 @@ export default function ManageConfiguration() {
                       <Divider />
                     </Box>
                     <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16, marginTop: 10, maxWidth: 600 }}>
-                      <div style={{ fontWeight: 500, minWidth: 150, marginRight: 18 }}>Secondary button text</div>
+                      <div style={{ fontWeight: 500, minWidth: 150, marginRight: 18 }}>{t('Secondary button text', 'Configurations')}</div>
                       <div style={{ flex: 1 }}>
                         <TextField
                           value={saveForLaterSecondary}
                           onChange={val => { setSaveForLaterSecondary(val); markUnsaved(); }}
-                          placeholder="No, thanks!"
+                          placeholder={t('No, thanks!', 'Configurations')}
                           autoComplete="off"
                           style={{ width: '100%' }}
                           disabled={!saveForLaterEnabled}
@@ -1182,10 +1156,10 @@ export default function ManageConfiguration() {
                     <Box style={{ marginTop: 20, marginBottom: 20 }}>
                       <Divider />
                     </Box>
-                    <div style={{ fontWeight: 500, marginBottom: 6 ,fontSize: 15}}>Permission</div>
+                    <div style={{ fontWeight: 500, marginBottom: 6, fontSize: 15 }}>{t('Permission', 'Configurations')}</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12, marginTop: 10, }}>
                       <RadioButton
-                        label="Ask the shopper if they want to see the pop-up again"
+                        label={t('Ask the shopper if they want to see the pop-up again', 'Configurations')}
                         checked={saveForLaterPermission === 'ask'}
                         id="saveforlater-permission-ask"
                         name="saveforlater-permission"
@@ -1193,7 +1167,7 @@ export default function ManageConfiguration() {
                         disabled={!saveForLaterEnabled}
                       />
                       <RadioButton
-                        label="Always show the pop-up"
+                        label={t('Always show the pop-up','Configurations')}
                         checked={saveForLaterPermission === 'always'}
                         id="saveforlater-permission-always"
                         name="saveforlater-permission"
@@ -1248,12 +1222,10 @@ export default function ManageConfiguration() {
                   showCount={showCount}
                   buttonSize={buttonSize}
                   iconThickness={buttonType === 'icon' || buttonType === 'icon-text' ? iconThickness : undefined}
-                  previewWidth={activeTab === 'wishlist' ? 620 : undefined}
+                  previewWidth={activeTab === 'wishlist' ? 610 : undefined}
                   drawerAlignment={drawerAlignment}
                   floatingButtonCornerRadius={floatingButtonCornerRadius}
                   textColor={textColor}
-                  floatingButtonPrimaryColor={floatingButtonPrimaryColor}
-                  floatingButtonSecondaryColor={floatingButtonSecondaryColor}
                 />
               </div>
             </div>
@@ -1284,7 +1256,7 @@ export default function ManageConfiguration() {
       `}</style>
           <style>{`
   @media (min-width: 901px) {
-    body { overflow: hidden !important; }
+    body { overflow: auto !important; }
   }
 `}</style>
         </>

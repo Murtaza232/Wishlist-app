@@ -11,7 +11,7 @@ class WishlistConfigurationController extends HelperController
 {
     public function store(Request $request)
     {
-       // Get the Session model for the shop
+      
         $shopSession = $this->getShop($request);
         if (!$shopSession) {
             return response()->json([
@@ -35,8 +35,8 @@ class WishlistConfigurationController extends HelperController
             'primary_color' => 'nullable|string',
             'secondary_color' => 'nullable|string',
             'icon_type' => 'nullable|in:heart,star,bookmark',
-            'btn_position_on_product_page' => 'nullable|in:above_cart,below_cart,left_of_cart,right_of_cart',
-            'btn_position_on_product_image' => 'nullable|in:top_left,top_right,bottom_left,bottom_right',
+            'button_position_tab' => 'nullable|in:near_cart,product_image',
+            'btn_position_on_product_page' => 'nullable|in:above_cart,below_cart,left_of_cart,right_of_cart,top_left,top_right,bottom_left,bottom_right',
             'btn_type_product_page' => 'nullable|in:icon_and_text,only_icon,only_text',
             'appearance_btn_product_page' => 'nullable|in:solid,outline,plain',
             'btn_text_product_page_toggle' => 'nullable|in:before_click,after_click',
@@ -61,10 +61,9 @@ class WishlistConfigurationController extends HelperController
             'floating_btn_position' => 'nullable|in:left,right,bottom-left,bottom-right',
             'button_size_product_page' => 'nullable|integer',
             'icon_thickness_product_page' => 'nullable|integer',
-            'floating_btn_primary_color' => 'nullable|string',
-            'floating_btn_secondary_color' => 'nullable|string',
             'floating_btn_corner_radius' => 'nullable|integer',
             'text_color' => 'nullable|string',
+           
         ]);
         $data = $validated;
         $data['shop_id'] = $session->id;
@@ -205,6 +204,7 @@ class WishlistConfigurationController extends HelperController
   }
 }';
             $productResponse = $api->graph($productQuery);
+
             $products = $productResponse['body']['data']['products']['nodes'] ?? [];
             $productHandle = (!empty($products) && !empty($products[0]['handle'])) ? $products[0]['handle'] : null;
 
@@ -233,7 +233,9 @@ class WishlistConfigurationController extends HelperController
     //     }
     //     $activeTheme = $this->getActiveTheme($request);
     //     if(!$activeTheme){
-    //         return response()->json(['error' => 'No active theme found.'], 400);
+    //         return response()->json(['error' =
+    // 
+    // > 'No active theme found.'], 400);
     //     }
     //  $shopHandle= str_replace('.myshopify.com', '', $shopDomain->shop);
     //  $themeId = str_replace('gid://shopify/OnlineStoreTheme/', '', $activeTheme);
@@ -413,7 +415,7 @@ class WishlistConfigurationController extends HelperController
         }
         
         $productCardClasses = [
-            'card__inner', 'product-card', 'card', 'product-grid-item', 'grid__item', 'product-item',
+            'product-media-container', 'media-type-image','media-fit-contain', 'product-card', 'card', 'product-grid-item', 'grid__item', 'product-item',
             'product-grid', 'product-list', 'product-box', 'product-container', 'media-wrapper',
             'image-wrapper', 'product-card__container', 'product-card__main', 'product-card-wrapper',
             'card-wrapper', 'card--standard', 'card--media', 'product-card__info'
@@ -458,5 +460,140 @@ class WishlistConfigurationController extends HelperController
             'success' => true,
             'data' => $config,
         ]);
+    }
+    public function hello(){
+        return 'hello';
+    }
+
+    public function getExtensionStatus(Request $request)
+    {
+        $shopSession = $this->getShop($request);
+        if (!$shopSession) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Shop domain is required.'
+            ], 400);
+        }
+
+        $session = Session::where('shop', $shopSession->shop)
+            ->whereNotNull('access_token')
+            ->first();
+
+        if (!$session) {
+            return response()->json([
+                'status' => false,
+                'message' => 'No valid access token for this shop.'
+            ], 400);
+        }
+
+        try {
+            // Check if the extension is enabled by making a request to the store front
+            $shopDomain = $session->shop;
+            $app_status = false;
+            
+            // Try multiple pages to find the extension
+            $pages_to_check = [
+                'https://' . $shopDomain,
+                'https://' . $shopDomain . '/products',
+                'https://' . $shopDomain . '/collections'
+            ];
+            
+            $checked_pages = [];
+            
+            foreach ($pages_to_check as $url) {
+                $ch = curl_init();
+                $timeout = 10; // Increased timeout
+                curl_setopt($ch, CURLOPT_URL, $url);
+                curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
+                curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                    'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Accept-Language: en-US,en;q=0.5',
+                    'Cache-Control: no-cache',
+                    'Pragma: no-cache'
+                ]);
+                $data_file = curl_exec($ch);
+                $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+                
+                $page_checked = [
+                    'url' => $url,
+                    'http_code' => $http_code,
+                    'response_length' => strlen($data_file),
+                    'contains_id' => str_contains($data_file, 'wishlist-extension-status-detector'),
+                    'contains_class' => str_contains($data_file, 'wishlist-extension-enabled'),
+                    'contains_wishlist' => str_contains($data_file, 'wishlist'),
+                    'contains_extension' => str_contains($data_file, 'extension'),
+                    'contains_div' => str_contains($data_file, '<div'),
+                    'contains_comment' => str_contains($data_file, '<!--'),
+                    'contains_unique_comment' => str_contains($data_file, 'Unique div to detect if extension is enabled'),
+                    'sample_content' => substr($data_file, 0, 1000), // First 1000 chars to see what we're getting
+                    'full_response_preview' => substr($data_file, 0, 2000) // First 2000 chars for better debugging
+                ];
+                
+                $checked_pages[] = $page_checked;
+                
+                // Check if our unique div exists in the HTML
+                if (str_contains($data_file, 'wishlist-extension-status-detector') || 
+                    str_contains($data_file, 'wishlist-extension-enabled') ||
+                    str_contains($data_file, 'wishlist-extension-status-detector') ||
+                    str_contains($data_file, 'Unique div to detect if extension is enabled')) {
+                    $app_status = true;
+                    break; // Found it, no need to check other pages
+                }
+            }
+            
+            // Check if store is showing "Coming Soon" page
+            $is_coming_soon = false;
+            if (str_contains($data_file, 'Coming Soon') || 
+                str_contains($data_file, 'ShopifySans') ||
+                str_contains($data_file, 'cdn.shopify.com/shopify-marketing_assets')) {
+                $is_coming_soon = true;
+            }
+            
+            // Debug: Let's see what we're actually getting
+            $debug_info = [
+                'shop_domain' => $shopDomain,
+                'app_status' => $app_status,
+                'checked_pages' => $checked_pages,
+                'total_pages_checked' => count($checked_pages),
+                'is_coming_soon' => $is_coming_soon,
+                'store_status' => $is_coming_soon ? 'Coming Soon/Password Protected' : 'Published',
+                'search_strings' => [
+                    'wishlist-extension-status-detector',
+                    'wishlist-extension-enabled'
+                ]
+            ];
+            
+            // If store is coming soon, we can't check the extension status via DOM
+            if ($is_coming_soon) {
+                return response()->json([
+                    'status' => true,
+                    'extension_enabled' => false,
+                    'message' => 'Store is in Coming Soon mode. Extension status cannot be determined via DOM check.',
+                    'debug' => $debug_info
+                ]);
+            }
+            
+            return response()->json([
+                'status' => true,
+                'extension_enabled' => $app_status,
+                'message' => $app_status ? 'Extension is enabled in store front' : 'Extension is not enabled in store front',
+                'debug' => $debug_info
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Error checking extension status: ' . $e->getMessage(),
+                'extension_enabled' => false
+            ], 500);
+        }
     }
 }

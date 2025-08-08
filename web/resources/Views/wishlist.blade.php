@@ -293,6 +293,12 @@
 </div>
 
 <script>
+// Injected from backend
+window.customerId = @json($customerId ?? '');
+window.wishlistId = @json($wishlistId ?? '');
+window.shopDomain = @json(request()->get('shop') ?? (isset($shopData['shop']) ? $shopData['shop'] : ''));
+</script>
+<script>
 document.addEventListener('DOMContentLoaded', function() {
     // Get layout elements
     var modal = document.getElementById('wishlistModal');
@@ -314,9 +320,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             // Debug: Log the metafields
-            console.log('All metafields:', metafields);
-            console.log('wishlist_page_appearance:', metafields['wishlist_page_appearance']);
-            console.log('wishlist_drawer_appearance:', metafields['wishlist_drawer_appearance']);
+          
 
             var appearance = metafields['wishlist_page_appearance'] || 'separate_page';
             var drawerAppearance = metafields['wishlist_drawer_appearance'] || 'left';
@@ -367,7 +371,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Show the correct layout
             if (appearance === 'side_drawer') {
                 // Use the drawer appearance setting from metafields
-                console.log('Setting drawer position:', drawerAppearance);
+             
                 drawer.classList.remove('drawer-left', 'drawer-right');
                 drawer.classList.add('drawer-' + drawerAppearance);
                 drawer.style.display = 'block';
@@ -395,8 +399,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(function(error) {
-            console.error("Error fetching wishlist settings:", error);
-            // If API fails, show the default 'page' layout as a fallback.
             page.style.display = 'block';
         });
 
@@ -478,6 +480,33 @@ document.addEventListener('click', function(e) {
 });
 function shareWishlist() {
     const url = window.location.href;
+    const customerId = window.customerId;
+    const wishlistId = window.wishlistId;
+    const shop = window.shopDomain;
+
+    // 1. Trigger the backend email
+    if (customerId && wishlistId && shop) {
+        fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist/share', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                customer_id: customerId,
+                wishlist_id: wishlistId,
+                shop: shop
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            // Optionally show a message to the user
+            if (data.status) {
+                console.log('Wishlist shared email sent!');
+            } else {
+                console.log('Failed to send wishlist shared email.');
+            }
+        });
+    }
+
+    // 2. Continue with the original share logic
     if (navigator.share) {
         navigator.share({
             title: document.title,

@@ -18,14 +18,10 @@ class CreateWishlistConfigurationsTable extends Migration
             $table->string('primary_color')->nullable();
             $table->string('secondary_color')->nullable();
             $table->enum('icon_type', ['heart', 'star', 'bookmark'])->nullable();
-            $table->boolean('has_near_cart_tab')->default(true);
-            $table->boolean('has_on_product_image_tab')->default(true);
+            $table->enum('button_position_tab', ['near_cart', 'product_image'])->nullable();
             $table->enum('btn_position_on_product_page', [
-                'above_cart', 'below_cart', 'left_of_cart', 'right_of_cart',
-            ])->nullable();
-            $table->enum('btn_position_on_product_image', [
-                'top_left', 'top_right', 'bottom_left', 'bottom_right'
-            ])->nullable();
+                'above_cart', 'below_cart', 'left_of_cart', 'right_of_cart', 'top_left', 'top_right', 'bottom_left', 'bottom_right',
+            ])->nullable(); // Only one position should be set at a time (enforced in backend)
             $table->enum('btn_type_product_page', ['icon_and_text', 'only_icon', 'only_text'])->nullable();
             $table->enum('appearance_btn_product_page', ['solid', 'outline','plain'])->nullable();
             // Button text fields

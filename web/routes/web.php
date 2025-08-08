@@ -149,4 +149,12 @@ Route::post('/api/webhooks', function (Request $request) {
 
 // Wishlist API routes
 
+// Serve notification images
+
+// Shopify product webhooks
+Route::post('/webhook/shopify/product/create', [\App\Http\Controllers\ShopifyProductWebhookController::class, 'productCreate']);
+Route::post('/webhook/shopify/product/update', [\App\Http\Controllers\ShopifyProductWebhookController::class, 'productUpdate']);
+Route::post('/webhook/shopify/product/delete', [\App\Http\Controllers\ShopifyProductWebhookController::class, 'productDelete']);
+
+
 

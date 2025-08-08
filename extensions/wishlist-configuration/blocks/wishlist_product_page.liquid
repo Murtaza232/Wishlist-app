@@ -1,5 +1,3 @@
-{% render 'smart-save' %}
-
 <button
   type="button"
   class="wishlist-add-btn"
@@ -195,17 +193,17 @@
 <script>
 function getWishlistIconSvgOrImg(iconType, customIcon, iconColor, iconThickness, size) {
   if (customIcon && customIcon.trim() !== '') {
-    console.log('[WISHLIST] Using custom icon from extension settings:', customIcon);
+   
     return '<img src="' + customIcon + '" alt="Wishlist Icon" style="width:' + size + 'px;height:' + size + 'px;object-fit:contain;" />';
   }
   if (iconType === "star") {
-    console.log('[WISHLIST] Using metafield icon: star');
+   
     return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="${iconThickness}" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
   } else if (iconType === "bookmark") {
-    console.log('[WISHLIST] Using metafield icon: bookmark');
+   
     return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="${iconThickness}" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
   } else if (iconType === "heart") {
-    console.log('[WISHLIST] Using metafield icon: heart');
+  
     return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="${iconThickness}" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/></svg>`;
   }
   return '';
@@ -292,12 +290,12 @@ document.addEventListener('DOMContentLoaded', function() {
           } else {
             selectorSource = 'metafield or default';
           }
-          console.log('[WISHLIST] Using selector:', normalizedSelector, 'Source:', selectorSource);
+         
           break;
         }
       }
       if (!cards.length) {
-        console.warn('No matching product selector found for wishlist button.');
+       
       }
       // --- END DYNAMIC SELECTOR LOGIC ---
       cards.forEach(function(card) {
@@ -434,8 +432,6 @@ document.addEventListener('DOMContentLoaded', function() {
                   });
                 }
               });
-          } else {
-            console.warn('Modal, select, or customerId not found!');
           }
           return false;
         });

@@ -11,18 +11,18 @@ function renderWishlistIconInCollectionCards(settings) {
   // --- DYNAMIC ICON LOGIC ---
   if (customIcon && customIcon.trim() !== '') {
     svg = '<img src="' + customIcon + '" alt="Wishlist Icon" style="width:' + buttonSize + 'px;height:' + buttonSize + 'px;object-fit:contain;" />';
-    console.log('[WISHLIST] Using custom icon from extension settings:', customIcon);
+    // console.log('[WISHLIST] Using custom icon from extension settings:', customIcon);
   } else if (iconType === "star") {
     svg = `<svg width="${buttonSize}" height="${buttonSize}" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="${iconThickness}" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
-    console.log('[WISHLIST] Using metafield icon: star');
+    // console.log('[WISHLIST] Using metafield icon: star');
   } else if (iconType === "bookmark") {
     svg = `<svg width="${buttonSize}" height="${buttonSize}" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="${iconThickness}" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
-    console.log('[WISHLIST] Using metafield icon: bookmark');
+    // console.log('[WISHLIST] Using metafield icon: bookmark');
   } else if (iconType === "heart") {
     svg = `<svg width="${buttonSize}" height="${buttonSize}" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="${iconThickness}" stroke-linecap="round" stroke-linejoin="round">
       <path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/>
     </svg>`;
-    console.log('[WISHLIST] Using metafield icon: heart');
+    // console.log('[WISHLIST] Using metafield icon: heart');
   }
   // --- END DYNAMIC ICON LOGIC ---
   var positionStyles = {
@@ -72,12 +72,12 @@ function renderWishlistIconInCollectionCards(settings) {
       } else if (i >= 2) {
         selectorSource = 'metafield or default';
       }
-      console.log('[WISHLIST] Using selector:', selector, 'Source:', selectorSource);
+      // console.log('[WISHLIST] Using selector:', selector, 'Source:', selectorSource);
       break;
     }
   }
   if (!cards.length) {
-    console.warn('No matching product selector found for wishlist icon.');
+    // console.warn('No matching product selector found for wishlist icon.');
   }
   cards.forEach(function(card) {
     // Try to set data-product-id if not present
@@ -389,9 +389,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
               } else {
                 productId = dataProductId;
-                console.warn('[WISHLIST] Could not map to numeric ID, using handle:', productId);
+                // console.warn('[WISHLIST] Could not map to numeric ID, using handle:', productId);
                 if (card) {
-                  console.debug('[WISHLIST] Card HTML for debugging:', card.outerHTML);
+                  // console.debug('[WISHLIST] Card HTML for debugging:', card.outerHTML);
                 }
               }
             }
