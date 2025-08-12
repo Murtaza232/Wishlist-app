@@ -217,6 +217,7 @@ class WishlistController extends HelperController
     }
     public function getWishlistProducts(Request $request)
     {
+        // dd($request->all());
         try {
             $customerId = $request->input('customer_id');
             Log::info('Fetching wishlist for customer ID: ' . $customerId);

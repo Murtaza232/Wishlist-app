@@ -164,7 +164,7 @@ class CustomerWebhookController extends Controller
             'total_spent' => $customerData['total_spent'] ?? 0.00,
             'orders_count' => $customerData['orders_count'] ?? 0,
             'status' => $customerData['state'] === 'enabled' ? 'active' : 'inactive',
-            'last_order_date' => $customerData['last_order_id'] ? date('Y-m-d H:i:s', strtotime($customerData['updated_at'])) : null,
+            // 'last_order_date' => $customerData['last_order_id'] ? date('Y-m-d H:i:s', strtotime($customerData['updated_at'])) : null,
             'created_at_shopify' => date('Y-m-d H:i:s', strtotime($customerData['created_at'])),
         ]);
 
@@ -188,7 +188,7 @@ class CustomerWebhookController extends Controller
             'total_spent' => $customerData['total_spent'] ?? 0.00,
             'orders_count' => $customerData['orders_count'] ?? 0,
             'status' => $customerData['state'] === 'enabled' ? 'active' : 'inactive',
-            'last_order_date' => $customerData['last_order_id'] ? date('Y-m-d H:i:s', strtotime($customerData['updated_at'])) : null,
+            // 'last_order_date' => $customerData['last_order_id'] ? date('Y-m-d H:i:s', strtotime($customerData['updated_at'])) : null,
         ]);
 
         Log::info('Customer updated from webhook: ' . $customer->id);

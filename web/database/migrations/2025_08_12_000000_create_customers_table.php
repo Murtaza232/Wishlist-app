@@ -28,7 +28,7 @@ return new class extends Migration
             $table->decimal('total_spent', 10, 2)->default(0.00);
             $table->integer('orders_count')->default(0);
             $table->string('status')->default('active');
-            $table->timestamp('last_order_date')->nullable();
+            // $table->timestamp('last_order_date')->nullable();
             $table->timestamp('created_at_shopify')->nullable();
             $table->timestamps();
             

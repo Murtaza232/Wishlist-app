@@ -3,7 +3,7 @@
 client_id = "9068cf8200dc7a986a7fe4d361fa5948"
 name = "murtaza"
 handle = "murtaza"
-application_url = "https://fleet-potentially-significantly-scanners.trycloudflare.com"
+application_url = "https://vampire-mi-stat-rr.trycloudflare.com"
 embedded = true
 
 [webhooks]
@@ -14,7 +14,7 @@ api_version = "2025-07"
 scopes = "read_customers,read_orders,read_products,read_themes,write_orders,write_products"
 
 [auth]
-redirect_urls = ["https://fleet-potentially-significantly-scanners.trycloudflare.com/auth/callback", "https://fleet-potentially-significantly-scanners.trycloudflare.com/auth/shopify/callback", "https://fleet-potentially-significantly-scanners.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://vampire-mi-stat-rr.trycloudflare.com/auth/callback", "https://vampire-mi-stat-rr.trycloudflare.com/auth/shopify/callback", "https://vampire-mi-stat-rr.trycloudflare.com/api/auth/callback"]
 
 [pos]
 embedded = false

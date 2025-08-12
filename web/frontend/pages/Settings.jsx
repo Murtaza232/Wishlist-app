@@ -61,12 +61,25 @@ export default function Settings() {
     const IconComponent = item.icon;
     
     return (
-      <div style={{ 
-        padding: '24px', 
-        cursor: 'pointer',
-        backgroundColor: 'white'
-      }} 
-      onClick={item.action}
+      <div 
+        style={{ 
+          padding: '28px 24px', 
+          cursor: 'pointer',
+          backgroundColor: 'white',
+          minHeight: '160px',
+          height: '100%',
+          boxSizing: 'border-box',
+          transition: 'all 0.2s ease',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          ':hover': {
+            backgroundColor: '#f9f9f9',
+            transform: 'translateY(-2px)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+          }
+        }}
+        onClick={item.action}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ 
@@ -143,22 +156,24 @@ export default function Settings() {
           <br />
           <span style={{ fontSize: 13, color: '#555', fontWeight: 400, maxWidth: 700, marginTop: 2 }}>{t('Settings subtitle', 'Settings')}</span>
         </div>
-        <Layout>
-          <Layout.Section>
-            <div style={{ 
-              padding: '0',
-              backgroundColor: 'white',
-            }}>
-              <Grid gap="none">
-                {settingsItems.map((item) => (
-                  <Grid.Cell columnSpan={{ xs: 6, sm: 4, md: 4, lg: 4, xl: 4 }} key={item.id}>
-                    <SettingCard item={item} />
-                  </Grid.Cell>
-                ))}
-              </Grid>
-            </div>
-          </Layout.Section>
-        </Layout>
+        <div style={{ width: '100%' }}>
+          <div style={{ 
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+            gap: '24px',
+            width: '100%',
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            overflow: 'hidden',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            {settingsItems.map((item) => (
+              <div key={item.id} style={{ width: '100%' }}>
+                <SettingCard item={item} />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </Frame>
   );

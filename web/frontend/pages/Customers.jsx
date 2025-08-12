@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { FiSearch, FiFilter, FiDownload, FiMoreVertical, FiRefreshCw, FiPlus } from 'react-icons/fi';
+import { FiSearch, FiFilter, FiDownload, FiMoreVertical, FiRefreshCw, FiPlus, FiChevronRight } from 'react-icons/fi';
+import { Link } from 'react-router-dom';
 import { BsThreeDotsVertical, BsArrowLeft, BsArrowRight } from 'react-icons/bs';
 import { useCustomers } from '../hooks';
+import { useLanguage } from '../components';
 
 const Customers = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [showStatusFilter, setShowStatusFilter] = useState(false);
+  const { t } = useLanguage();
   
   const {
     customers,
@@ -47,15 +50,15 @@ const Customers = () => {
   };
 
   // Handle customer deletion
-  const handleDeleteCustomer = async (customerId) => {
-    if (window.confirm('Are you sure you want to delete this customer?')) {
-      try {
-        await deleteCustomer(customerId);
-      } catch (error) {
-        console.error('Delete failed:', error);
-      }
-    }
-  };
+  // const handleDeleteCustomer = async (customerId) => {
+  //   if (window.confirm(t('Are you sure you want to delete this customer?', 'Customers'))) {
+  //     try {
+  //       await deleteCustomer(customerId);
+  //     } catch (error) {
+  //       console.error(t('Delete failed:', 'Customers'), error);
+  //     }
+  //   }
+  // };
 
   // Clear filters
   const clearFilters = () => {
@@ -68,8 +71,22 @@ const Customers = () => {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'PKR',
     }).format(amount || 0);
+  };
+
+  // Get status text
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'active':
+        return t('Active', 'Customers');
+      case 'inactive':
+        return t('Inactive', 'Customers');
+      case 'disabled':
+        return t('Disabled', 'Customers');
+      default:
+        return status;
+    }
   };
 
   // Format date
@@ -102,8 +119,8 @@ const Customers = () => {
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Customers</h1>
-            <p className="text-sm text-gray-500">Manage your store customers</p>
+            <h1 style={{ fontWeight: 600, fontSize: 20}}>{t('Customers', 'Sidebar Tabs')}</h1>
+            <p className="text-sm text-gray-500">{t('View your store customers', 'Customers')}</p>
           </div>
           <div className="flex space-x-3">
             <button 
@@ -112,18 +129,18 @@ const Customers = () => {
               className="px-4 py-2 border border-gray-300 rounded-lg flex items-center text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FiRefreshCw className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
-              {loading ? 'Syncing...' : 'Sync from Shopify'}
+              {loading ? t('Syncing...', 'Customers') : t('Sync from Shopify', 'Customers')}
             </button>
-            <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center">
+            {/* <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center">
               <FiPlus className="mr-2" />
               Add Customer
-            </button>
+            </button> */}
           </div>
         </div>
 
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div className="bg-white rounded-xl shadow-sm p-6">
               <div className="flex items-center">
                 <div className="p-2 bg-blue-100 rounded-lg">
@@ -132,7 +149,7 @@ const Customers = () => {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">Total Customers</p>
+                  <p className="text-sm font-medium text-gray-500">{t('Total Customers', 'Customers')}</p>
                   <p className="text-2xl font-semibold text-gray-900">{stats.total_customers}</p>
                 </div>
               </div>
@@ -146,7 +163,7 @@ const Customers = () => {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">Active Customers</p>
+                  <p className="text-sm font-medium text-gray-500">{t('Active Customers', 'Customers')}</p>
                   <p className="text-2xl font-semibold text-gray-900">{stats.active_customers}</p>
                 </div>
               </div>
@@ -160,13 +177,13 @@ const Customers = () => {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">Total Revenue</p>
+                  <p className="text-sm font-medium text-gray-500">{t('Total Revenue', 'Customers')}</p>
                   <p className="text-2xl font-semibold text-gray-900">{formatCurrency(stats.total_revenue)}</p>
                 </div>
               </div>
             </div>
             
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            {/* <div className="bg-white rounded-xl shadow-sm p-6">
               <div className="flex items-center">
                 <div className="p-2 bg-purple-100 rounded-lg">
                   <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -178,7 +195,7 @@ const Customers = () => {
                   <p className="text-2xl font-semibold text-gray-900">{formatCurrency(stats.avg_order_value)}</p>
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
         )}
 
@@ -194,7 +211,7 @@ const Customers = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Search by name or email"
+                placeholder={t('Search by name or email', 'Customers')}
               />
             </div>
             <div className="flex space-x-3">
@@ -205,7 +222,7 @@ const Customers = () => {
                   className="px-4 py-2 border border-gray-300 rounded-lg flex items-center text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
                 >
                   <FiFilter className="mr-2" />
-                  {statusFilter ? `Status: ${statusFilter}` : 'Filter'}
+                  {statusFilter ? `${t('Status', 'Customers')}: ${getStatusText(statusFilter)}` : t('Filter', 'Customers')}
                 </button>
                 {showStatusFilter && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
@@ -215,28 +232,28 @@ const Customers = () => {
                         onClick={() => handleStatusFilterChange('')}
                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
-                        All Statuses
+                        {t('All Statuses', 'Customers')}
                       </button>
                       <button
                         type="button"
                         onClick={() => handleStatusFilterChange('active')}
                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
-                        Active
+                        {t('Active', 'Customers')}
                       </button>
                       <button
                         type="button"
                         onClick={() => handleStatusFilterChange('inactive')}
                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
-                        Inactive
+                        {t('Inactive', 'Customers')}
                       </button>
                       <button
                         type="button"
                         onClick={() => handleStatusFilterChange('disabled')}
                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
-                        Disabled
+                        {t('Disabled', 'Customers')}
                       </button>
                     </div>
                   </div>
@@ -248,14 +265,14 @@ const Customers = () => {
                   onClick={clearFilters}
                   className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
                 >
-                  Clear
+                  {t('Clear', 'Customers')}
                 </button>
               )}
               <button
                 type="submit"
                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700"
               >
-                Search
+                {t('Search', 'Customers')}
               </button>
             </div>
           </form>
@@ -274,12 +291,12 @@ const Customers = () => {
                 <p className="text-sm text-red-800">{error}</p>
                 {error.includes('Shop session not found') && (
                   <div className="mt-2 text-sm text-red-700">
-                    <p><strong>How to fix this:</strong></p>
+                    <p><strong>{t('How to fix this:', 'Customers')}</strong></p>
                     <ul className="list-disc list-inside mt-1 space-y-1">
-                      <li>Make sure you're accessing this app from within Shopify</li>
-                      <li>Ensure your app is properly installed and authenticated</li>
-                      <li>Try refreshing the page or re-installing the app</li>
-                      <li>Contact support if the issue persists</li>
+                      <li>{t('Make sure you\'re accessing this app from within Shopify', 'Customers')}</li>
+                      <li>{t('Ensure your app is properly installed and authenticated', 'Customers')}</li>
+                      <li>{t('Try refreshing the page or re-installing the app', 'Customers')}</li>
+                      <li>{t('Contact support if the issue persists', 'Customers')}</li>
                     </ul>
                   </div>
                 )}
@@ -289,7 +306,7 @@ const Customers = () => {
                   onClick={() => setError(null)}
                   className="inline-flex text-red-400 hover:text-red-600"
                 >
-                  <span className="sr-only">Dismiss</span>
+                  <span className="sr-only">{t('Dismiss', 'Customers')}</span>
                   <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                   </svg>
@@ -306,26 +323,26 @@ const Customers = () => {
               <thead className="bg-gray-50">
                 <tr>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Customer
+                    {t('Customer', 'Customers')}
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Location
+                    {t('Location', 'Customers')}
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Spent
+                    {t('Spent', 'Customers')}
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Orders
+                    {t('Orders', 'Customers')}
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                    {t('Status', 'Customers')}
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {/* <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Date Added
                   </th>
                   <th scope="col" className="relative px-6 py-3">
-                    <span className="sr-only">Actions</span>
-                  </th>
+                    <span className="sr-only">{t('Actions', 'Customers')}</span>
+                  </th> */}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -334,21 +351,21 @@ const Customers = () => {
                     <td colSpan="7" className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                        <span className="ml-2 text-gray-500">Loading customers...</span>
+                        <span className="ml-2 text-gray-500">{t('Loading customers...', 'Customers')}</span>
                       </div>
                     </td>
                   </tr>
                 ) : customers.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
-                      {searchTerm || statusFilter ? 'No customers found matching your criteria.' : 'No customers found. Sync from Shopify to get started.'}
+                      {searchTerm || statusFilter ? t('No customers found matching your criteria.', 'Customers') : t('No customers found. Sync from Shopify to get started.', 'Customers')}
                     </td>
                   </tr>
                 ) : (
                   customers.map((customer) => (
                     <tr key={customer.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
+                        <Link to={`/customers/${customer.id}`} className="group flex items-center">
                           <div className="flex-shrink-0 h-10 w-10">
                             <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
                               <span className="text-indigo-600 font-medium text-sm">
@@ -356,22 +373,25 @@ const Customers = () => {
                               </span>
                             </div>
                           </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {customer.first_name && customer.last_name 
-                                ? `${customer.first_name} ${customer.last_name}`
-                                : customer.email.split('@')[0]
-                              }
+                          <div className="ml-4 flex-1">
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm font-medium text-gray-900 group-hover:text-blue-600">
+                                {customer.first_name && customer.last_name 
+                                  ? `${customer.first_name} ${customer.last_name}`
+                                  : customer.email.split('@')[0]
+                                }
+                              </div>
+                              <FiChevronRight className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </div>
                             <div className="text-sm text-gray-500">{customer.email}</div>
                           </div>
-                        </div>
+                        </Link>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
                           {customer.city && customer.country 
                             ? `${customer.city}, ${customer.country}`
-                            : customer.country || 'Unknown'
+                            : customer.country || t('Unknown', 'Customers')
                           }
                         </div>
                       </td>
@@ -382,21 +402,20 @@ const Customers = () => {
                         <div className="text-sm text-gray-900">{customer.orders_count || 0}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(customer.status)}`}>
-                          {customer.status}
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(customer.status || 'inactive')}`}>
+                          {getStatusText(customer.status || 'inactive')}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(customer.created_at)}
+                      {/* <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{formatDate(customer.created_at)}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="relative">
+                        <div className="flex justify-end">
                           <button className="text-gray-400 hover:text-gray-600">
                             <FiMoreVertical className="h-5 w-5" />
                           </button>
-                          {/* Dropdown menu would go here */}
                         </div>
-                      </td>
+                      </td> */}
                     </tr>
                   ))
                 )}
@@ -426,11 +445,11 @@ const Customers = () => {
               <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm text-gray-700">
-                    Showing <span className="font-medium">{((pagination.current_page - 1) * pagination.per_page) + 1}</span> to{' '}
+                    {t('Showing', 'Customers')} <span className="font-medium">{((pagination.current_page - 1) * pagination.per_page) + 1}</span> {t('to', 'Customers')}{' '}
                     <span className="font-medium">
                       {Math.min(pagination.current_page * pagination.per_page, pagination.total)}
-                    </span> of{' '}
-                    <span className="font-medium">{pagination.total}</span> results
+                    </span> {t('of', 'Customers')}{' '}
+                    <span className="font-medium">{pagination.total}</span> {t('results', 'Customers')}
                   </p>
                 </div>
                 <div>
@@ -440,7 +459,7 @@ const Customers = () => {
                       disabled={pagination.current_page === 1}
                       className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <span className="sr-only">Previous</span>
+                      <span className="sr-only">{t('Previous', 'Customers')}</span>
                       <BsArrowLeft className="h-5 w-5" />
                     </button>
                     <button 
@@ -448,7 +467,7 @@ const Customers = () => {
                       disabled={pagination.current_page === pagination.last_page}
                       className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <span className="sr-only">Next</span>
+                      <span className="sr-only">{t('Next', 'Customers')}</span>
                       <BsArrowRight className="h-5 w-5" />
                     </button>
                   </nav>

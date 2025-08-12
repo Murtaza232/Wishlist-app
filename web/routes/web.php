@@ -157,7 +157,7 @@ $response_product_delete = Registry::register('/api/webhooks/product-delete', To
                             'total_spent' => $shopifyCustomer['total_spent'] ?? 0.00,
                             'orders_count' => $shopifyCustomer['orders_count'] ?? 0,
                             'status' => $shopifyCustomer['state'] === 'enabled' ? 'active' : 'inactive',
-                            'last_order_date' => $shopifyCustomer['last_order_id'] ? date('Y-m-d H:i:s', strtotime($shopifyCustomer['updated_at'])) : null,
+                            // 'last_order_date' => $shopifyCustomer['last_order_id'] ? date('Y-m-d H:i:s', strtotime($shopifyCustomer['updated_at'])) : null,
                             'created_at_shopify' => date('Y-m-d H:i:s', strtotime($shopifyCustomer['created_at'])),
                         ];
 
