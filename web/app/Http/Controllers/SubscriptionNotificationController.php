@@ -58,16 +58,29 @@ public function subscription_notification_save(Request $request, $id)
         }
         
         // Save input field values to specific columns based on notification type
+        // Only update these fields if they are explicitly present in the request
         if ($subscription_notification->title === "Wishlist Reminder") {
-            $subscription_notification->reminder_value = isset($request->reminder_value) ? $request->reminder_value : '0';
-            $subscription_notification->reminder_time_unit = isset($request->reminder_time_unit) ? $request->reminder_time_unit : 'hours';
+            if ($request->has('reminder_value')) {
+                $subscription_notification->reminder_value = $request->reminder_value;
+            }
+            if ($request->has('reminder_time_unit')) {
+                $subscription_notification->reminder_time_unit = $request->reminder_time_unit;
+            }
         } elseif ($subscription_notification->title === "Send reminders on Items Saved for Later") {
-            $subscription_notification->saved_for_later_value = isset($request->saved_for_later_value) ? $request->saved_for_later_value : '0';
-            $subscription_notification->saved_for_later_time_unit = isset($request->saved_for_later_time_unit) ? $request->saved_for_later_time_unit : 'hours';
+            if ($request->has('saved_for_later_value')) {
+                $subscription_notification->saved_for_later_value = $request->saved_for_later_value;
+            }
+            if ($request->has('saved_for_later_time_unit')) {
+                $subscription_notification->saved_for_later_time_unit = $request->saved_for_later_time_unit;
+            }
         } elseif ($subscription_notification->title === "Send low stock Alerts") {
-            $subscription_notification->low_stock_value = isset($request->low_stock_value) ? $request->low_stock_value : '0';
+            if ($request->has('low_stock_value')) {
+                $subscription_notification->low_stock_value = $request->low_stock_value;
+            }
         } elseif ($subscription_notification->title === "Send Price Drop alert") {
-            $subscription_notification->price_drop_value = isset($request->price_drop_value) ? $request->price_drop_value : '0';
+            if ($request->has('price_drop_value')) {
+                $subscription_notification->price_drop_value = $request->price_drop_value;
+            }
         }
         
         // Handle logo upload

@@ -42,19 +42,19 @@ class RegisterShopifyProductWebhooks extends Command
     public function handle()
     {
         $shops = Session::all();
-        $baseUrl = config('app.url');
+        $baseUrl = env('APP_URL');
         $webhooks = [
             [
                 'topic' => 'products/create',
-                'address' => $baseUrl . '/webhook/shopify/product/create',
+                'address' => $baseUrl . 'webhook/shopify/product/create',
             ],
             [
                 'topic' => 'products/update',
-                'address' => $baseUrl . '/webhook/shopify/product/update',
+                'address' => $baseUrl . 'webhook/shopify/product/update',
             ],
             [
                 'topic' => 'products/delete',
-                'address' => $baseUrl . '/webhook/shopify/product/delete',
+                'address' => $baseUrl . 'webhook/shopify/product/delete',
             ],
         ];
         foreach ($shops as $shop) {

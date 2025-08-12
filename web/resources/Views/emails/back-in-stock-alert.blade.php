@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $processedTemplate['emailSubject'] ?? 'Welcome to ' . ($shopData['name'] ?? 'Our Store') . ' - Your Wishlist is Ready!' }}</title>
+    <title>{{ $processedTemplate['emailSubject'] ?? 'Back in Stock - ' . ($shopData['name'] ?? 'Our Store') }}</title>
     <style>
         body {
             font-family: {{ $processedTemplate['themeSettingFontFamily'] ?? 'Arial, sans-serif' }};
@@ -16,7 +16,7 @@
         .container {
             max-width: 600px;
             margin: 0 auto;
-            background-color: #{{ $processedTemplate['textDescriptionBackgroundColor'] ?? 'ffffff' }};
+            background-color: #ffffff;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
         .header {
@@ -36,12 +36,33 @@
             padding: 30px 20px;
             background-color: #{{ $processedTemplate['textDescriptionBackgroundColor'] ?? 'ffffff' }};
         }
-        .welcome-text {
+        .alert-text {
             font-size: 16px;
             margin-bottom: 20px;
             color: #{{ $processedTemplate['textDescriptionTextColor'] ?? '000000' }};
             text-align: {{ strtolower($processedTemplate['textDescriptionAlignment'] ?? 'left') }};
             font-family: {{ $processedTemplate['themeSettingFontFamily'] ?? 'Arial, sans-serif' }};
+        }
+        .product-list {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 5px;
+        }
+        .product-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #ffffff;
+            border-radius: 3px;
+        }
+        .product-title {
+            font-weight: bold;
+            color: #155724;
+        }
+        .product-stock {
+            color: #28a745;
+            font-size: 14px;
         }
         .action-button {
             display: inline-block;
@@ -99,20 +120,32 @@
             @if($showImage && !empty($processedTemplate['logoUrl']))
                 <img src="{{ $processedTemplate['logoUrl'] }}" alt="{{ $shopData['name'] ?? $shopData['shop'] ?? 'Logo' }}" style="display:block;margin:0 auto;max-width:100%;width: {{ $processedTemplate['imageWidth'] ?? '100' }}%;height:auto;" />
             @else
-                <h1>{{ $shopData['name'] ?? $shopData['shop'] ?? 'Our Store' }}</h1>
+                <h1>{{ $shopData['name'] ?? 'Our Store' }}</h1>
             @endif
         </div>
         @endif
         
         <div class="content">
-            <div class="welcome-text">
+            <div class="alert-text">
                 {!! is_string($processedTemplate['textDescriptionDetails'] ?? '') ? $processedTemplate['textDescriptionDetails'] : '' !!}
             </div>
+            
+            @if(count($backInStockItems) > 0)
+            <div class="product-list">
+                <h3>Back in Stock Items from Your Wishlist:</h3>
+                @foreach($backInStockItems as $product)
+                <div class="product-item">
+                    <div class="product-title">{{ $product->title ?? 'Product' }}</div>
+                    <div class="product-stock">Current Stock: {{ $product->stock ?? 0 }}</div>
+                </div>
+                @endforeach
+            </div>
+            @endif
             
             @if(isset($wishlistData['link']) && $wishlistData['link'])
             <div style="text-align: {{ strtolower($processedTemplate['trackingButtonAlignment'] ?? 'center') }};">
                 <a href="{{ $wishlistData['link'] }}" class="action-button">
-                    {{ $processedTemplate['trackingButtonButtonText'] ?? 'View Wishlist' }}
+                    {{ $processedTemplate['trackingButtonButtonText'] ?? 'Shop Now' }}
                 </a>
             </div>
             @endif
@@ -128,4 +161,4 @@
         @endif
     </div>
 </body>
-</html>
+</html> 

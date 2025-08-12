@@ -7,7 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
-class WishlistSharedNotification extends Mailable
+class LowStockAlert extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -15,20 +15,20 @@ class WishlistSharedNotification extends Mailable
     public $shopData;
     public $wishlistData;
     public $emailTemplate;
-    public $productData; // optional array: ['title' => ..., 'price' => ..., 'url' => ...]
+    public $lowStockItems;
 
     /**
      * Create a new message instance.
      *
      * @return void
      */
-    public function __construct($customerData, $shopData, $wishlistData, $emailTemplate, $productData = null)
+    public function __construct($customerData, $shopData, $wishlistData, $emailTemplate, $lowStockItems)
     {
         $this->customerData = $customerData;
         $this->shopData = $shopData;
         $this->wishlistData = $wishlistData;
         $this->emailTemplate = $emailTemplate;
-        $this->productData = $productData;
+        $this->lowStockItems = $lowStockItems;
     }
 
     /**
@@ -40,14 +40,16 @@ class WishlistSharedNotification extends Mailable
     {
         // Replace variables in the email template
         $processedTemplate = $this->replaceVariablesInTemplate($this->emailTemplate);
-        $subject = $processedTemplate['emailSubject'] ?? 'Your {shop_name} wishlist has been shared!';
+        $subject = $processedTemplate['emailSubject'] ?? 'Low Stock Alert - {shop_name}';
+        // dd($processedTemplate["textDescriptionDetails"]);
         return $this->subject($subject)
-                    ->view('emails.wishlist-shared-notification')
+                    ->view('emails.low-stock-alert')
                     ->with([
                         'customerData' => $this->customerData,
                         'shopData' => $this->shopData,
                         'wishlistData' => $this->wishlistData,
-                        'processedTemplate' => $processedTemplate
+                        'processedTemplate' => $processedTemplate,
+                        'lowStockItems' => $this->lowStockItems
                     ]);
     }
 
@@ -56,32 +58,37 @@ class WishlistSharedNotification extends Mailable
      */
     private function replaceVariables($text)
     {
-        $productTitle = '';
-        $productPrice = '';
-        $productUrl = '';
-        if (is_array($this->productData)) {
-            $productTitle = $this->productData['title'] ?? '';
-            $productPrice = $this->productData['price'] ?? '';
-            $productUrl = $this->productData['url'] ?? '';
+        // Get wishlist count from wishlistData
+        $wishlistCount = $this->wishlistData['count'] ?? 0;
+        $firstProduct = null;
+        if (is_array($this->lowStockItems) && count($this->lowStockItems) > 0) {
+            $firstProduct = $this->lowStockItems[0];
+        } elseif (is_object($this->lowStockItems) && count($this->lowStockItems) > 0) {
+            $firstProduct = $this->lowStockItems[0];
         }
-
+        $productTitle = $firstProduct->title ?? '';
+        $productPrice = $firstProduct->price ?? '';
+        $productUrl = $firstProduct->url ?? ($firstProduct->product_url ?? '');
+        $storeName = is_object($this->shopData) ? ($this->shopData->shop ?? $this->shopData->name ?? '') : ($this->shopData['shop'] ?? $this->shopData['name'] ?? '');
         $storeUrl = is_object($this->shopData) ? ($this->shopData->url ?? '') : ($this->shopData['url'] ?? '');
         $wishlistCount = $this->wishlistData['count'] ?? (isset($this->wishlistData['items']) ? count($this->wishlistData['items']) : '');
         $replacements = [
-            '{shop_name}' => is_object($this->shopData) ? ($this->shopData->shop ?? '') : ($this->shopData['shop'] ?? ''),
-            '{store_name}' => is_object($this->shopData) ? ($this->shopData->shop ?? '') : ($this->shopData['shop'] ?? ''),
+            '{shop_name}' => $storeName,
+            '{store_name}' => $storeName,
             '{store_url}' => $storeUrl,
+            // '{shop_name}' => is_object($this->shopData) ? ($this->shopData->shop ?? '') : ($this->shopData['shop'] ?? ''),
             '{customer_first_name}' => $this->customerData['first_name'] ?? '',
             '{customer_last_name}' => $this->customerData['last_name'] ?? '',
             '{customer_email}' => $this->customerData['email'] ?? '',
-            '{wishlist_title}' => $this->wishlistData['title'] ?? '',
-            '{wishlist_link}' => $this->wishlistData['link'] ?? '',
             '{wishlist_count}' => $wishlistCount,
-            '{product_name}' => $productTitle,
+            '{Wishlist_link}' => $this->wishlistData['link'] ?? '',
+            '{stock_count}' => count($this->lowStockItems),
+            '{product_name}' => count($this->lowStockItems) > 0 ? $this->lowStockItems[0]->title ?? 'Product' : 'Product',
+            '{saved_count}' => $wishlistCount,
             '{product_price}' => $productPrice,
             '{product_url}' => $productUrl,
-            '{saved_count}' => $wishlistCount,
         ];
+        // dd($replacements);
         return str_replace(array_keys($replacements), array_values($replacements), $text);
     }
 

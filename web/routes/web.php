@@ -71,6 +71,12 @@ Route::get('/api/auth/callback', function (Request $request) {
     $response_product_create = Registry::register('/api/webhooks/product-create', Topics::PRODUCTS_CREATE, $shop, $session->getAccessToken());
 $response_product_update = Registry::register('/api/webhooks/product-update', Topics::PRODUCTS_UPDATE, $shop, $session->getAccessToken());
 $response_product_delete = Registry::register('/api/webhooks/product-delete', Topics::PRODUCTS_DELETE, $shop, $session->getAccessToken());
+
+    // Register customer webhooks during installation
+    $response_customer_create = Registry::register('/api/webhooks/customer-create', Topics::CUSTOMERS_CREATE, $shop, $session->getAccessToken());
+    $response_customer_update = Registry::register('/api/webhooks/customer-update', Topics::CUSTOMERS_UPDATE, $shop, $session->getAccessToken());
+    $response_customer_delete = Registry::register('/api/webhooks/customer-delete', Topics::CUSTOMERS_DELETE, $shop, $session->getAccessToken());
+
     if ($response->isSuccess()) {
         Log::debug("Registered APP_UNINSTALLED webhook for shop $shop");
     } else {
@@ -80,6 +86,25 @@ $response_product_delete = Registry::register('/api/webhooks/product-delete', To
         );
     }
 
+    // Log customer webhook registration results
+    if ($response_customer_create->isSuccess()) {
+        Log::debug("Registered CUSTOMERS_CREATE webhook for shop $shop");
+    } else {
+        Log::error("Failed to register CUSTOMERS_CREATE webhook for shop $shop");
+    }
+    
+    if ($response_customer_update->isSuccess()) {
+        Log::debug("Registered CUSTOMERS_UPDATE webhook for shop $shop");
+    } else {
+        Log::error("Failed to register CUSTOMERS_UPDATE webhook for shop $shop");
+    }
+    
+    if ($response_customer_delete->isSuccess()) {
+        Log::debug("Registered CUSTOMERS_DELETE webhook for shop $shop");
+    } else {
+        Log::error("Failed to register CUSTOMERS_DELETE webhook for shop $shop");
+    }
+
     // Fetch products during app installation
     try {
         $productService = new ShopifyProductService();
@@ -87,6 +112,77 @@ $response_product_delete = Registry::register('/api/webhooks/product-delete', To
         Log::info("Fetched $fetchedCount products during app installation for shop: $shop");
     } catch (\Exception $e) {
         Log::error("Failed to fetch products during app installation for shop $shop: " . $e->getMessage());
+    }
+
+    // Sync customers during app installation
+    try {
+        $dbSession = \App\Models\Session::where('shop', $shop)->first();
+        if ($dbSession) {
+            // Mark app as installed
+            $dbSession->markAsInstalled();
+            
+            // Register customer webhooks
+            $webhookService = new \App\Services\WebhookService();
+            $webhooksRegistered = $webhookService->registerCustomerWebhooks($dbSession);
+            
+            if ($webhooksRegistered) {
+                Log::info("Customer webhooks registered during app installation for shop: $shop");
+            } else {
+                Log::warning("Failed to register customer webhooks during app installation for shop: $shop");
+            }
+            
+            // Sync customers from Shopify
+            $client = new Rest($shop, $session->getAccessToken());
+            $response = $client->get('customers', ['limit' => 250]);
+            
+            if ($response->getStatusCode() === 200) {
+                $responseBody = json_decode($response->getBody()->getContents(), true);
+                
+                if ($responseBody && isset($responseBody['customers'])) {
+                    $shopifyCustomers = $responseBody['customers'];
+                    $syncedCount = 0;
+                    $updatedCount = 0;
+                    
+                    foreach ($shopifyCustomers as $shopifyCustomer) {
+                        $customerData = [
+                            'shopify_customer_id' => $shopifyCustomer['id'],
+                            'first_name' => $shopifyCustomer['first_name'] ?? null,
+                            'last_name' => $shopifyCustomer['last_name'] ?? null,
+                            'email' => $shopifyCustomer['email'],
+                            'phone' => $shopifyCustomer['phone'] ?? null,
+                            'city' => $shopifyCustomer['default_address']['city'] ?? null,
+                            'province' => $shopifyCustomer['default_address']['province'] ?? null,
+                            'country' => $shopifyCustomer['default_address']['country'] ?? null,
+                            'zip' => $shopifyCustomer['default_address']['zip'] ?? null,
+                            'total_spent' => $shopifyCustomer['total_spent'] ?? 0.00,
+                            'orders_count' => $shopifyCustomer['orders_count'] ?? 0,
+                            'status' => $shopifyCustomer['state'] === 'enabled' ? 'active' : 'inactive',
+                            'last_order_date' => $shopifyCustomer['last_order_id'] ? date('Y-m-d H:i:s', strtotime($shopifyCustomer['updated_at'])) : null,
+                            'created_at_shopify' => date('Y-m-d H:i:s', strtotime($shopifyCustomer['created_at'])),
+                        ];
+
+                        // Check if customer exists
+                        $existingCustomer = \App\Models\Customer::where('shopify_customer_id', $shopifyCustomer['id'])
+                                                              ->where('shop_id', $dbSession->id)
+                                                              ->first();
+
+                        if ($existingCustomer) {
+                            $existingCustomer->update($customerData);
+                            $updatedCount++;
+                        } else {
+                            \App\Models\Customer::create(array_merge($customerData, ['shop_id' => $dbSession->id]));
+                            $syncedCount++;
+                        }
+                    }
+                    
+                    Log::info("Synced $syncedCount new customers and updated $updatedCount existing customers during app installation for shop: $shop");
+                }
+            } else {
+                Log::error("Failed to fetch customers during app installation for shop $shop: " . $response->getStatusCode());
+            }
+        }
+    } catch (\Exception $e) {
+        Log::error("Failed to sync customers during app installation for shop $shop: " . $e->getMessage());
     }
 
     $redirectUrl = Utils::getEmbeddedAppUrl($host);

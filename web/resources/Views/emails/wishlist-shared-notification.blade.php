@@ -3,12 +3,12 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $emailTemplate['emailSubject'] ?? 'Welcome to ' . ($shopData['name'] ?? 'Our Store') . ' - Your Wishlist is Ready!' }}</title>
+    <title>{{ $processedTemplate['emailSubject'] ?? 'Welcome to ' . ($shopData['name'] ?? 'Our Store') . ' - Your Wishlist is Ready!' }}</title>
     <style>
         body {
-            font-family: {{ $emailTemplate['themeSettingFontFamily'] ?? 'Arial, sans-serif' }};
+            font-family: {{ $processedTemplate['themeSettingFontFamily'] ?? 'Arial, sans-serif' }};
             line-height: 1.6;
-            color: #{{ $emailTemplate['themeSettingPrimaryTextColor'] ?? '333' }};
+            color: #{{ $processedTemplate['themeSettingPrimaryTextColor'] ?? '333' }};
             margin: 0;
             padding: 0;
             background-color: #f4f4f4;
@@ -16,60 +16,60 @@
         .container {
             max-width: 600px;
             margin: 0 auto;
-            background-color: #ffffff;
+            background-color: #{{ $processedTemplate['textDescriptionBackgroundColor'] ?? 'ffffff' }};
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
         .header {
-            background-color: #{{ $emailTemplate['brandingBackgroundColor'] ?? '000000' }};
-            color: #{{ $emailTemplate['textColor'] ?? 'ffffff' }};
-            padding: {{ $emailTemplate['paddingTop'] ?? '35' }}px 20px {{ $emailTemplate['paddingBottom'] ?? '35' }}px 20px;
+            background-color: #{{ $processedTemplate['brandingBackgroundColor'] ?? '000000' }};
+            color: #{{ $processedTemplate['textColor'] ?? 'ffffff' }};
+            padding: {{ $processedTemplate['paddingTop'] ?? '35' }}px 20px {{ $processedTemplate['paddingBottom'] ?? '35' }}px 20px;
             text-align: center;
-            font-family: {{ $emailTemplate['themeSettingFontFamily'] ?? 'Arial, sans-serif' }};
+            font-family: {{ $processedTemplate['themeSettingFontFamily'] ?? 'Arial, sans-serif' }};
         }
         .header h1 {
             margin: 0;
             font-size: 24px;
             font-weight: bold;
-            color: #{{ $emailTemplate['textColor'] ?? 'ffffff' }};
+            color: #{{ $processedTemplate['textColor'] ?? 'ffffff' }};
         }
         .content {
             padding: 30px 20px;
-            background-color: #{{ $emailTemplate['textDescriptionBackgroundColor'] ?? 'ffffff' }};
+            background-color: #{{ $processedTemplate['textDescriptionBackgroundColor'] ?? 'ffffff' }};
         }
         .welcome-text {
             font-size: 16px;
             margin-bottom: 20px;
-            color: #{{ $emailTemplate['textDescriptionTextColor'] ?? '000000' }};
-            text-align: {{ strtolower($emailTemplate['textDescriptionAlignment'] ?? 'left') }};
-            font-family: {{ $emailTemplate['themeSettingFontFamily'] ?? 'Arial, sans-serif' }};
+            color: #{{ $processedTemplate['textDescriptionTextColor'] ?? '000000' }};
+            text-align: {{ strtolower($processedTemplate['textDescriptionAlignment'] ?? 'left') }};
+            font-family: {{ $processedTemplate['themeSettingFontFamily'] ?? 'Arial, sans-serif' }};
         }
         .action-button {
             display: inline-block;
-            background-color: #{{ $emailTemplate['trackingButtonButtonColor'] ?? '000000' }};
-            color: #{{ $emailTemplate['trackingButtonTextColor'] ?? 'ffffff' }} !important;
+            background-color: #{{ $processedTemplate['trackingButtonButtonColor'] ?? '000000' }};
+            color: #{{ $processedTemplate['trackingButtonTextColor'] ?? 'ffffff' }} !important;
             padding: 12px 30px;
             text-decoration: none;
             border-radius: 5px;
-            font-size: {{ $emailTemplate['trackingButtonFontSize'] ?? '14' }}px;
+            font-size: {{ $processedTemplate['trackingButtonFontSize'] ?? '14' }}px;
             font-weight: bold;
             margin: 20px 0;
             text-align: center;
-            width: {{ $emailTemplate['trackingButtonButtonWidth'] ?? '50' }}%;
-            font-family: {{ $emailTemplate['themeSettingFontFamily'] ?? 'Arial, sans-serif' }};
+            width: {{ $processedTemplate['trackingButtonButtonWidth'] ?? '50' }}%;
+            font-family: {{ $processedTemplate['themeSettingFontFamily'] ?? 'Arial, sans-serif' }};
         }
         .footer {
-            background-color: #{{ $emailTemplate['footerBackgroundColor'] ?? 'ffffff' }};
-            color: #{{ $emailTemplate['footerTextColor'] ?? '000000' }};
+            background-color: #{{ $processedTemplate['footerBackgroundColor'] ?? 'ffffff' }};
+            color: #{{ $processedTemplate['footerTextColor'] ?? '000000' }};
             padding: 20px;
-            text-align: {{ strtolower($emailTemplate['footerDetailsAlignment'] ?? 'center') }};
+            text-align: {{ strtolower($processedTemplate['footerDetailsAlignment'] ?? 'center') }};
             font-size: 14px;
-            font-family: {{ $emailTemplate['themeSettingFontFamily'] ?? 'Arial, sans-serif' }};
+            font-family: {{ $processedTemplate['themeSettingFontFamily'] ?? 'Arial, sans-serif' }};
         }
         .footer p {
             margin: 5px 0;
         }
         .unsubscribe {
-            color: #{{ $emailTemplate['footerUnsubscribeButtonColor'] ?? '005BD3' }};
+            color: #{{ $processedTemplate['footerUnsubscribeButtonColor'] ?? '005BD3' }};
             text-decoration: none;
         }
         @media only screen and (max-width: 600px) {
@@ -84,34 +84,48 @@
 </head>
 <body>
     <div class="container">
-        @if(isset($emailTemplate['brandingType']) && in_array('Store name', $emailTemplate['brandingType']))
+        @php
+            $showStoreName = isset($processedTemplate['brandingType']) && (
+                (is_array($processedTemplate['brandingType']) && in_array('Store name', $processedTemplate['brandingType'])) ||
+                ($processedTemplate['brandingType'] === 'Store name')
+            );
+            $showImage = isset($processedTemplate['brandingType']) && (
+                (is_array($processedTemplate['brandingType']) && in_array('Image', $processedTemplate['brandingType'])) ||
+                ($processedTemplate['brandingType'] === 'Image')
+            );
+        @endphp
+        @if($showStoreName || $showImage)
         <div class="header">
-            <h1>{{ $shopData['name'] ?? 'Our Store' }}</h1>
+            @if($showImage && !empty($processedTemplate['logoUrl']))
+                <img src="{{ $processedTemplate['logoUrl'] }}" alt="{{ $shopData['name'] ?? $shopData['shop'] ?? 'Logo' }}" style="display:block;margin:0 auto;max-width:100%;width: {{ $processedTemplate['imageWidth'] ?? '100' }}%;height:auto;" />
+            @else
+                <h1>{{ $shopData['name'] ?? $shopData['shop'] ?? 'Our Store' }}</h1>
+            @endif
         </div>
         @endif
         
         <div class="content">
             <div class="welcome-text">
-                {!! is_string($emailTemplate['textDescriptionDetails'] ?? '') ? $emailTemplate['textDescriptionDetails'] : '' !!}
+                {!! is_string($processedTemplate['textDescriptionDetails'] ?? '') ? $processedTemplate['textDescriptionDetails'] : '' !!}
+              
             </div>
-            
+           
             @if(isset($wishlistData['link']) && $wishlistData['link'])
-            <div style="text-align: {{ strtolower($emailTemplate['trackingButtonAlignment'] ?? 'center') }};">
+            <div style="text-align: {{ strtolower($processedTemplate['trackingButtonAlignment'] ?? 'center') }};">
                 <a href="{{ $wishlistData['link'] }}" class="action-button">
-                    {{ $emailTemplate['trackingButtonButtonText'] ?? 'View Wishlist' }}
+                    {{ $processedTemplate['trackingButtonButtonText'] ?? 'View Wishlist' }}
                 </a>
             </div>
             @endif
         </div>
-        
-        @if(isset($emailTemplate['footerDetails']) && $emailTemplate['footerDetails'])
+        @if(isset($processedTemplate['footerDetails']) && $processedTemplate['footerDetails'])
         <div class="footer">
-            <p>{!! is_string($emailTemplate['footerDetails'] ?? '') ? $emailTemplate['footerDetails'] : '' !!}</p>
-            @if(isset($emailTemplate['footerUnsubscribeButton']) && $emailTemplate['footerUnsubscribeButton'] == '1')
-            <p><a href="#" class="unsubscribe">{{ $emailTemplate['footerUnsubscribe'] ?? 'Unsubscribe' }}</a></p>
+            <p>{!! is_string($processedTemplate['footerDetails'] ?? '') ? $processedTemplate['footerDetails'] : '' !!}</p>
+            @if(isset($processedTemplate['footerUnsubscribeButton']) && $processedTemplate['footerUnsubscribeButton'] == '1')
+            <p><a href="#" class="unsubscribe">{{ $processedTemplate['footerUnsubscribe'] ?? 'Unsubscribe' }}</a></p>
             @endif
         </div>
         @endif
-    </div>
+    </div> 
 </body>
 </html>

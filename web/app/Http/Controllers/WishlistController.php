@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Session;
 use App\Models\Wishlist;
 use App\Services\WishlistNotificationService;
+use App\Models\Product;
 
 class WishlistController extends HelperController
 {
@@ -185,11 +186,31 @@ class WishlistController extends HelperController
             'message' => 'Item is already in wishlist.']);
         }
 
-        // Create the new wishlist item
+        // Get current product price from products table
+        $currentPrice = 0;
+        try {
+            $product = Product::where('shopify_product_id', $request->product_id)
+                ->where('shop_id', $shop->id)
+                ->first();
+            
+            if ($product) {
+                $currentPrice = $product->price ?? 0;
+                Log::info("Found product price: $currentPrice for product ID: {$request->product_id}");
+            } else {
+                Log::warning("Product not found in database for product ID: {$request->product_id}");
+            }
+        } catch (\Exception $e) {
+            Log::error('Error fetching product price from database: ' . $e->getMessage());
+        }
+
+        // Create the new wishlist item with price tracking
         WishlistItem::create([
             'shop_id' => $shop->id,
             'customer_id' => $request->customer_id,
             'product_id' => $request->product_id,
+            'added_price' => $currentPrice,
+            'current_price' => $currentPrice,
+            'price_checked_at' => now(),
         ]);
 
         return response()->json(['status' => 'success', 'message' => 'Product added to wishlist!']);
@@ -361,11 +382,32 @@ class WishlistController extends HelperController
         if ($exists) {
             return response()->json(['status' => 'true', 'message' => 'Item already in wishlist.']);
         }
+
+        // Get current product price from products table
+        $currentPrice = 0;
+        try {
+            $product = Product::where('shopify_product_id', $request->product_id)
+                ->where('shop_id', $shopId)
+                ->first();
+            
+            if ($product) {
+                $currentPrice = $product->price ?? 0;
+                Log::info("Found product price: $currentPrice for product ID: {$request->product_id}");
+            } else {
+                Log::warning("Product not found in database for product ID: {$request->product_id}");
+            }
+        } catch (\Exception $e) {
+            Log::error('Error fetching product price from database: ' . $e->getMessage());
+        }
+
         WishlistItem::create([
             'wishlist_id' => $wishlist->id,
             'customer_id' => $wishlist->customer_id,
             'product_id' => $request->product_id,
             'shop_id' => $shopId,
+            'added_price' => $currentPrice,
+            'current_price' => $currentPrice,
+            'price_checked_at' => now(),
         ]);
         return response()->json(['status' => 'success', 'message' => 'Product added to wishlist!']);
     }
@@ -498,6 +540,7 @@ class WishlistController extends HelperController
         }
         $notificationService = app(\App\Services\WishlistNotificationService::class);
         $result = $notificationService->sendWishlistSharedEmail($customerId, $wishlist, $shop);
+        // return $result;
         if ($result) {
             return response()->json(['status' => true, 'message' => 'Wishlist shared email sent.']);
         } else {

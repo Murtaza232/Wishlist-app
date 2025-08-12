@@ -15,7 +15,7 @@ class WishlistSignupConfirmation extends Mailable
     public $shopData;
     public $wishlistData;
     public $emailTemplate;
-
+    // public $productData;
     /**
      * Create a new message instance.
      *
@@ -27,6 +27,8 @@ class WishlistSignupConfirmation extends Mailable
         $this->shopData = $shopData;
         $this->wishlistData = $wishlistData;
         $this->emailTemplate = $emailTemplate;
+        // $this->productData = $productData;
+        
     }
 
     /**
@@ -36,6 +38,7 @@ class WishlistSignupConfirmation extends Mailable
      */
     public function build()
     {
+        // return 'hi';
         // Replace variables in the email template
         $processedTemplate = $this->replaceVariablesInTemplate($this->emailTemplate);
         $subject = $processedTemplate['emailSubject'] ?? 'Welcome to {shop_name} - Your Wishlist is Ready!';
@@ -46,7 +49,7 @@ class WishlistSignupConfirmation extends Mailable
                         'customerData' => $this->customerData,
                         'shopData' => $this->shopData,
                         'wishlistData' => $this->wishlistData,
-                        'emailTemplate' => $processedTemplate
+                        'processedTemplate' => $processedTemplate
                     ]);
     }
 
@@ -55,21 +58,23 @@ class WishlistSignupConfirmation extends Mailable
      */
     private function replaceVariables($text)
     {
+        $storeUrl = is_object($this->shopData) ? ($this->shopData->url ?? '') : ($this->shopData['url'] ?? '');
+        $wishlistCount = $this->wishlistData['count'] ?? (isset($this->wishlistData['items']) ? count($this->wishlistData['items']) : '');
         $replacements = [
             '{shop_name}' => is_object($this->shopData) ? ($this->shopData->shop ?? '') : ($this->shopData['shop'] ?? ''),
+            '{store_url}' => $storeUrl,
+            '{store_name}' =>  is_object($this->shopData) ? ($this->shopData->shop ?? '') : ($this->shopData['shop'] ?? ''),
             '{customer_first_name}' => $this->customerData['first_name'] ?? '',
             '{customer_last_name}' => $this->customerData['last_name'] ?? '',
             '{customer_email}' => $this->customerData['email'] ?? '',
             '{wishlist_title}' => $this->wishlistData['title'] ?? '',
             '{wishlist_link}' => $this->wishlistData['link'] ?? '',
+            '{wishlist_count}' => $wishlistCount,
         ];
         // return $replacements;
         return str_replace(array_keys($replacements), array_values($replacements), $text);
     }
 
-    /**
-     * Replace variables in the email template data
-     */
     public function replaceVariablesInTemplate($templateData)
     {
         if (is_array($templateData)) {

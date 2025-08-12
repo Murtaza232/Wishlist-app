@@ -482,6 +482,32 @@ export default function EmailTemplate() {
           sidebarList: sidebarList,
       }));
       formData.append('active_status', activeStatus);
+
+      // Include numeric/unit fields based on notification type to avoid resetting
+      const notifType = getNotificationType((emailData && emailData.title) ? emailData.title : "");
+      if (notifType === 'wishlist_reminder') {
+        if (emailData && emailData.reminder_value !== undefined && emailData.reminder_value !== null && emailData.reminder_value !== '') {
+          formData.append('reminder_value', String(emailData.reminder_value));
+        }
+        if (emailData && emailData.reminder_time_unit) {
+          formData.append('reminder_time_unit', String(emailData.reminder_time_unit));
+        }
+      } else if (notifType === 'saved_for_later') {
+        if (emailData && emailData.saved_for_later_value !== undefined && emailData.saved_for_later_value !== null && emailData.saved_for_later_value !== '') {
+          formData.append('saved_for_later_value', String(emailData.saved_for_later_value));
+        }
+        if (emailData && emailData.saved_for_later_time_unit) {
+          formData.append('saved_for_later_time_unit', String(emailData.saved_for_later_time_unit));
+        }
+      } else if (notifType === 'low_stock') {
+        if (emailData && emailData.low_stock_value !== undefined && emailData.low_stock_value !== null && emailData.low_stock_value !== '') {
+          formData.append('low_stock_value', String(emailData.low_stock_value));
+        }
+      } else if (notifType === 'price_drop') {
+        if (emailData && emailData.price_drop_value !== undefined && emailData.price_drop_value !== null && emailData.price_drop_value !== '') {
+          formData.append('price_drop_value', String(emailData.price_drop_value));
+        }
+      }
       
       // Handle file upload
       if (file && file instanceof File) {

@@ -5,6 +5,7 @@ namespace App\Console;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 use App\Jobs\SendWishlistReminderEmailsJob;
+use App\Jobs\StockMonitoringJob;
 
 class Kernel extends ConsoleKernel
 {
@@ -29,6 +30,9 @@ class Kernel extends ConsoleKernel
         
         // Dispatch the wishlist reminder job daily
         $schedule->job(new SendWishlistReminderEmailsJob())->daily();
+        
+        // Dispatch the stock monitoring job every hour
+        $schedule->job(new StockMonitoringJob())->hourly();
     }
 
     /**

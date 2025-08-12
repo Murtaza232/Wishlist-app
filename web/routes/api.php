@@ -180,10 +180,167 @@ Route::post('/webhooks/product-create', [\App\Http\Controllers\ShopifyProductWeb
 Route::post('/webhooks/product-update', [\App\Http\Controllers\ShopifyProductWebhookController::class, 'productUpdate']);
 Route::post('/webhooks/product-delete', [\App\Http\Controllers\ShopifyProductWebhookController::class, 'productDelete']);
 
-Route::get('/test-webhook', function () {
-    $session=Session::where('shop','conversion-king-x.myshopify.com')->first();
-    //
-       $client = new Rest($session->shop, $session->access_token);
-       $response = $client->get('/webhooks.json');
-       dd($response->getDecodedBody());
+// Customer Webhook Routes
+Route::post('/webhooks/customer-create', [\App\Http\Controllers\CustomerWebhookController::class, 'customerCreate']);
+Route::post('/webhooks/customer-update', [\App\Http\Controllers\CustomerWebhookController::class, 'customerUpdate']);
+Route::post('/webhooks/customer-delete', [\App\Http\Controllers\CustomerWebhookController::class, 'customerDelete']);
+
+// Route::get('/test-webhook', function () {
+//     $session=Session::where('shop','conversion-king-x.myshopify.com')->first();
+//     //
+//        $client = new Rest($session->shop, $session->access_token);
+//        $response = $client->get('/webhooks.json');
+//        dd($response->getDecodedBody());
+// });
+
+// // Test route for stock monitoring job
+// Route::post('/test-stock-monitoring', function (Request $request) {
+//     try {
+//         $shopDomain = $request->input('shop_domain');
+        
+//         if (!$shopDomain) {
+//             return response()->json(['error' => 'shop_domain is required'], 400);
+//         }
+        
+//         $shop = \App\Models\Session::where('shop', $shopDomain)->first();
+//         if (!$shop) {
+//             return response()->json(['error' => 'Shop not found'], 404);
+//         }
+        
+//         // Dispatch the stock monitoring job
+//         \App\Jobs\StockMonitoringJob::dispatch();
+        
+//         return response()->json([
+//             'success' => true,
+//             'message' => 'Stock monitoring job dispatched successfully',
+//             'note' => 'Check the logs to see the job execution details'
+//         ]);
+        
+//     } catch (\Exception $e) {
+//         return response()->json([
+//             'error' => $e->getMessage(),
+//             'file' => $e->getFile(),
+//             'line' => $e->getLine()
+//         ], 500);
+//     }
+// });
+
+// // Test route for running stock monitoring synchronously
+// Route::post('/test-stock-monitoring-sync', function (Request $request) {
+//     try {
+//         $shopDomain = $request->input('shop_domain');
+        
+//         if (!$shopDomain) {
+//             return response()->json(['error' => 'shop_domain is required'], 400);
+//         }
+        
+//         $shop = \App\Models\Session::where('shop', $shopDomain)->first();
+//         if (!$shop) {
+//             return response()->json(['error' => 'Shop not found'], 404);
+//         }
+        
+//         // Run the stock monitoring job synchronously
+//         $job = new \App\Jobs\StockMonitoringJob();
+//         $job->handle();
+        
+//         return response()->json([
+//             'success' => true,
+//             'message' => 'Stock monitoring job executed synchronously',
+//             'note' => 'Check the logs to see the execution details'
+//         ]);
+        
+//     } catch (\Exception $e) {
+//         return response()->json([
+//             'error' => $e->getMessage(),
+//             'file' => $e->getFile(),
+//             'line' => $e->getLine(),
+//             'trace' => $e->getTraceAsString()
+//         ], 500);
+//     }
+// });
+
+// // Test route for checking stock monitoring settings
+// Route::get('/check-stock-monitoring-settings', function (Request $request) {
+//     try {
+//         $shopDomain = $request->input('shop_domain');
+        
+//         if (!$shopDomain) {
+//             return response()->json(['error' => 'shop_domain is required'], 400);
+//         }
+        
+//         $shop = \App\Models\Session::where('shop', $shopDomain)->first();
+//         if (!$shop) {
+//             return response()->json(['error' => 'Shop not found'], 404);
+//         }
+        
+//         // Get stock monitoring settings
+//         $lowStockAlert = \App\Models\SubscriptionWebNotification::where('session_id', $shop->id)
+//             ->where('notification_type', 'low_stock_alert')
+//             ->where('active_status', 1)
+//             ->first();
+            
+//         $backInStockAlert = \App\Models\SubscriptionWebNotification::where('session_id', $shop->id)
+//             ->where('notification_type', 'back_in_stock_alert')
+//             ->where('active_status', 1)
+//             ->first();
+        
+//         // Get products count
+//         $productsCount = \App\Models\Product::where('shop_id', $shop->id)->count();
+//         $wishlistsCount = \App\Models\Wishlist::where('shop_id', $shop->id)->count();
+        
+//         return response()->json([
+//             'success' => true,
+//             'shop' => [
+//                 'id' => $shop->id,
+//                 'domain' => $shop->shop
+//             ],
+//             'settings' => [
+//                 'low_stock_alert' => $lowStockAlert ? [
+//                     'active' => true,
+//                     'threshold' => $lowStockAlert->low_stock_value
+//                 ] : ['active' => false],
+//                 'back_in_stock_alert' => $backInStockAlert ? [
+//                     'active' => true
+//                 ] : ['active' => false]
+//             ],
+//             'counts' => [
+//                 'products' => $productsCount,
+//                 'wishlists' => $wishlistsCount
+//             ]
+//         ]);
+        
+//     } catch (\Exception $e) {
+//         return response()->json([
+//             'error' => $e->getMessage(),
+//             'file' => $e->getFile(),
+//             'line' => $e->getLine()
+//         ], 500);
+//     }
+
+// });
+// Route::get('/testemail', function(){
+//     // dd('hello');
+//     $wishlist = \App\Models\Wishlist::find(1);
+//     if (!$wishlist) {
+//         return response()->json(['status' => false, 'message' => 'Wishlist not found.'], 404);
+//     }
+//     //Sdd($wishlist);
+//     $notificationService = app(\App\Services\WishlistNotificationService::class);
+//     $result = $notificationService->sendWishlistSharedEmail(8515332112636, $wishlist, 'conversion-king-x.myshopify.com');
+//     return $result;
+// });
+
+// Customer Management Routes
+Route::prefix('customers')->group(function () {
+    Route::get('/test', function () {
+        return response()->json(['message' => 'Customer API is working!']);
+    });
+    Route::get('/', [\App\Http\Controllers\CustomerController::class, 'index']);
+    Route::post('/', [\App\Http\Controllers\CustomerController::class, 'store']);
+    Route::get('/stats', [\App\Http\Controllers\CustomerController::class, 'stats']);
+    Route::post('/sync', [\App\Http\Controllers\CustomerController::class, 'syncFromShopify']);
+    Route::get('/webhook-status', [\App\Http\Controllers\CustomerController::class, 'getWebhookStatus']);
+    Route::get('/{id}', [\App\Http\Controllers\CustomerController::class, 'show']);
+    Route::put('/{id}', [\App\Http\Controllers\CustomerController::class, 'update']);
+    Route::delete('/{id}', [\App\Http\Controllers\CustomerController::class, 'destroy']);
 });

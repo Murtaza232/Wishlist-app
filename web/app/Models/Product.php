@@ -13,6 +13,10 @@ class Product extends Model
         'shopify_product_id',
         'title',
         'stock',
+        'price',
+        'old_price',
+        'compare_at_price',
+        'last_price_check'
     ];
     
 }

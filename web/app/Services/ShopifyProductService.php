@@ -43,6 +43,8 @@ class ShopifyProductService
                         node {
                           id
                           inventoryQuantity
+                          price
+                          compareAtPrice
                         }
                       }
                     }
@@ -62,7 +64,14 @@ class ShopifyProductService
                 $product = $edge['node'];
                 $variant = $product['variants']['edges'][0]['node'] ?? null;
                 $shopifyProductId = preg_replace('/[^0-9]/', '', $product['id']);
-                $stock = $variant ? $variant['inventoryQuantity'] : 0;
+                
+                // Handle stock calculation - Shopify can return negative values
+                $rawStock = $variant ? $variant['inventoryQuantity'] : 0;
+                $stock = max(0, $rawStock); // Ensure stock is never negative
+                
+                // Get price information
+                $price = $variant ? (float)($variant['price'] ?? 0) : 0;
+                $compareAtPrice = $variant ? (float)($variant['compareAtPrice'] ?? 0) : 0;
 
                 Product::updateOrCreate(
                     [
@@ -72,6 +81,9 @@ class ShopifyProductService
                     [
                         'title' => $product['title'],
                         'stock' => $stock,
+                        'price' => $price,
+                        'compare_at_price' => $compareAtPrice,
+                        'last_price_check' => now(),
                     ]
                 );
                 $fetched++;
