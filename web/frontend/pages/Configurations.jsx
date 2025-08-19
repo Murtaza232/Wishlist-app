@@ -240,7 +240,12 @@ export default function ManageConfiguration() {
           setFloatingButtonPosition(config.floating_btn_position || 'left');
           setShowCount(!!config.show_count_floating_btn);
           setButtonSize(config.button_size_product_page || 40);
-          setIconThickness(config.icon_thickness_product_page || 2);
+          // Preserve 0 as a valid saved value
+          setIconThickness(
+            typeof config.icon_thickness_product_page === 'number'
+              ? config.icon_thickness_product_page
+              : 2
+          );
 
           setFloatingButtonCornerRadius(config.floating_btn_corner_radius || 24);
           setDrawerAlignment(config.wishlist_drawer_appearance || "right"); // Use the correct field name
@@ -279,7 +284,7 @@ export default function ManageConfiguration() {
             floatingButtonPosition: config.floating_btn_position || 'left',
             showCount: !!config.show_count_floating_btn,
             buttonSize: config.button_size_product_page || 40,
-            iconThickness: config.icon_thickness_product_page || 2,
+            iconThickness: (typeof config.icon_thickness_product_page === 'number') ? config.icon_thickness_product_page : 2,
 
             floatingButtonCornerRadius: config.floating_btn_corner_radius || 24,
             drawerAlignment: config.wishlist_drawer_appearance || "right", // Use the correct field name
@@ -556,6 +561,7 @@ export default function ManageConfiguration() {
 
               }}
             > */}
+            <div style={{ display: 'inline-flex', gap: 0, flexWrap: 'nowrap' }}>
             {NAV_TABS.map(tab => (
               <button
                 key={tab.key}
@@ -570,13 +576,14 @@ export default function ManageConfiguration() {
                   border: activeTab === tab.key ? 'none' : 'none',
                   boxShadow: activeTab === tab.key ? '0 2px 8px rgba(0,0,0,0.03)' : 'none',
                   outline: activeTab === tab.key ? '2px solid #e3e3e3' : 'none',
-                  marginBottom: 0,
+                  margin: 0,
                   cursor: 'pointer',
                 }}
               >
                 {tab.label}
               </button>
             ))}
+            </div>
             {/* </div> */}
 
             <div
@@ -690,13 +697,12 @@ export default function ManageConfiguration() {
                     <div style={{ fontWeight: 600, fontSize: 20, marginBottom: 18 }}>{t('Icon thickness', 'Configurations')}</div>
                     <Box sectioned title={t('Icon thickness', 'Configurations')}>
                       <RangeSlider
-                        min={1}
+                        min={0}
                         max={8}
                         step={1}
                         value={iconThickness}
                         onChange={val => { setIconThickness(val); markUnsaved(); }}
                         output
-                        // helpText={t('Applies when button type is \'Only Icon\' or \'Icon and Text\'', 'Configurations')}
                       />
                     </Box>
                   </>

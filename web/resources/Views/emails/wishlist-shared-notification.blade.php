@@ -106,8 +106,7 @@
         
         <div class="content">
             <div class="welcome-text">
-                {!! is_string($processedTemplate['textDescriptionDetails'] ?? '') ? $processedTemplate['textDescriptionDetails'] : '' !!}
-              
+                {!! is_string(data_get($processedTemplate ?? [], 'textDescriptionDetails', '')) ? data_get($processedTemplate ?? [], 'textDescriptionDetails', '') : '' !!}
             </div>
            
             @if(isset($wishlistData['link']) && $wishlistData['link'])

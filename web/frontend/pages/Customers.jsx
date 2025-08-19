@@ -139,7 +139,21 @@ const Customers = () => {
         </div>
 
         {/* Stats Cards */}
-        {stats && (
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            {[1,2,3].map((i) => (
+              <div key={i} className="bg-white rounded-xl shadow-sm p-6 animate-pulse">
+                <div className="flex items-center">
+                  <div className="p-2 bg-gray-200 rounded-lg w-10 h-10" />
+                  <div className="ml-4">
+                    <div className="h-4 bg-gray-200 rounded w-28 mb-2" />
+                    <div className="h-6 bg-gray-300 rounded w-16" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : stats && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div className="bg-white rounded-xl shadow-sm p-6">
               <div className="flex items-center">
@@ -347,14 +361,31 @@ const Customers = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
-                  <tr>
-                    <td colSpan="7" className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                        <span className="ml-2 text-gray-500">{t('Loading customers...', 'Customers')}</span>
-                      </div>
-                    </td>
-                  </tr>
+                  [...Array(6)].map((_, idx) => (
+                    <tr key={idx} className="animate-pulse">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="h-10 w-10 rounded-full bg-gray-200" />
+                          <div className="ml-4">
+                            <div className="h-4 bg-gray-200 rounded w-40 mb-2" />
+                            <div className="h-3 bg-gray-100 rounded w-32" />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="h-4 bg-gray-200 rounded w-28" />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="h-4 bg-gray-200 rounded w-20" />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="h-4 bg-gray-200 rounded w-10" />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="h-5 bg-gray-200 rounded-full w-16" />
+                      </td>
+                    </tr>
+                  ))
                 ) : customers.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="px-6 py-4 text-center text-gray-500">

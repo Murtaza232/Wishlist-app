@@ -11,13 +11,14 @@ const ICONS = {
 
 // Utility to clone and override fill/color on SVG icon
 function withFill(Component, fill, size, thickness) {
+  const resolvedStrokeWidth = (typeof thickness === 'number') ? thickness : 2;
   return (
     <Component
       style={{ width: size, height: size, minWidth: size, minHeight: size }}
       fill={fill}
       color={fill}
       stroke={fill}
-      strokeWidth={thickness || 2}
+      strokeWidth={resolvedStrokeWidth}
     />
   );
 }
@@ -41,8 +42,12 @@ function WishlistButton({
     const isIconTextOrText = buttonType === 'icon-text' || buttonType === 'text';
     const isAdded = buttonLabel.trim().toLowerCase() === 'added to wishlist' && buttonTextTab === 'after';
     // Icon and text size logic
-    const iconSize = buttonSize || 24;
-    const textSize = buttonSize ? Math.max(12, Math.round(buttonSize * 0.35)) : (isAdded ? 12 : (isIconTextOrText ? 14 : 16));
+    let iconSize = buttonSize || 24;
+    let textSize = buttonSize ? Math.max(12, Math.round(buttonSize * 0.35)) : (isAdded ? 12 : (isIconTextOrText ? 14 : 16));
+    // When thickness is 0, match icon size to text size (avoid enlarging text)
+    if (typeof iconThickness === 'number' && iconThickness === 0) {
+      iconSize = textSize;
+    }
     let style = {
         display: 'flex',
         alignItems: 'center',

@@ -22,9 +22,10 @@ function NavigationMenuWithLang() {
         <NavigationMenu
             navigationLinks={[
                 { label: t('Configuration', 'Sidebar Tabs'), destination: "/Configurations" },
-                { label: t('Dashboard', 'Sidebar Tabs'), destination: "/Dashboard" },
+                // { label: t('Dashboard', 'Sidebar Tabs'), destination: "/Dashboard" },
+                { label: t('Marketing', 'Sidebar Tabs'), destination: "/Marketing" },
                 { label: t('Customers', 'Sidebar Tabs'), destination: "/Customers" },
-                { label: t('Features', 'Sidebar Tabs'), destination: "/Features" },
+                // { label: t('Features', 'Sidebar Tabs'), destination: "/Features" },
                 { label: t('Settings', 'Sidebar Tabs'), destination: "/Settings" },
             ]}
         />

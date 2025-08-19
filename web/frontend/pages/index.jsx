@@ -14,7 +14,8 @@ import {
 } from '@shopify/polaris'
 import { 
   ExternalIcon,
-  CalendarIcon
+  CalendarIcon,
+  MenuHorizontalIcon
 } from '@shopify/polaris-icons'
 import React, { useState, useEffect, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -68,6 +69,24 @@ function Index() {
   const appBridge = useAppBridge();
   const fetch = useAuthenticatedFetch();
   const navigate = useNavigate();
+  const [setupGuideHidden, setSetupGuideHidden] = useState(() => {
+    return sessionStorage.getItem('setupGuideHidden') === 'true';
+  });
+  const [menuOpen, setMenuOpen] = useState(false);
+  const persistOnboarding = async (payload) => {
+    try {
+      if (!apiLoaded) return;
+      const token = await getSessionToken(appBridge);
+      if (!token) return;
+      await fetch(`${apiUrl}wishlist-configuration`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      // ignore network errors for UI smoothness
+    }
+  };
 
   const fetchThemes = async () => {
     setLoading(true);
@@ -131,6 +150,40 @@ function Index() {
     sessionStorage.setItem('wishlistSetupCompletedSteps', JSON.stringify(completedSteps));
   }, [completedSteps]);
 
+  // Load persisted onboarding state from backend after themes session loaded
+  useEffect(() => {
+    const loadOnboarding = async () => {
+      try {
+        const token = await getSessionToken(appBridge);
+        if (!token) return;
+        const res = await fetch(`${apiUrl}wishlist-configuration/show`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (json && json.success && json.data) {
+          if (typeof json.data.onboarding_dismissed === 'boolean') {
+            setSetupGuideHidden(json.data.onboarding_dismissed);
+          }
+          if (Array.isArray(json.data.onboarding_completed_steps)) {
+            // Map to indices if stored as integers
+            const arr = json.data.onboarding_completed_steps.map(Number).filter((n) => !isNaN(n));
+            setCompletedSteps(arr);
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    if (apiLoaded) {
+      loadOnboarding();
+    }
+  }, [apiLoaded]);
+
+  // Persist setup guide hide/show state
+  useEffect(() => {
+    sessionStorage.setItem('setupGuideHidden', setupGuideHidden ? 'true' : 'false');
+  }, [setupGuideHidden]);
 
 
   // Function to reset setup progress (for testing or when needed)
@@ -156,30 +209,34 @@ function Index() {
       const startDateStr = startDate.toISOString().split('T')[0];
       const endDateStr = endDate.toISOString().split('T')[0];
 
-      console.log('Fetching wishlist stats...');
-      const response = await fetch(`${apiUrl}wishlist-stats?start_date=${startDateStr}&end_date=${endDateStr}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-        },
-      });
+      const [wishlistRes, customersRes] = await Promise.all([
+        fetch(`${apiUrl}wishlist-stats?start_date=${startDateStr}&end_date=${endDateStr}`, {
+          headers: { "Authorization": `Bearer ${token}` },
+        }),
+        fetch(`${apiUrl}customers/stats?start_date=${startDateStr}&end_date=${endDateStr}`, { headers: { "Authorization": `Bearer ${token}` } })
+      ]);
 
-      console.log('Wishlist stats response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
+      if (!wishlistRes.ok) {
+        const errorText = await wishlistRes.text();
         console.error('Wishlist stats error response:', errorText);
         throw new Error('Failed to fetch wishlist statistics');
       }
 
-      const data = await response.json();
-      console.log('Wishlist stats data:', data);
-      
+      // Customers stats may fail independently; default to zero
+      let customersTotal = 0;
+      if (customersRes && customersRes.ok) {
+        const customersData = await customersRes.json();
+        if (customersData && customersData.success && customersData.data) {
+          customersTotal = customersData.data.total_customers || 0;
+        }
+      }
+
+      const data = await wishlistRes.json();
       if (data.status && data.data) {
         setReviewMetrics([
           { title: t('Total Wishlist Products'), value: data.data.total_wishlist_products },
           { title: t('Total Lists'), value: data.data.total_lists },
-          // { title: 'Total Wishlist Clicks', value: data.data.total_wishlist_clicks },
-          // { title: 'Total Wishlist Conversions', value: data.data.total_wishlist_conversions }
+          { title: t('Total Customers'), value: customersTotal },
         ]);
       }
     } catch (error) {
@@ -210,8 +267,7 @@ function Index() {
   const [reviewMetrics, setReviewMetrics] = useState([
     { title: t('Total Wishlist Products'), value: 0 },
     { title: t('Total Lists'), value: 0 },
-    // { title: 'Total Wishlist Clicks', value: 0 },
-    // { title: 'Total Wishlist Conversions', value: 0 }
+    { title: t('Total Customers'), value: 0 },
   ]);
 
   const setupSteps = [
@@ -361,47 +417,53 @@ function Index() {
           </Card>
         </Layout.Section>
 
-        {/* Setup Guide Section */}
+        {/* Setup Guide Section (Onboarding) */}
+        {!setupGuideHidden && (
             <Layout.Section>
           <Card>
             <div style={{ padding: '20px' }}>
               <InlineStack align="space-between" blockAlign="center" gap="4">
                 <InlineStack gap="3" blockAlign="center">
                   <Text variant="headingMd" as="h2" fontWeight="bold">
-                    {t('Setup Guide')}
+                    {t('Setup Guide')} 👋
                   </Text>
-                  <div style={{ 
-                    display: 'flex', 
-                    gap: '2px', 
-                    alignItems: 'center',
-                    marginRight: '12px',
-                    marginLeft: '12px',
-                  }}>
-                    {[0, 1, 2].map((index) => (
-                      <div
-                        key={index}
-                        style={{
-                          width: '32px',
-                          height: '8px',
-                          backgroundColor: completedSteps.includes(index) ? '#FF8C00' : '#E1E3E5',
-                          borderRadius: '4px',
-                          transition: 'background-color 0.3s ease'
-                        }}
-                      />
-                    ))}
-                  </div>
                   <Text variant="bodySm" color="subdued">
-                    {completedStepsCount}/3 {t('completed')}
+                    {completedStepsCount}/{setupSteps.length} {t('completed')}
                   </Text>
                 </InlineStack>
-                <Button
-                  // icon={ChevronUpIcon}
-                  variant="tertiary"
-                  onClick={() => setSetupGuideExpanded(!setupGuideExpanded)}
-                >
-                  {setupGuideExpanded ? '▼' : '▲'}
-                </Button>
+                <InlineStack gap="2">
+                  <div style={{ position: 'relative' }}>
+                    <Button variant="tertiary" onClick={() => setMenuOpen((prev) => !prev)}>
+                      <Icon source={MenuHorizontalIcon} color="base" />
+                    </Button>
+                    {menuOpen && (
+                      <div style={{
+                        position: 'absolute',
+                        right: 0,
+                        top: '100%',
+                        zIndex: 10,
+                        background: 'white',
+                        border: '1px solid #E1E3E5',
+                        borderRadius: 8,
+                        padding: 8,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+                      }}>
+                        <Button variant="tertiary" onClick={() => { setSetupGuideHidden(true); setMenuOpen(false); persistOnboarding({ onboarding_dismissed: true }); }}>
+                          {t('Dismiss')}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  <Button variant="tertiary" onClick={() => setSetupGuideExpanded(!setupGuideExpanded)}>
+                    {setupGuideExpanded ? '▼' : '▲'}
+                  </Button>
+                </InlineStack>
               </InlineStack>
+
+              {/* Single progress bar */}
+              <div style={{ marginTop: 12 }}>
+                <ProgressBar progress={Math.round((completedStepsCount / setupSteps.length) * 100)} tone="primary" size="small" />
+              </div>
 
               {setupGuideExpanded && (
                 <div style={{ marginTop: '20px' }}>
@@ -426,22 +488,28 @@ function Index() {
                           style={{
                             width: '20px',
                             height: '20px',
-                            border: '2px solid #c9cccf',
+                            border: completedSteps.includes(index) ? '2px solid #202223' : '2px dotted #c9cccf',
                             borderRadius: '50%',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            backgroundColor: completedSteps.includes(index) ? '#5c5f62' : 'white',
+                            backgroundColor: completedSteps.includes(index) ? '#202223' : 'transparent',
                             cursor: 'pointer'
                           }}
                           onClick={(e) => {
                             e.stopPropagation(); // Prevent triggering the parent click
                             if (completedSteps.includes(index)) {
                               // Remove this step from completed steps
-                              setCompletedSteps(completedSteps.filter(stepIndex => stepIndex !== index));
+                              const updated = completedSteps.filter(stepIndex => stepIndex !== index);
+                              setCompletedSteps(updated);
+                              // persist
+                              persistOnboarding({ onboarding_completed_steps: updated });
                             } else {
                               // Add this step to completed steps
-                              setCompletedSteps([...completedSteps, index]);
+                              const updated = [...completedSteps, index];
+                              setCompletedSteps(updated);
+                              // persist
+                              persistOnboarding({ onboarding_completed_steps: updated });
                             }
                           }}
                         >
@@ -471,7 +539,9 @@ function Index() {
                                   e.stopPropagation(); // Prevent triggering the parent click
                                   // Mark this step as completed
                                   if (!completedSteps.includes(index)) {
-                                    setCompletedSteps([...completedSteps, index]);
+                                    const updated = [...completedSteps, index];
+                                    setCompletedSteps(updated);
+                                    persistOnboarding({ onboarding_completed_steps: updated });
                                   }
                                   // Move to next step if available
                                   if (index < setupSteps.length - 1) {
@@ -480,6 +550,10 @@ function Index() {
                                   // Route to configurations page for "Customize Widget" button
                                   if (step.title === t('Widget Personalization')) {
                                     navigate('/Configurations');
+                                  } else if (step.title === t('Smart Notifications Alerts')) {
+                                    navigate('/notification');
+                                  } else if (step.title === t('Localize')) {
+                                    navigate('/language-setting');
                                   } else if (appEmbedUrl && apiLoaded) {
                                     window.open(appEmbedUrl, '_blank');
                                   }
@@ -505,6 +579,7 @@ function Index() {
             </div>
           </Card>
         </Layout.Section>
+        )}
 
         {/* Wishlist Features Section */}
         <Layout.Section>

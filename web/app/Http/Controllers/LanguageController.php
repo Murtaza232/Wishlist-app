@@ -271,7 +271,8 @@ class LanguageController extends HelperController
             'Sidebar Tabs' => [
                 'Configuration' => 'Configuration',
                 'Settings' => 'Settings',
-                'Customers' => 'Customers'
+                'Customers' => 'Customers',
+                'Marketing' => 'Marketing'
             ],
             'Dashboard' => [
                 'Dashboard' => 'Dashboard',
@@ -329,6 +330,28 @@ class LanguageController extends HelperController
                 'Retain & Re-Engage 3rd tab Title' => "Omnichannel Experience",
                 'Retain & Re-Engage 3rd tab 1st paragraph' => "Blurs the lines between online & in-store shopping experiences, helping sales associates personalize based on customer preferences.",
                 'Retain & Re-Engage 3rd tab 2nd paragraph' => "Bombshell Sportswear saw a 73% wishlist revenue increase using Tapcart",
+            ],
+            'Marketing' => [
+                'Marketing and Automations' => 'Marketing and Automations',
+                'Boost sales with automated marketing campaigns' => 'Boost sales with automated marketing campaigns',
+                'Swym has been connected as your marketing integration for Email' => 'Swym has been connected as your marketing integration for Email',
+                'Connected' => 'Connected',
+                'Turn visitors into buyers' => 'Turn visitors into buyers',
+                'Boost sales with Swym\'s marketing automations by re-engaging shoppers who show intent but leave without buying, using personalized product recommendations.' => 'Boost sales with Swym\'s marketing automations by re-engaging shoppers who show intent but leave without buying, using personalized product recommendations.',
+                'Launch a gifting campaign for Mother\'s Day, Graduation, Back to School, and more' => 'Launch a gifting campaign for Mother\'s Day, Graduation, Back to School, and more',
+                'Win Your Wishlist Campaign' => 'Win Your Wishlist Campaign',
+                'Gamify engagement by letting shoppers create a wishlist for a chance to win it free in a site-wide giveaway' => 'Gamify engagement by letting shoppers create a wishlist for a chance to win it free in a site-wide giveaway',
+                'more signups' => 'more signups',
+                'more wishlist activity' => 'more wishlist activity',
+                'revenue growth' => 'revenue growth',
+                'Setup Campaign' => 'Setup Campaign',
+                'Learn More' => 'Learn More',
+                'Win your Wishlist' => 'Win your Wishlist',
+                'We\'re giving 10 people the chance to win their Wishlist up to the value of $1000!' => 'We\'re giving 10 people the chance to win their Wishlist up to the value of $1000!',
+                'Enter email address' => 'Enter email address',
+                'Win Your Wishlist!' => 'Win Your Wishlist!',
+                'Sign up, add items to your wishlist, and get a chance to win them for free!' => 'Sign up, add items to your wishlist, and get a chance to win them for free!',
+                'Sign Up and Start Wishlisting' => 'Sign Up and Start Wishlisting'
             ],
             'Configurations' => [
                 'Basics' => 'Basics',

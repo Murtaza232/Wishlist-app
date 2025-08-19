@@ -163,7 +163,20 @@ export default function Installation() {
   const handleTabChange = (selectedTabIndex) => {
     setSelectedTab(selectedTabIndex);
   };
-
+  const RefreshIcon = ({ size = 16, className = "", ...props }) => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      width={size}
+      height={size}
+      className={className}
+      aria-hidden="true"
+      {...props}
+    >
+      <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+    </svg>
+  );
   const renderThemeExtensionPanel = () => (
     <div>
       <div style={{ marginBottom: '24px' }}>
@@ -221,9 +234,7 @@ export default function Installation() {
             {(!apiLoaded || loading) ? (
               <div style={{ width: '16px', height: '16px', border: '2px solid #e1e3e5', borderTop: '2px solid #008060', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
             ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-                </svg>
+              <RefreshIcon size={20} />
             )}
           </div>
         </div>
@@ -380,14 +391,14 @@ export default function Installation() {
             marginBottom: '16px',
             width: '100%'
           }}>
-            <div style={{ 
+            {/* <div style={{ 
               display: 'flex', 
               gap: '0px',
               backgroundColor: '#FFFFFF',
               borderRadius: '8px',
               padding: '4px',
               justifyContent: 'flex-start'
-            }}>
+            }}> */}
               {tabs.map((tab, index) => (
                 <button
                   key={tab.id}
@@ -411,7 +422,7 @@ export default function Installation() {
                 </button>
               ))}
             </div>
-          </div>
+          {/* </div> */}
 
           {/* First Card - Theme Extension Panel */}
           <div style={{ 

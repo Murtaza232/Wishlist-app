@@ -44,6 +44,10 @@ class WishlistConfiguration extends Model
         // 'text_color',
         // 'wishlist_drawer_appearance',
     ];
+    protected $casts = [
+        'onboarding_dismissed' => 'boolean',
+        'onboarding_completed_steps' => 'array',
+    ];
     public function session()
     {
         return $this->belongsTo(Session::class, 'shop_id');

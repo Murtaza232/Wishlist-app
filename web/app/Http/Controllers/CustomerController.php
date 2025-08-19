@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Shopify\Clients\Rest;
+use Carbon\Carbon;
 
 class CustomerController extends HelperController
 {
@@ -86,7 +87,7 @@ class CustomerController extends HelperController
                 'total_spent' => 'nullable|numeric|min:0',
                 'orders_count' => 'nullable|integer|min:0',
                 'status' => 'nullable|string|in:active,inactive,disabled',
-                'last_order_date' => 'nullable|date',
+                // 'last_order_date' => 'nullable|date',
                 'created_at_shopify' => 'nullable|date',
             ]);
 
@@ -186,7 +187,7 @@ class CustomerController extends HelperController
                     'total_spent' => $shopifyCustomer['total_spent'] ?? 0.00,
                     'orders_count' => $shopifyCustomer['orders_count'] ?? 0,
                     'status' => $shopifyCustomer['state'] === 'enabled' ? 'active' : 'inactive',
-                    'last_order_date' => $shopifyCustomer['last_order_id'] ? date('Y-m-d H:i:s', strtotime($shopifyCustomer['updated_at'])) : null,
+                    // 'last_order_date' => $shopifyCustomer['last_order_id'] ? date('Y-m-d H:i:s', strtotime($shopifyCustomer['updated_at'])) : null,
                     'created_at_shopify' => date('Y-m-d H:i:s', strtotime($shopifyCustomer['created_at'])),
                 ];
 
@@ -236,12 +237,28 @@ class CustomerController extends HelperController
 
             Log::info('Customer stats request for shop: ' . $shopSession->shop);
 
+            $baseQuery = Customer::byShop($shopSession->id);
+
+            // Optional date filtering similar to wishlist stats (YYYY-MM-DD)
+            $start = $request->query('start_date');
+            $end = $request->query('end_date');
+            if ($start && $end) {
+                try {
+                    $startAt = Carbon::parse($start)->startOfDay();
+                    $endAt = Carbon::parse($end)->endOfDay();
+                    $baseQuery = $baseQuery->whereBetween('created_at', [$startAt, $endAt]);
+                } catch (\Exception $e) {
+                    // If parsing fails, ignore filtering
+                    Log::warning('Invalid date range provided to customers/stats: ' . $e->getMessage());
+                }
+            }
+
             $stats = [
-                'total_customers' => Customer::byShop($shopSession->id)->count(),
-                'active_customers' => Customer::byShop($shopSession->id)->active()->count(),
-                'total_revenue' => Customer::byShop($shopSession->id)->sum('total_spent'),
-                'avg_order_value' => Customer::byShop($shopSession->id)->where('orders_count', '>', 0)->avg('total_spent') ?? 0,
-                'customers_with_orders' => Customer::byShop($shopSession->id)->where('orders_count', '>', 0)->count(),
+                'total_customers' => (clone $baseQuery)->count(),
+                'active_customers' => (clone $baseQuery)->active()->count(),
+                'total_revenue' => (clone $baseQuery)->sum('total_spent'),
+                'avg_order_value' => (clone $baseQuery)->where('orders_count', '>', 0)->avg('total_spent') ?? 0,
+                'customers_with_orders' => (clone $baseQuery)->where('orders_count', '>', 0)->count(),
             ];
 
             Log::info('Retrieved stats for shop: ' . $shopSession->shop . ' - Total customers: ' . $stats['total_customers']);
@@ -313,7 +330,7 @@ class CustomerController extends HelperController
                 'total_spent' => 'nullable|numeric|min:0',
                 'orders_count' => 'nullable|integer|min:0',
                 'status' => 'nullable|string|in:active,inactive,disabled',
-                'last_order_date' => 'nullable|date',
+                // 'last_order_date' => 'nullable|date',
             ]);
 
             $customer->update($request->all());

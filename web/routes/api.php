@@ -2,9 +2,10 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\WishlistConfigurationController;
 use App\Http\Controllers\WishlistController;
+use App\Http\Controllers\WishlistConfigurationController;
 use App\Http\Controllers\SubscriptionNotificationController;
+use App\Http\Controllers\ProviderController;
 use App\Http\Controllers\LanguageController;
 use Shopify\Clients\Rest;
 use App\Models\Session;
@@ -41,6 +42,7 @@ Route::get('/ensure-templates', function (Request $request) {
     return response()->json(['status' => 'success', 'message' => 'Templates ensured']);
 });
 Route::any('/wishlist-configuration', [WishlistConfigurationController::class, 'store']);
+Route::get('/wishlist-configuration/show', [WishlistConfigurationController::class, 'show']);
 Route::get('/get-themes', [WishlistConfigurationController::class, 'getThemes']);
 Route::get('/extension-status', [WishlistConfigurationController::class, 'getExtensionStatus']);
 Route::get('/wishlist-editor-url', [WishlistConfigurationController::class, 'EditorUrl']);
@@ -65,6 +67,21 @@ Route::any('/subscription-notification-detail/{id}', [SubscriptionNotificationCo
     ->name('subscription-notification-detail');
 Route::any('/subscription-notification-save/{id}', [SubscriptionNotificationController::class, 'subscription_notification_save'])
     ->name('subscription_notification-save');
+
+// Provider selection
+Route::get('/notification-providers', [ProviderController::class, 'get']);
+Route::post('/notification-providers', [ProviderController::class, 'save']);
+
+// Marketing Analytics Routes
+Route::get('/marketing-analytics', [\App\Http\Controllers\MarketingAnalyticsController::class, 'getMarketingAnalytics']);
+// Campaign Routes
+Route::post('/campaigns/save', [\App\Http\Controllers\CampaignController::class, 'save']);
+Route::get('/campaigns/current', [\App\Http\Controllers\CampaignController::class, 'current']);
+Route::post('/campaigns/track-signup', [\App\Http\Controllers\CampaignController::class, 'trackSignup']);
+Route::get('/campaigns/export', [\App\Http\Controllers\CampaignController::class, 'exportCsv']);
+Route::post('/marketing-analytics/export', [\App\Http\Controllers\MarketingAnalyticsController::class, 'exportShopperSegment']);
+// Test notification emails
+Route::post('/notifications/test-send', [\App\Http\Controllers\NotificationTestController::class, 'sendTest']);
 
 // Test route for wishlist sign-up confirmation email
 Route::get('/test-wishlist-signup-email', function (Request $request) {

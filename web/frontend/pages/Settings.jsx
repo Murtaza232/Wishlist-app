@@ -41,11 +41,11 @@ export default function Settings() {
     },
     {
       id: 'integrations',
-      title: t('Integerations', 'Settings'),
+      title: t('Integrations', 'Settings'),
       icon: DnsSettingsIcon,
       description: t('Integrations subtitle', 'Settings'),
       isPremium: false,
-      action: () => console.log('Integrations clicked')
+      action: () => navigate("/integrations")
     },
     {
       id: 'installation',

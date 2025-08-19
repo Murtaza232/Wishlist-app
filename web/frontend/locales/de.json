@@ -7,6 +7,28 @@
     "trophyAltText": "Gute Arbeit beim Erstellen einer Shopify-App",
     "yourAppIsReadyToExplore": "Deine App kann nun erkundet werden! Sie enthält alles, was du brauchst, um loszulegen: das <PolarisLink>Polaris Designsystem</PolarisLink>, die <AdminApiLink>Shopify Admin API</AdminApiLink> und die <AppBridgeLink>App Bridge</AppBridgeLink>-UI-Bibliothek sowie entsprechende Komponenten."
   },
+  "Marketing": {
+    "Marketing and Automations": "Marketing und Automatisierung",
+    "Boost sales with automated marketing campaigns": "Steigern Sie den Umsatz mit automatisierten Marketing-Kampagnen",
+    "Swym has been connected as your marketing integration for Email": "Swym wurde als Ihre Marketing-Integration für E-Mail verbunden",
+    "Connected": "Verbunden",
+    "Turn visitors into buyers": "Verwandeln Sie Besucher in Käufer",
+    "Boost sales with Swym's marketing automations by re-engaging shoppers who show intent but leave without buying, using personalized product recommendations.": "Steigern Sie den Umsatz mit Swyms Marketing-Automatisierung, indem Sie Käufer reaktivieren, die Interesse zeigen, aber ohne Kauf gehen, mit personalisierten Produktempfehlungen.",
+    "Launch a gifting campaign for Mother's Day, Graduation, Back to School, and more": "Starten Sie eine Geschenkkampagne für Muttertag, Abschluss, Schulbeginn und mehr",
+    "Win Your Wishlist Campaign": "Gewinnen Sie Ihre Wunschliste Kampagne",
+    "Gamify engagement by letting shoppers create a wishlist for a chance to win it free in a site-wide giveaway": "Gamifizieren Sie das Engagement, indem Sie Käufern erlauben, eine Wunschliste zu erstellen für eine Chance, sie kostenlos in einer site-weiten Verlosung zu gewinnen",
+    "more signups": "mehr Anmeldungen",
+    "more wishlist activity": "mehr Wunschlisten-Aktivität",
+    "revenue growth": "Umsatzwachstum",
+    "Setup Campaign": "Kampagne einrichten",
+    "Learn More": "Mehr erfahren",
+    "Win your Wishlist": "Gewinnen Sie Ihre Wunschliste",
+    "We're giving 10 people the chance to win their Wishlist up to the value of $1000!": "Wir geben 10 Personen die Chance, ihre Wunschliste bis zu einem Wert von 1000$ zu gewinnen!",
+    "Enter email address": "E-Mail-Adresse eingeben",
+    "Win Your Wishlist!": "Gewinnen Sie Ihre Wunschliste!",
+    "Sign up, add items to your wishlist, and get a chance to win them for free!": "Melden Sie sich an, fügen Sie Artikel zu Ihrer Wunschliste hinzu und erhalten Sie eine Chance, sie kostenlos zu gewinnen!",
+    "Sign Up and Start Wishlisting": "Anmelden und mit Wünschen beginnen"
+  },
   "NavigationMenu": {
     "pageName": "Seitenname"
   },

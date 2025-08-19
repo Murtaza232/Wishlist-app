@@ -1,18 +1,40 @@
 {
   "HomePage": {
-    "heading": "Bravo pour l’application Shopify que vous avez créée 🎉",
+    "heading": "Bravo pour l'application Shopify que vous avez créée 🎉",
     "learnMore": "Découvrez comment concevoir votre application dans <ShopifyTutorialLink>ce tutoriel Shopify</ShopifyTutorialLink> 📚",
-    "startPopulatingYourApp": "Vous souhaitez vous lancer ? Commencez à remplir votre application d’exemples de produits à afficher et tester dans votre boutique.",
-    "title": "Nom de l’application",
-    "trophyAltText": "Bravo pour l’application Shopify que vous avez créée",
-    "yourAppIsReadyToExplore": "Votre application est prête à être explorée ! Elle contient tout ce dont vous avez besoin pour vous lancer, y compris le <PolarisLink>système de design Polaris</PolarisLink>, la <AdminApiLink>Shopify Admin API</AdminApiLink> ainsi que la bibliothèque et les composants d’IU <AppBridgeLink>App Bridge</AppBridgeLink>."
+    "startPopulatingYourApp": "Vous souhaitez vous lancer ? Commencez à remplir votre application d'exemples de produits à afficher et tester dans votre boutique.",
+    "title": "Nom de l'application",
+    "trophyAltText": "Bravo pour l'application Shopify que vous avez créée",
+    "yourAppIsReadyToExplore": "Votre application est prête à être explorée ! Elle contient tout ce dont vous avez besoin pour vous lancer, y compris le <PolarisLink>système de design Polaris</PolarisLink>, la <AdminApiLink>Shopify Admin API</AdminApiLink> ainsi que la bibliothèque et les composants d'IU <AppBridgeLink>App Bridge</AppBridgeLink>."
+  },
+  "Marketing": {
+    "Marketing and Automations": "Marketing et Automatisations",
+    "Boost sales with automated marketing campaigns": "Augmentez les ventes avec des campagnes marketing automatisées",
+    "Swym has been connected as your marketing integration for Email": "Swym a été connecté comme votre intégration marketing pour l'Email",
+    "Connected": "Connecté",
+    "Turn visitors into buyers": "Transformez les visiteurs en acheteurs",
+    "Boost sales with Swym's marketing automations by re-engaging shoppers who show intent but leave without buying, using personalized product recommendations.": "Augmentez les ventes avec les automatisations marketing de Swym en réengageant les acheteurs qui montrent de l'intérêt mais partent sans acheter, en utilisant des recommandations de produits personnalisées.",
+    "Launch a gifting campaign for Mother's Day, Graduation, Back to School, and more": "Lancez une campagne de cadeaux pour la Fête des Mères, les Diplômés, la Rentrée, et plus encore",
+    "Win Your Wishlist Campaign": "Campagne Gagnez Votre Liste de Souhaits",
+    "Gamify engagement by letting shoppers create a wishlist for a chance to win it free in a site-wide giveaway": "Gamifiez l'engagement en permettant aux acheteurs de créer une liste de souhaits pour une chance de la gagner gratuitement dans un concours site-wide",
+    "more signups": "plus d'inscriptions",
+    "more wishlist activity": "plus d'activité de liste de souhaits",
+    "revenue growth": "croissance des revenus",
+    "Setup Campaign": "Configurer la Campagne",
+    "Learn More": "En Savoir Plus",
+    "Win your Wishlist": "Gagnez votre Liste de Souhaits",
+    "We're giving 10 people the chance to win their Wishlist up to the value of $1000!": "Nous donnons à 10 personnes la chance de gagner leur Liste de Souhaits jusqu'à une valeur de 1000$ !",
+    "Enter email address": "Entrez votre adresse email",
+    "Win Your Wishlist!": "Gagnez Votre Liste de Souhaits !",
+    "Sign up, add items to your wishlist, and get a chance to win them for free!": "Inscrivez-vous, ajoutez des articles à votre liste de souhaits, et obtenez une chance de les gagner gratuitement !",
+    "Sign Up and Start Wishlisting": "Inscrivez-vous et Commencez à Souhaiter"
   },
   "NavigationMenu": {
     "pageName": "Nom de la page"
   },
   "NotFound": {
-    "description": "Vérifiez l’URL et réessayez, ou utilisez la barre de recherche pour trouver ce qu’il vous faut.",
-    "heading": "Il n’y a aucune page à cette adresse"
+    "description": "Vérifiez l'URL et réessayez, ou utilisez la barre de recherche pour trouver ce qu'il vous faut.",
+    "heading": "Il n'y a aucune page à cette adresse"
   },
   "PageName": {
     "body": "Corps",
@@ -25,14 +47,14 @@
     "description": "Les exemples de produits sont créés avec un titre et un prix par défaut. Vous pouvez les supprimer à tout moment.",
     "errorCreatingProductsToast": "Une erreur est survenue lors de la création des produits",
     "populateProductsButton": {
-      "one": "Remplir {{count}} produit",
-      "other": "Remplir {{count}} produits",
-      "many": "Remplir {{count}} produits"
+      "one": "Remplir {{count}} produit",
+      "other": "Remplir {{count}} produits",
+      "many": "Remplir {{count}} produits"
     },
     "productsCreatedToast": {
-      "one": "{{count}} produit créé !",
-      "other": "{{count}} produits créés !",
-      "many": "{{count}} produits créés !"
+      "one": "{{count}} produit créé !",
+      "other": "{{count}} produits créés !",
+      "many": "{{count}} produits créés !"
     },
     "title": "Compteur de produits",
     "totalProductsHeading": "TOTAL DES PRODUITS"

@@ -1609,7 +1609,11 @@ export default function EmailTemplate() {
                                         <div
                                           className="ql-editor"
                                           style={{
-                                            textAlign: customizedata?.textDescriptionAlignment?.toLowerCase() || "left"
+                                            textAlign: customizedata?.textDescriptionAlignment?.toLowerCase() || "left",
+                                            paddingLeft: 24,
+                                            paddingRight: 24,
+                                            paddingTop: 24,
+                                            paddingBottom: 24,
                                           }}
                                           dangerouslySetInnerHTML={{ __html: customizedata?.textDescriptionDetails }}
                                         />

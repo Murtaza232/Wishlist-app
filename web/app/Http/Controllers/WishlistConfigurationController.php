@@ -32,6 +32,10 @@ class WishlistConfigurationController extends HelperController
         }
 
         $validated = $request->validate([
+            // Onboarding fields
+            'onboarding_dismissed' => 'nullable|boolean',
+            'onboarding_completed_steps' => 'nullable|array',
+            'onboarding_completed_steps.*' => 'nullable|integer',
             'primary_color' => 'nullable|string',
             'secondary_color' => 'nullable|string',
             'icon_type' => 'nullable|in:heart,star,bookmark',
@@ -86,6 +90,10 @@ class WishlistConfigurationController extends HelperController
             $metafieldsInput = [];
             foreach ($data as $key => $value) {
                 if ($key === 'shop_id') continue;
+                if ($key === 'onboarding_completed_steps' && is_array($value)) {
+                    $type = 'json';
+                    $value = json_encode($value);
+                } else {
                 if ($value === null || $value === '') continue; // skip blank/null values
                 if (is_bool($value)) {
                     $type = 'boolean';
@@ -94,6 +102,7 @@ class WishlistConfigurationController extends HelperController
                     $type = 'number_integer';
                 } else {
                     $type = 'single_line_text_field';
+                }
                 }
                 $metafieldsInput[] = [
                     'namespace' => 'wishlist',
