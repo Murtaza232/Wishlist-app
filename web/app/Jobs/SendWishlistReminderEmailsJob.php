@@ -82,8 +82,8 @@ class SendWishlistReminderEmailsJob implements ShouldQueue
             return;
         }
 
-        $reminderTime = $reminder->reminder_value ?? 0;
-        $reminderUnit = $reminder->reminder_time_unit ?? 'days';
+        $reminderTime = (int)($reminder->reminder_value ?? 0);
+        $reminderUnit = $reminder->reminder_time_unit ?? 'hours';
 
         if ($reminderTime <= 0) {
             Log::info("Wishlist reminder time is not set or zero for shop: {$shop->shop}");
@@ -92,7 +92,14 @@ class SendWishlistReminderEmailsJob implements ShouldQueue
 
         Log::info("Processing wishlist reminders for shop: {$shop->shop} (time: $reminderTime $reminderUnit)");
 
-        $wishlists = Wishlist::where('shop_id', $shop->id)->get();
+        // Get wishlists that haven't been reminded yet or were last reminded more than 1 day ago
+        $wishlists = Wishlist::where('shop_id', $shop->id)
+            ->where(function($query) use ($now) {
+                $query->whereNull('last_reminder_sent_at')
+                      ->orWhere('last_reminder_sent_at', '<=', $now->copy()->subDay()->toDateTimeString());
+            })
+            ->get();
+
         $sentCount = 0;
 
         foreach ($wishlists as $wishlist) {
@@ -100,8 +107,17 @@ class SendWishlistReminderEmailsJob implements ShouldQueue
             $shouldSend = $this->shouldSendReminder($created, $reminderTime, $reminderUnit, $now);
 
             if ($shouldSend) {
-                $result = $notificationService->sendWishlistReminderEmail($wishlist->customer_id, $wishlist, $shop);
+                $result = $notificationService->sendWishlistReminderEmail(
+                    $wishlist->customer_id, 
+                    $wishlist, 
+                    $shop
+                );
+                
                 if ($result) {
+                    // Update the last reminder timestamp
+                    $wishlist->last_reminder_sent_at = $now;
+                    $wishlist->save();
+                    
                     $sentCount++;
                     Log::info("Sent wishlist reminder email for wishlist ID: {$wishlist->id}");
                 } else {

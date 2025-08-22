@@ -105,9 +105,14 @@ class NotificationTestController extends HelperController
                 }
             }
 
+            // Force subject to "Test Email" for all test sends
+            if ($mailable) {
+                $mailable->subject('Test Email');
+            }
+
             $message = [
                 'to' => $toEmail,
-                'subject' => 'Test: ' . str_replace('_', ' ', ucfirst($type)),
+                'subject' => 'Test Email',
                 'mailable' => $mailable,
             ];
 

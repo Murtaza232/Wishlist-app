@@ -12,6 +12,7 @@ use Gnikyt\BasicShopifyAPI\Options;
 use Gnikyt\BasicShopifyAPI\Session;
 use App\Models\Session as SessionModel;
 use App\Models\NotificationProvider;
+use App\Services\UsageService;
 
 class WishlistNotificationService
 {
@@ -66,8 +67,36 @@ class WishlistNotificationService
 		Log::info('WishlistNotificationService constructor called');
 	}
 
+	/**
+	 * Check if notifications are allowed based on usage limits
+	 */
+	private function isNotificationAllowed($shop)
+	{
+		try {
+			$shopDomain = is_string($shop) ? $shop : $shop->shop;
+			$isAllowed = UsageService::isActionAllowed($shopDomain, 'send_notification');
+			
+			if (!$isAllowed) {
+				Log::warning("Notification blocked due to usage limit reached for shop: {$shopDomain}");
+			}
+			
+			return $isAllowed;
+		} catch (\Exception $e) {
+			Log::error("Error checking notification permissions: " . $e->getMessage());
+			// Default to allowing notifications if there's an error
+			return true;
+		}
+	}
+
 	public function sendViaSelectedProvider(array $message, array $context, $shopId, string $channel = 'email')
 	{
+		// Check usage limits before sending notification
+		$shop = SessionModel::find($shopId);
+		if ($shop && !$this->isNotificationAllowed($shop)) {
+			Log::info("Notification blocked due to usage limit reached for shop: {$shop->shop}");
+			return false;
+		}
+		
 		// Get the provider settings from the database
 		$providerRow = NotificationProvider::where('session_id', $shopId)->first();
 		
@@ -87,6 +116,12 @@ class WishlistNotificationService
 		$provider = $channel === 'email' 
 			? ($providerRow->email_provider ?? 'smtp')
 			: ($providerRow->sms_provider ?? null);
+
+		// Normalize explicit 'smtp' channel to email
+		if ($channel === 'smtp') {
+			$channel = 'email';
+			$provider = 'smtp';
+		}
 			
 		// Get provider settings
 		$settings = $providerRow && $providerRow->provider_settings 
@@ -126,21 +161,40 @@ class WishlistNotificationService
 					'from_address' => config('mail.from.address'),
 					'from_name' => config('mail.from.name')
 				]);
-				
+
 				if (isset($message['mailable'])) {
 					Log::info('Sending email via Laravel SMTP', [
 						'to' => $message['to'],
 						'subject' => $message['subject'] ?? 'No subject',
 						'mailable_class' => get_class($message['mailable'])
 					]);
-					
-					Mail::to($message['to'])->send($message['mailable']);
-					
+
+					// If a subject is provided (e.g., tests), render the mailable and send with forced subject
+					if (!empty($message['subject'])) {
+						$html = $message['mailable']->render();
+						Mail::html($html, function ($mail) use ($message) {
+							$mail->to($message['to']);
+							$mail->subject($message['subject']);
+							if (!empty($message['from'])) {
+								$mail->from($message['from'], $message['from_name'] ?? null);
+							}
+						});
+					} else {
+						// Normal path – let the mailable define the subject
+						Mail::to($message['to'])->send($message['mailable']);
+					}
+
 					Log::info('=== SMTP EMAIL SENT SUCCESSFULLY ===', [
 						'to' => $message['to'],
 						'subject' => $message['subject'] ?? 'No subject',
 						'sent_via' => 'Laravel SMTP'
 					]);
+					
+					// Track usage after successful notification
+					if ($shop) {
+						UsageService::trackUsage($shop->shop, 'send_notification');
+					}
+					
 					return true;
 				}
 				Log::error('Cannot send email: No mailable provided');
@@ -435,6 +489,11 @@ class WishlistNotificationService
 						'response_time_ms' => $responseTime
 					]);
 					
+					// Track usage after successful notification
+					if ($shop) {
+						UsageService::trackUsage($shop->shop, 'send_notification');
+					}
+					
 					return true;
 					
 				} catch (\Exception $e) {
@@ -470,6 +529,12 @@ class WishlistNotificationService
 								'to' => $message['to'],
 								'sent_via' => 'SMTP Fallback'
 							]);
+							
+							// Track usage after successful notification
+							if ($shop) {
+								UsageService::trackUsage($shop->shop, 'send_notification');
+							}
+							
 							return true;
 						} else {
 							Log::error('=== SMTP FALLBACK FAILED ===', [
@@ -509,6 +574,12 @@ class WishlistNotificationService
 							'to' => $message['to'],
 							'sent_via' => 'Final SMTP Fallback'
 						]);
+						
+						// Track usage after successful notification
+						if ($shop) {
+							UsageService::trackUsage($shop->shop, 'send_notification');
+						}
+						
 					return true;
 					} catch (\Exception $smtpError) {
 						Log::error('=== FINAL SMTP FALLBACK FAILED ===', [
@@ -676,6 +747,11 @@ class WishlistNotificationService
 					'sent_via' => 'Iterable API'
 				]);
 				
+				// Track usage after successful notification
+				if ($shop) {
+					UsageService::trackUsage($shop->shop, 'send_notification');
+				}
+				
 				return true;
 				
 			} catch (\Exception $e) {
@@ -700,11 +776,17 @@ class WishlistNotificationService
 					if (isset($message['mailable'])) {
 						Log::info('Attempting SMTP fallback with mailable');
 						Mail::to($message['to'])->send($message['mailable']);
-						Log::info('=== SMTP FALLBACK SUCCESSFUL ===', [
-							'to' => $message['to'],
-							'sent_via' => 'SMTP Fallback'
-						]);
-						return true;
+											Log::info('=== SMTP FALLBACK SUCCESSFUL ===', [
+						'to' => $message['to'],
+						'sent_via' => 'SMTP Fallback'
+					]);
+					
+					// Track usage after successful notification
+					if ($shop) {
+						UsageService::trackUsage($shop->shop, 'send_notification');
+					}
+					
+					return true;
 					}
 				}
 				
@@ -782,6 +864,12 @@ class WishlistNotificationService
 					return false;
 				}
 				Log::info('=== YOTPO EMAIL TRIGGERED SUCCESSFULLY ===');
+				
+				// Track usage after successful notification
+				if ($shop) {
+					UsageService::trackUsage($shop->shop, 'send_notification');
+				}
+				
 				return true;
 			} catch (\Exception $e) {
 				Log::error('Yotpo email trigger exception', ['error' => $e->getMessage()]);
@@ -803,7 +891,7 @@ class WishlistNotificationService
 				$phone = $message['to'] ?? null;
 				$profile = $message['profile'] ?? [];
 				$properties = $message['properties'] ?? [];
-				return $this->sendKlaviyoSmsEvent($apiKey, $metric, $phone, $profile, $properties);
+				return $this->sendKlaviyoSmsEvent($apiKey, $metric, $phone, $profile, $properties, $shop);
 			}
 
 			if (strtolower((string)$provider) === 'iterable') {
@@ -818,7 +906,7 @@ class WishlistNotificationService
 				$phone = $message['to'] ?? null;
 				$profile = $message['profile'] ?? [];
 				$properties = $message['properties'] ?? [];
-				return $this->sendIterableSmsEvent($apiKey, $phone, $profile, $properties);
+				return $this->sendIterableSmsEvent($apiKey, $phone, $profile, $properties, $shop);
 			}
 
 			if (strtolower((string)$provider) === 'yotpo') {
@@ -866,6 +954,12 @@ class WishlistNotificationService
 						return false;
 					}
 					Log::info('=== YOTPO SMS TRIGGERED SUCCESSFULLY ===');
+					
+					// Track usage after successful notification
+					if ($shop) {
+						UsageService::trackUsage($shop->shop, 'send_notification');
+					}
+					
 					return true;
 				} catch (\Exception $e) {
 					Log::error('Yotpo SMS trigger exception', ['error' => $e->getMessage()]);
@@ -920,6 +1014,12 @@ class WishlistNotificationService
 	 */
 	public function sendSmsEvent($customerId, $shop, string $metricName, array $properties = [])
 	{
+		// Check usage limits before sending SMS
+		if (!$this->isNotificationAllowed($shop)) {
+			Log::info("SMS event blocked due to usage limit reached for shop: {$shop->shop}");
+			return false;
+		}
+		
 		$customer = $this->getCustomerData($customerId, $shop);
 		if (!$customer) {
 			Log::error('SMS send aborted: customer not found: ' . $customerId);
@@ -964,7 +1064,7 @@ class WishlistNotificationService
 	/**
 	 * PRIVATE: Call Klaviyo Events API to trigger an SMS Flow
 	 */
-	private function sendKlaviyoSmsEvent(string $apiKey, string $metricName, string $phoneE164, array $profile, array $properties): bool
+	private function sendKlaviyoSmsEvent(string $apiKey, string $metricName, string $phoneE164, array $profile, array $properties, $shop = null): bool
 	{
 		if (!$phoneE164) {
 			Log::error('Klaviyo SMS send failed: phone missing');
@@ -999,13 +1099,19 @@ class WishlistNotificationService
 			return false;
 		}
 		Log::info('Klaviyo SMS event sent successfully');
+		
+		// Track usage after successful SMS
+		if ($shop) {
+			UsageService::trackUsage($shop->shop, 'send_notification');
+		}
+		
 		return true;
 	}
 
 	/**
 	 * PRIVATE: Call Iterable Events API to trigger an SMS Flow
 	 */
-	private function sendIterableSmsEvent(string $apiKey, string $phoneE164, array $profile, array $properties): bool
+	private function sendIterableSmsEvent(string $apiKey, string $phoneE164, array $profile, array $properties, $shop = null): bool
 	{
 		if (!$phoneE164) {
 			Log::error('Iterable SMS send failed: phone missing');
@@ -1053,6 +1159,11 @@ class WishlistNotificationService
 			'response_status' => $res->status()
 		]);
 		
+		// Track usage after successful SMS
+		if ($shop) {
+			UsageService::trackUsage($shop->shop, 'send_notification');
+		}
+		
 		return true;
 	}
 
@@ -1061,6 +1172,12 @@ class WishlistNotificationService
 	 */
 	public function sendSignupConfirmationEmail($customerId, $wishlist, $shop)
 	{ 
+		// Check usage limits before sending notification
+		if (!$this->isNotificationAllowed($shop)) {
+			Log::info("Signup confirmation blocked due to usage limit reached for shop: {$shop->shop}");
+			return false;
+		}
+		
 		try { 
 			$emailTemplate = $this->getEmailTemplate($shop->id);
 			if (!$emailTemplate) {
@@ -1117,6 +1234,12 @@ class WishlistNotificationService
 	 */
 	public function sendWishlistSharedEmail($customerId, $wishlist, $shop)
 	{
+		// Check usage limits before sending notification
+		if (!$this->isNotificationAllowed($shop)) {
+			Log::info("Wishlist shared notification blocked due to usage limit reached for shop: {$shop->shop}");
+			return false;
+		}
+		
 		try {
 			$emailTemplate = $this->getEmailTemplate($shop->id, 'wishlist_shared');
 			if (!$emailTemplate) {
@@ -1170,6 +1293,12 @@ class WishlistNotificationService
 	 */
 	public function sendWishlistReminderEmail($customerId, $wishlist, $shop)
 	{
+		// Check usage limits before sending notification
+		if (!$this->isNotificationAllowed($shop)) {
+			Log::info("Wishlist reminder blocked due to usage limit reached for shop: {$shop->shop}");
+			return false;
+		}
+		
 		try {
 			$emailTemplate = $this->getEmailTemplate($shop->id, 'wishlist_reminder');
 			if (!$emailTemplate) {
@@ -1248,6 +1377,12 @@ class WishlistNotificationService
 	 */
 	public function sendSavedForLaterReminderEmail($customerId, $wishlist, $shop)
 	{
+		// Check usage limits before sending notification
+		if (!$this->isNotificationAllowed($shop)) {
+			Log::info("Saved for later reminder blocked due to usage limit reached for shop: {$shop->shop}");
+			return false;
+		}
+		
 		try {
 			$emailTemplate = $this->getEmailTemplate($shop->id, 'saved_for_later_reminder');
 			if (!$emailTemplate) {
@@ -1332,6 +1467,13 @@ class WishlistNotificationService
 		foreach ($lowStockItems as $index => $item) {
 			Log::info("Low stock item $index: ID {$item->id}, Title: {$item->title}, Stock: {$item->stock}");
 		}
+		
+		// Check usage limits before sending notification
+		if (!$this->isNotificationAllowed($shop)) {
+			Log::info("Low stock alert blocked due to usage limit reached for shop: {$shop->shop}");
+			return false;
+		}
+		
 		try {
 			$emailTemplate = $this->getEmailTemplate($shop->id, 'low_stock_alert');
 			if (!$emailTemplate) {
@@ -1393,6 +1535,13 @@ class WishlistNotificationService
 		Log::info("=== SENDING BACK-IN-STOCK ALERT EMAIL ===");
 		Log::info("Customer ID: $customerId, Wishlist ID: {$wishlist->id}, Shop: {$shop->shop}");
 		Log::info("Back-in-stock items count: " . count($backInStockItems));
+		
+		// Check usage limits before sending notification
+		if (!$this->isNotificationAllowed($shop)) {
+			Log::info("Back-in-stock alert blocked due to usage limit reached for shop: {$shop->shop}");
+			return false;
+		}
+		
 		try {
 			$emailTemplate = $this->getEmailTemplate($shop->id, 'back_in_stock_alert');
 			if (!$emailTemplate) {
@@ -1454,6 +1603,13 @@ class WishlistNotificationService
 		foreach ($priceDropItems as $index => $item) {
 			Log::info("Price drop item $index: ID {$item->id}, Title: {$item->title}, Old Price: {$item->old_price}, New Price: {$item->price}");
 		}
+		
+		// Check usage limits before sending notification
+		if (!$this->isNotificationAllowed($shop)) {
+			Log::info("Price drop alert blocked due to usage limit reached for shop: {$shop->shop}");
+			return false;
+		}
+		
 		try {
 			$emailTemplate = $this->getEmailTemplate($shop->id, 'price_drop_alert');
 			if (!$emailTemplate) {

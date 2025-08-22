@@ -96,6 +96,29 @@ export default function Notification() {
     const [savedForLaterTimeUnit, setSavedForLaterTimeUnit] = useState("hours");
     const [lowStockValue, setLowStockValue] = useState("0");
     const [priceDropValue, setPriceDropValue] = useState("0");
+    const [isFreePlan, setIsFreePlan] = useState(false);
+
+    // Check if user is on Free plan
+    useEffect(() => {
+        const checkPlan = async () => {
+            try {
+                const token = await getSessionToken(appBridge);
+                const planRes = await fetch(`${apiUrl}subscription/active`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (planRes.ok) {
+                    const data = await planRes.json();
+                    const name = data?.data?.plan_name || null;
+                    setIsFreePlan(!name || String(name).toLowerCase() === 'free');
+                } else {
+                    setIsFreePlan(true);
+                }
+            } catch (e) {
+                setIsFreePlan(true);
+            }
+        };
+        checkPlan();
+    }, [apiUrl]);
 
     // Contextual save bar state
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -243,6 +266,10 @@ export default function Notification() {
     }, [customerNotifications, reminderValue, reminderTimeUnit, savedForLaterValue, savedForLaterTimeUnit, lowStockValue, priceDropValue]);
 
     const handleNavigate = (id) => {
+        if (isFreePlan) {
+            toggleToast('error', 'Please upgrade to access this feature');
+            return;
+        }
         const target = event.target;
         const isCheckbox = target.tagName === "INPUT" || target.tagName === "LABEL";
         if (!isCheckbox) {
@@ -491,7 +518,12 @@ export default function Notification() {
                         {/* Content skeleton */}
                         <div style={{ width: '100%' }}>
                             <BlockStack gap={"400"}>
-                                <Card padding={"0"}>
+                                <Card padding={"0"} style={isFreePlan ? { 
+                                    backgroundColor: 'var(--p-color-bg-disabled)',
+                                    opacity: 0.8, 
+                                    pointerEvents: 'none',
+                                    border: '1px dashed var(--p-color-border-subdued)'
+                                } : {}}>
                                     <Box padding={"400"}>
                                         <SkeletonDisplayText size="medium" />
                                     </Box>
@@ -569,11 +601,34 @@ export default function Notification() {
 
                         <div style={{ width: '100%' }}>
                             <BlockStack gap={"400"}>
-                                <Card padding={"0"}>
+                                <Card padding={"0"} style={isFreePlan ? { 
+                                    backgroundColor: 'var(--p-color-bg-disabled)',
+                                    opacity: 0.8, 
+                                    pointerEvents: 'none',
+                                    border: '1px dashed var(--p-color-border-subdued)'
+                                } : {}}>
                                     <Box padding={"400"}>
-                                        <Text as="h3" variant="headingMd">
-                                            {t('Alerts and Notifications', 'Notifications')}
-                                        </Text>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                                            <Text as="h3" variant="headingMd">
+                                                {t('Alerts and Notifications', 'Notifications')}
+                                            </Text>
+                                            {isFreePlan && (
+                                                <div style={{
+                                                    backgroundColor: '#FFEBE5',
+                                                    padding: '4px 12px',
+                                                    borderRadius: '12px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    fontSize: '13px',
+                                                    fontWeight: 600,
+                                                    color: '#D82C0D'
+                                                }}>
+                                                    <span>🔒</span>
+                                                    <span>Upgrade to Access</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </Box>
                                     <Divider />
                                     <ResourceList
@@ -612,6 +667,7 @@ export default function Notification() {
                                                                             type="number"
                                                                             min="0"
                                                                             autoComplete="off"
+                                                                            disabled={isFreePlan}
                                                                         />
                                                                     </div>
                                                                     <div
@@ -627,6 +683,7 @@ export default function Notification() {
                                                                             ]}
                                                                             value={reminderTimeUnit}
                                                                             onChange={(value) => { setReminderTimeUnit(value); markUnsaved(); }}
+                                                                            disabled={isFreePlan}
                                                                         />
                                                                     </div>
                                                                 </InlineStack>
@@ -646,6 +703,7 @@ export default function Notification() {
                                                                             type="number"
                                                                             min="0"
                                                                             autoComplete="off"
+                                                                            disabled={isFreePlan}
                                                                         />
                                                                     </div>
                                                                     <div
@@ -661,6 +719,7 @@ export default function Notification() {
                                                                             ]}
                                                                             value={savedForLaterTimeUnit}
                                                                             onChange={(value) => { setSavedForLaterTimeUnit(value); markUnsaved(); }}
+                                                                            disabled={isFreePlan}
                                                                         />
                                                                     </div>
                                                                 </InlineStack>
@@ -680,6 +739,7 @@ export default function Notification() {
                                                                             type="number"
                                                                             min="0"
                                                                             autoComplete="off"
+                                                                            disabled={isFreePlan}
                                                                         />
                                                                     </div>
                                                                     <Text variant="bodyMd" tone="subdued">
@@ -702,6 +762,7 @@ export default function Notification() {
                                                                             type="number"
                                                                             min="0"
                                                                             autoComplete="off"
+                                                                            disabled={isFreePlan}
                                                                         />
                                                                     </div>
                                                                     <Text variant="bodyMd" tone="subdued">
@@ -738,14 +799,28 @@ export default function Notification() {
                                                                     <Spinner size="small" />
                                                                 </span>
                                                             ) : (
-                                                                <Knob
-                                                                    selected={active_status}
-                                                                    ariaLabel="Status"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        handleCheckboxChangeIsActive(id, active_status);
-                                                                    }}
-                                                                />
+                                                                <div style={{ position: 'relative' }}>
+                                                                    {isFreePlan && (
+                                                                        <div style={{
+                                                                            position: 'absolute',
+                                                                            top: 0,
+                                                                            left: 0,
+                                                                            right: 0,
+                                                                            bottom: 0,
+                                                                            zIndex: 1,
+                                                                            cursor: 'not-allowed'
+                                                                        }} />
+                                                                    )}
+                                                                    <Knob
+                                                                        selected={active_status}
+                                                                        ariaLabel="Status"
+                                                                        onClick={(e) => {
+                                                                            if (isFreePlan) return;
+                                                                            e.stopPropagation();
+                                                                            handleCheckboxChangeIsActive(id, active_status);
+                                                                        }}
+                                                                    />
+                                                                </div>
                                                             )}
                                                             <Icon tone="base" source={ChevronRightIcon} />
                                                         </InlineStack>

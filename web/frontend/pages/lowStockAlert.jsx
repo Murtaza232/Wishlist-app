@@ -19,6 +19,8 @@ export default function LowStockAlert() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
+  const [isFreePlan, setIsFreePlan] = useState(false);
+  const [planName, setPlanName] = useState('');
 
   // Prefill from API
   useEffect(() => {
@@ -49,7 +51,30 @@ export default function LowStockAlert() {
     })();
   }, [apiUrl]);
 
+  // Check active subscription plan
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = await getSessionToken(appBridge);
+        const planRes = await fetch(`${apiUrl}subscription/active`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (planRes.ok) {
+          const data = await planRes.json();
+          const name = data?.data?.plan_name || null;
+          setPlanName(name || '');
+          setIsFreePlan(!name || String(name).toLowerCase() === 'free');
+        } else {
+          setIsFreePlan(true);
+        }
+      } catch (e) {
+        setIsFreePlan(true);
+      }
+    })();
+  }, [apiUrl]);
+
   const handleToggleActive = async () => {
+    if (isFreePlan) return; // gated on Free plan
     setIsToggling(true);
     try {
       const token = await getSessionToken(appBridge);
@@ -73,6 +98,7 @@ export default function LowStockAlert() {
   };
 
   const handleSaveSettings = async () => {
+    if (isFreePlan) return; // gated on Free plan
     setIsSaving(true);
     try {
       const token = await getSessionToken(appBridge);
@@ -123,9 +149,16 @@ export default function LowStockAlert() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <InlineStack gap="5" align="center">
             <Text variant="headingLg" as="h1" fontWeight="bold">{t('Low Stock Alert','Marketing')}</Text>
+            {isFreePlan && (
+              <Box style={{ marginLeft: 6, marginTop: 2 }}>
+                <Badge tone="warning">{t('Upgrade to access','Pricing Plans')}</Badge>
+              </Box>
+            )}
             <Box style={{marginLeft: 10, marginTop:2}}> <Badge tone={active ? 'success' : 'critical'}>{active ? t('Live','Marketing') : t('Off','Marketing')}</Badge></Box>
           </InlineStack>
-          <Button tone="critical" variant="secondary" onClick={handleToggleActive} loading={isToggling}>{active ? t('Turn Off Alert','Marketing') : t('Turn On Alert','Marketing')}</Button>
+          <Button tone="critical" variant="secondary" onClick={handleToggleActive} loading={isToggling} disabled={isFreePlan}>
+            {active ? t('Turn Off Alert','Marketing') : t('Turn On Alert','Marketing')}
+          </Button>
         </div>
 
         {/* Connection banner */}
@@ -165,16 +198,16 @@ export default function LowStockAlert() {
                     type="number" 
                     onChange={setThreshold} 
                     autoComplete="off" 
-                    disabled={!active}
+                    disabled={isFreePlan || !active}
                     min="1"
                     error={!threshold || isNaN(threshold) || parseInt(threshold, 10) < 1 ? 'Please enter a valid number' : ''}
                   />
                 </div>
-                <Text>Units</Text>
+                <Text>{t('units','Notifications')}</Text>
                 <div style={{ flexBasis: '100%', marginTop: 8 }}>
                   <Button 
                     onClick={handleSaveSettings}
-                    disabled={!active || !threshold || isNaN(threshold) || parseInt(threshold, 10) < 1}
+                    disabled={isFreePlan || !active || !threshold || isNaN(threshold) || parseInt(threshold, 10) < 1}
                     primary
                     loading={isSaving}
                   >
@@ -203,7 +236,7 @@ export default function LowStockAlert() {
                     {t('Use this pre-designed template','Marketing')}
                   </Text>
                   <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-                    <Button disabled={!active} onClick={() => setShowTestModal(true)}>{t('Send Test Email','Marketing')}</Button>
+                    <Button disabled={isFreePlan || !active} onClick={() => setShowTestModal(true)}>{t('Send Test Email','Marketing')}</Button>
                     {/* <Button variant="tertiary">Chat with support to customize</Button> */}
                   </div>
                 </div>

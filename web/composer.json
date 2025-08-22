@@ -16,6 +16,7 @@
         "fideloper/proxy": "^4.4",
         "fruitcake/laravel-cors": "^3.0",
         "gnikyt/basic-shopify-api": "^11.0",
+        "google/apiclient": "2.15",
         "guzzlehttp/guzzle": "^7.0.1",
         "klaviyo/php-sdk": "^2.3",
         "laravel/framework": "^8.12",

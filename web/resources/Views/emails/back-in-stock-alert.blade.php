@@ -127,7 +127,8 @@
         
         <div class="content">
             <div class="alert-text">
-                {!! is_string($processedTemplate['textDescriptionDetails'] ?? '') ? $processedTemplate['textDescriptionDetails'] : '' !!}
+                @php($desc = data_get($processedTemplate ?? [], 'textDescriptionDetails', ''))
+                {!! is_string($desc) ? $desc : '' !!}
             </div>
             
             @if(count($backInStockItems) > 0)

@@ -314,6 +314,10 @@ class StockMonitoringJob implements ShouldQueue
                     
                     // Check if price has dropped by the threshold percentage
                     $priceDrop = $item->added_price - $item->current_price;
+                    if (floatval($item->added_price) <= 0) {
+                        Log::info("Skipping percentage calc due to zero added_price for item {$item->id}");
+                        continue;
+                    }
                     $priceDropPercentage = ($priceDrop / $item->added_price) * 100;
                     
                     Log::info("Price drop: $priceDrop, Percentage: {$priceDropPercentage}%, Threshold: $threshold");

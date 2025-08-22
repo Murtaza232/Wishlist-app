@@ -3,7 +3,7 @@
 client_id = "9068cf8200dc7a986a7fe4d361fa5948"
 name = "murtaza"
 handle = "murtaza"
-application_url = "https://shopping-worried-ve-introduced.trycloudflare.com"
+application_url = "https://emerging-wondering-coupon-workshops.trycloudflare.com"
 embedded = true
 
 [webhooks]
@@ -14,7 +14,7 @@ api_version = "2025-07"
 scopes = "read_customers,read_orders,read_products,read_themes,write_orders,write_products"
 
 [auth]
-redirect_urls = ["https://shopping-worried-ve-introduced.trycloudflare.com/auth/callback", "https://shopping-worried-ve-introduced.trycloudflare.com/auth/shopify/callback", "https://shopping-worried-ve-introduced.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://emerging-wondering-coupon-workshops.trycloudflare.com/auth/callback", "https://emerging-wondering-coupon-workshops.trycloudflare.com/auth/shopify/callback", "https://emerging-wondering-coupon-workshops.trycloudflare.com/api/auth/callback"]
 
 [pos]
 embedded = false

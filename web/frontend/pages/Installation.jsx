@@ -178,7 +178,7 @@ export default function Installation() {
     </svg>
   );
   const renderThemeExtensionPanel = () => (
-    <div>
+    <div >
       <div style={{ marginBottom: '24px' }}>
         <InlineStack align="start" gap="tight">
           <Text variant="bodyMd" as="p" fontWeight="semibold">
@@ -387,6 +387,9 @@ export default function Installation() {
 
           {/* Tabs */}
           <div style={{ 
+            display: 'none', 
+            flexDirection: 'column', 
+            gap: '16px', 
             marginTop: '16px', 
             marginBottom: '16px',
             width: '100%'
@@ -430,7 +433,8 @@ export default function Installation() {
             backgroundColor: 'white',
             borderRadius: '8px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            padding: '16px'
+            padding: '16px',
+            marginTop: '24px'
           }}>
             {selectedTab === 0 ? renderThemeExtensionPanel() : renderOtherPanels()}
           </div>
@@ -438,7 +442,7 @@ export default function Installation() {
           {/* Second Card - Add Wishlist Block (only show in Theme Extension tab) */}
           {selectedTab === 0 && (
           <div style={{ 
-            marginTop: '24px', 
+            marginTop: '24px',
             width: '100%',
             backgroundColor: 'white',
             borderRadius: '8px',

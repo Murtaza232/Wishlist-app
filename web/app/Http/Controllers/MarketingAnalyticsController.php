@@ -142,44 +142,80 @@ class MarketingAnalyticsController extends HelperController
      */
     private function calculatePerformanceMetrics(int $shopId, Carbon $startDate, Carbon $endDate): array
     {
-        // Get baseline metrics from previous period for comparison
-        $previousStartDate = $startDate->copy()->subDays(30);
+        // Calculate date range for comparison (previous period of same length)
+        $daysDiff = $endDate->copy()->diffInDays($startDate) + 1;
+        $previousStartDate = $startDate->copy()->subDays($daysDiff);
         $previousEndDate = $startDate->copy()->subDay();
 
-        // Current period metrics - include all customers for the shop, not just those created in the date range
-        $currentSignups = Customer::where('customers.shop_id', $shopId)->count();
-
-        $currentWishlistActivity = WishlistItem::where('wishlist_items.shop_id', $shopId)
+        // Current period metrics
+        $currentSignups = Customer::where('shop_id', $shopId)
             ->whereBetween('created_at', [$startDate, $endDate])
             ->count();
 
-        $currentRevenue = Customer::where('customers.shop_id', $shopId)->sum('total_spent');
+        // Get wishlist activity for current period
+        $currentWishlistActivity = WishlistItem::where('shop_id', $shopId)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->count();
 
-        // Debug logging
-        \Log::info("Marketing Analytics Debug - Shop ID: {$shopId}, Customers: {$currentSignups}, Wishlist Activity: {$currentWishlistActivity}, Revenue: {$currentRevenue}");
-        \Log::info("Date range: {$startDate->format('Y-m-d')} to {$endDate->format('Y-m-d')}");
+        // Get total spent from customers who made purchases in current period
+        $currentRevenue = Customer::where('shop_id', $shopId)
+            ->where('orders_count', '>', 0)
+            ->whereBetween('updated_at', [$startDate, $endDate])
+            ->sum('total_spent');
+
+        // Previous period metrics
+        $previousSignups = Customer::where('shop_id', $shopId)
+            ->whereBetween('created_at', [$previousStartDate, $previousEndDate])
+            ->count();
+
+        $previousWishlistActivity = WishlistItem::where('shop_id', $shopId)
+            ->whereBetween('created_at', [$previousStartDate, $previousEndDate])
+            ->count();
+
+        $previousRevenue = Customer::where('shop_id', $shopId)
+            ->where('orders_count', '>', 0)
+            ->whereBetween('updated_at', [$previousStartDate, $previousEndDate])
+            ->sum('total_spent'); 
+
+        // Calculate actual values without capping at 100
+        $signupValue = $currentSignups;
+        $wishlistValue = $currentWishlistActivity;
+        $revenueValue = $currentRevenue;
         
-        // Additional debugging for customers
-        $allCustomers = Customer::where('customers.shop_id', $shopId)->get();
-        \Log::info("All customers for shop {$shopId}: " . $allCustomers->count());
-        foreach ($allCustomers as $customer) {
-            \Log::info("Customer: ID={$customer->id}, Email={$customer->email}, Created={$customer->created_at}, Shop ID={$customer->shop_id}");
-        }
-
-        // Previous period metrics - for comparison, we'll use a simple approach
-        $previousSignups = max(0, $currentSignups - 1); // Assume at least 1 customer existed before
-        $previousWishlistActivity = max(0, $currentWishlistActivity - 1); // Assume some activity existed before
-        $previousRevenue = max(0, $currentRevenue - 100); // Assume some revenue existed before
-
-        // Calculate percentage changes
-        $signupChange = $previousSignups > 0 ? (($currentSignups - $previousSignups) / $previousSignups) * 100 : 0;
-        $wishlistChange = $previousWishlistActivity > 0 ? (($currentWishlistActivity - $previousWishlistActivity) / $previousWishlistActivity) * 100 : 0;
-        $revenueChange = $previousRevenue > 0 ? (($currentRevenue - $previousRevenue) / $previousRevenue) * 100 : 0;
+        // Store the values for reference
+        $signupChange = $currentSignups;
+        $wishlistChange = $currentWishlistActivity;
+        $revenueChange = $currentRevenue;
+            
+        // Log the calculated values for debugging
+        \Log::info('Marketing Metrics Calculation', [
+            'shop_id' => $shopId,
+            'date_range' => [
+                'current' => [$startDate->toDateString(), $endDate->toDateString()],
+                'previous' => [$previousStartDate->toDateString(), $previousEndDate->toDateString()]
+            ],
+            'signups' => [
+                'current' => $currentSignups,
+                'previous' => $previousSignups,
+                'change' => $signupChange
+            ],
+            'wishlist_activity' => [
+                'current' => $currentWishlistActivity,
+                'previous' => $previousWishlistActivity,
+                'change' => $wishlistChange
+            ],
+            'revenue' => [
+                'current' => $currentRevenue,
+                'previous' => $previousRevenue,
+                'change' => $revenueChange
+            ]
+        ]);
 
         return [
             [
                 'icon' => 'PersonIcon',
-                'value' => $signupChange >= 0 ? '+' . number_format($signupChange, 0) . '%' : number_format($signupChange, 0) . '%',
+                'value' => number_format($signupValue, 0),
+                'is_positive' => true,
                 'label' => 'more signups',
                 'raw_value' => $signupChange,
                 'current' => $currentSignups,
@@ -187,7 +223,8 @@ class MarketingAnalyticsController extends HelperController
             ],
             [
                 'icon' => 'HeartIcon',
-                'value' => $wishlistChange >= 0 ? '+' . number_format($wishlistChange, 0) . '%' : number_format($wishlistChange, 0) . '%',
+                'value' => number_format($wishlistValue, 0),
+                'is_positive' => true,
                 'label' => 'more wishlist activity',
                 'raw_value' => $wishlistChange,
                 'current' => $currentWishlistActivity,
@@ -195,7 +232,8 @@ class MarketingAnalyticsController extends HelperController
             ],
             [
                 'icon' => 'CartIcon',
-                'value' => $revenueChange >= 0 ? '+' . number_format($revenueChange, 0) . '%' : number_format($revenueChange, 0) . '%',
+                'value' => '$' . number_format($revenueValue, 0),
+                'is_positive' => true,
                 'label' => 'revenue growth',
                 'raw_value' => $revenueChange,
                 'current' => $currentRevenue,
@@ -261,27 +299,47 @@ class MarketingAnalyticsController extends HelperController
             $hasLowStockItems = false;
             $hasBackInStockItems = false;
 
-            foreach ($wishlistItems as $item) {
-                $product = Product::where('products.shop_id', $shopId)
-                    ->where('shopify_product_id', $item->product_id)
-                    ->first();
+            // Get all products for these wishlist items in one query
+            $productIds = $wishlistItems->pluck('product_id')->unique()->toArray();
+            $products = Product::where('shop_id', $shopId)
+                ->whereIn('shopify_product_id', $productIds)
+                ->get()
+                ->keyBy('shopify_product_id');
 
+            foreach ($wishlistItems as $item) {
+                // Get the product price from wishlist item
+                $itemPrice = $item->current_price ?? 0;
+                $originalPrice = $item->added_price ?? 0;
+                
+                // Add to total wishlisted value
+                $totalWishlistedValue += $itemPrice;
+                
+                // Check if product is on sale (current price is less than original price)
+                if ($originalPrice > 0 && $itemPrice > 0 && $itemPrice < $originalPrice) {
+                    $hasOnSaleItems = true;
+                }
+                
+                // Get product from preloaded collection
+                $product = $products[$item->product_id] ?? null;
+                
                 if ($product) {
-                    $totalWishlistedValue += $product->price ?? 0;
-                    
-                    // Check if product is on sale
-                    if ($product->compare_at_price && $product->compare_at_price > $product->price) {
-                        $hasOnSaleItems = true;
-                    }
-                    
                     // Check if product is low stock
-                    if ($product->stock && $product->stock <= 5) {
-                        $hasLowStockItems = true;
-                    }
-                    
-                    // Check if product was out of stock and is back
-                    if ($product->stock > 0 && $item->added_price && $item->current_price) {
-                        $hasBackInStockItems = true;
+                    if (isset($product->stock)) {
+                        if ($product->stock <= 5) {
+                            $hasLowStockItems = true;
+                        }
+                        
+                        // Check if product is back in stock
+                        // We'll consider it "back in stock" if:
+                        // 1. Current stock is > 0
+                        // 2. The product was updated recently (within last 7 days)
+                        // 3. It has a price (indicates it's an active product)
+                        $recentlyUpdated = $product->updated_at > now()->subDays(7);
+                        $hasPrice = ($itemPrice > 0) || ($product->price > 0);
+                        
+                        if ($product->stock > 0 && $recentlyUpdated && $hasPrice) {
+                            $hasBackInStockItems = true;
+                        }
                     }
                 }
             }

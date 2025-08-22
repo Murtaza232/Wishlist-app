@@ -32,7 +32,8 @@ import {
   DnsSettingsIcon,
 } from '@shopify/polaris-icons';
 import { useLanguage } from "../components";
-// import { useContext, useEffect } from 'react';
+import { useAppBridge } from '@shopify/app-bridge-react';
+import { getSessionToken } from '@shopify/app-bridge-utils';
 import axios from 'axios';
 import { AppContext } from '../components/providers/ContextProvider.jsx';
 
@@ -204,6 +205,7 @@ const KlaviyoModal = ({ open, onClose, onSave, apiKey, setApiKey, loading }) => 
 export default function Integrations() {
   const { shop, apiKey } = useContext(AppContext);
   const [klaviyoModalOpen, setKlaviyoModalOpen] = useState(false);
+  const [isFreePlan, setIsFreePlan] = useState(true);
   
   const handleKlaviyoConnect = (e) => {
     e.preventDefault();
@@ -231,7 +233,37 @@ export default function Integrations() {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { apiUrl } = useContext(AppContext);
+  const appBridge = useAppBridge();
   
+  // Check if user is on Free plan
+  useEffect(() => {
+    const checkPlan = async () => {
+      try {
+        const token = await getSessionToken(appBridge);
+        const planRes = await fetch(`${apiUrl}subscription/active`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        
+        if (planRes.ok) {
+          const response = await planRes.json();
+          const planName = response?.data?.plan_name || null;
+          const isFree = !planName || String(planName).toLowerCase() === 'free';
+          
+          console.log('Integrations Plan check - isFree:', isFree, 'Plan name:', planName);
+          setIsFreePlan(isFree);
+        } else {
+          console.log('Integrations Plan check - API error, defaulting to free');
+          setIsFreePlan(true);
+        }
+      } catch (e) {
+        console.error('Error checking plan status in Integrations:', e);
+        setIsFreePlan(true);
+      }
+    };
+    
+    checkPlan();
+  }, [apiUrl]);
+
   const [providers, setProviders] = useState({ email_provider: null, sms_provider: null });
   const [providerSettings, setProviderSettings] = useState({});
   const [klaviyoKey, setKlaviyoKey] = useState('');
@@ -295,6 +327,34 @@ export default function Integrations() {
       icon: <img src={postscript} alt="Postscript" style={{ width: '48px', height: '48px' }} />,
     },
   ]);
+
+  // Check if user is on Free plan
+  useEffect(() => {
+    const checkPlan = async () => {
+      try {
+        const token = await window.shopify.config.appToken;
+        const planRes = await fetch(`${apiUrl}subscription/active`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (planRes.ok) {
+          const data = await planRes.json();
+          const name = data?.data?.plan_name || null;
+          setIsFreePlan(!name || String(name).toLowerCase() === 'free');
+        } else {
+          setIsFreePlan(true);
+        }
+      } catch (e) {
+        setIsFreePlan(true);
+      }
+    };
+    checkPlan();
+  }, [apiUrl]);
+
+  const handleUpgradeClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate('/Pricing');
+  };
 
   useEffect(() => {
     const fetchProviders = async () => {
@@ -391,37 +451,56 @@ export default function Integrations() {
                 {integration.description}
               </p>
 
-
-              
-              <Button
-                primary
-                size="large"
-                fullWidth
-                onClick={(e) => {
-                  if (integration.id === 'klaviyo') {
-                    handleKlaviyoConnect(e);
-                  } else {
-                    handleConnect(integration.id);
-                  }
-                }}
-                icon={isConnected(integration.id) ? CheckCircleIcon : undefined}
-                iconPosition={isConnected(integration.id) ? 'left' : 'right'}
-                disabled={saving}
-                style={{
-                  ...connectButtonStyle,
-                  backgroundColor: isConnected(integration.id) ? '#008060' : '#5c6ac4',
-                  ':hover': {
-                    backgroundColor: isConnected(integration.id) ? '#006e52' : '#3f4dae'
-                  }
-                }}
-              >
-                {isConnected(integration.id) ? 'Manage' : (
+              {isFreePlan && !isConnected(integration.id) ? (
+                <Button
+                  primary
+                  size="large"
+                  fullWidth
+                  onClick={handleUpgradeClick}
+                  disabled={saving}
+                  style={{
+                    ...connectButtonStyle,
+                    backgroundColor: '#5c6ac4',
+                    ':hover': {
+                      backgroundColor: '#3f4dae'
+                    }
+                  }}
+                >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                    Connect <Icon source={ArrowRightIcon} color="base" />
+                    Upgrade to Connect <Icon source={ArrowRightIcon} color="base" />
                   </div>
-                )}
-              
-              </Button>
+                </Button>
+              ) : (
+                <Button
+                  primary
+                  size="large"
+                  fullWidth
+                  onClick={(e) => {
+                    if (integration.id === 'klaviyo') {
+                      handleKlaviyoConnect(e);
+                    } else {
+                      handleConnect(integration.id);
+                    }
+                  }}
+                  icon={isConnected(integration.id) ? CheckCircleIcon : undefined}
+                  iconPosition={isConnected(integration.id) ? 'left' : 'right'}
+                  disabled={saving || (isFreePlan && !isConnected(integration.id))}
+                  style={{
+                    ...connectButtonStyle,
+                    backgroundColor: isConnected(integration.id) ? '#008060' : '#5c6ac4',
+                    ':hover': {
+                      backgroundColor: isConnected(integration.id) ? '#006e52' : '#3f4dae'
+                    },
+                    opacity: isFreePlan && !isConnected(integration.id) ? 0.7 : 1
+                  }}
+                >
+                  {isConnected(integration.id) ? 'Manage' : (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                      {isFreePlan ? 'Upgrade to Connect' : 'Connect'} <Icon source={ArrowRightIcon} color="base" />
+                    </div>
+                  )}
+                </Button>
+              )}
             </div>
           ))}
         </div>

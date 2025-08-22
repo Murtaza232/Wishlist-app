@@ -310,17 +310,15 @@ document.addEventListener('DOMContentLoaded', function() {
     drawer.style.display = 'none';
     page.style.display = 'none'; // This line prevents the default page from showing
 
-    fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist-metafields')
-    .then(response => response.json())
-    .then(function(response) {
-      var metafields = {};
-      var metafieldsEdges = response.metafields || [];
+            // Load metafields (usage check happens on click)
+        fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist-metafields')
+        .then(response => response.json())
+        .then(function(response) {
+          var metafields = {};
+          var metafieldsEdges = response.metafields || [];
             metafieldsEdges.forEach(function(edge) {
                 metafields[edge.node.key] = edge.node.value;
             });
-
-            // Debug: Log the metafields
-          
 
             var appearance = metafields['wishlist_page_appearance'] || 'separate_page';
             var drawerAppearance = metafields['wishlist_drawer_appearance'] || 'left';
@@ -352,8 +350,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 btn.style.color = textColor;
             });
 
-            // Show share button if metafield is true
+            // Show share button if metafield is true (usage check happens on click)
             var showShare = metafields['other_settings_wishlist_page'] === 'true';
+                           
             if (showShare) {
                 var shareBtnModal = document.getElementById('wishlistShareBtnModal');
                 if (shareBtnModal) shareBtnModal.style.display = 'inline-flex';
@@ -484,38 +483,66 @@ function shareWishlist() {
     const wishlistId = window.wishlistId;
     const shop = window.shopDomain;
 
-    // 1. Trigger the backend email
-    if (customerId && wishlistId && shop) {
-        fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist/share', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                customer_id: customerId,
-                wishlist_id: wishlistId,
-                shop: shop
-            })
-        })
+    // First check if sharing is allowed
+    fetch(`https://phpstack-362288-5709690.cloudwaysapps.com/api/usage/check?action=share_wishlist&shop=${encodeURIComponent(shop || window.location.hostname)}`)
         .then(res => res.json())
-        .then(data => {
-            // Optionally show a message to the user
-            if (data.status) {
-                console.log('Wishlist shared email sent!');
-            } else {
-                console.log('Failed to send wishlist shared email.');
+        .then(usageResponse => {
+            if (!usageResponse.success || !usageResponse.data.is_allowed) {
+                alert('You cannot share wishlists. Usage limit reached. Please upgrade your plan to share more wishlists.');
+                return;
             }
-        });
-    }
 
-    // 2. Continue with the original share logic
-    if (navigator.share) {
-        navigator.share({
-            title: document.title,
-            url: url
+            // If sharing is allowed, proceed with the sharing
+            if (customerId && wishlistId && shop) {
+                fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlist/share', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        customer_id: customerId,
+                        wishlist_id: wishlistId,
+                        shop: shop
+                    })
+                })
+                .then(res => {
+                    if (!res.ok) {
+                        return res.json().then(data => { throw data; });
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    // Optionally show a message to the user
+                    if (data.status) {
+                        console.log('Wishlist shared email sent!');
+                    } else {
+                        console.log('Failed to send wishlist shared email.');
+                    }
+                })
+                .catch(error => {
+                    if (error.error_code === 'USAGE_LIMIT_REACHED') {
+                        alert('Usage limit reached. Please upgrade your plan to share more wishlists.');
+                    } else if (error.error_code === 'SHARING_NOT_ALLOWED') {
+                        alert('Wishlist sharing is not available on your current plan. Please upgrade to share wishlists.');
+                    } else {
+                        console.error('Error sharing wishlist:', error);
+                    }
+                });
+            }
+
+            // Continue with the original share logic (copy to clipboard)
+            if (navigator.share) {
+                navigator.share({
+                    title: document.title,
+                    url: url
+                });
+            } else {
+                navigator.clipboard.writeText(url);
+                alert('Wishlist link copied to clipboard!');
+            }
+        })
+        .catch(error => {
+            console.error('Error checking sharing permissions:', error);
+            alert('You cannot share wishlists. Usage limit reached. Please upgrade your plan to share more wishlists.');
         });
-    } else {
-        navigator.clipboard.writeText(url);
-        alert('Wishlist link copied to clipboard!');
-    }
 }
 </script>
 </body>

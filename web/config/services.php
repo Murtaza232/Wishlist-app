@@ -30,4 +30,10 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+'google' => [
+    'service_account_json' => env('GOOGLE_SERVICE_ACCOUNT_JSON', storage_path('app/credentials.json')),
+    'calendar_id' => env('GOOGLE_CALENDAR_ID', 'primary'),
+    'impersonate' => env('GOOGLE_IMPERSONATE_EMAIL'),
+],
+
 ];

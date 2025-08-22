@@ -398,14 +398,14 @@ export default function WinYourWishlist() {
                     }}>
                       <div style={{ textAlign: 'center' }}>
                         <Text variant="bodySm" as="p" fontWeight="bold" style={{ letterSpacing: 0.3 }}>
-                            {t('UP TO $500 WORTH OF GIFT VOUCHER', 'Marketing')}
+                            {t('UP TO','Marketing')} ${voucher} {t('WORTH OF GIFT VOUCHER', 'Marketing')}
                         </Text>
                         <Text variant="bodySm" as="p" color="subdued" style={{ marginTop: 6 }}>
                           {t('Enter our competition to Win your most-loved items. Prizes crowned for you!', 'Marketing')}
                         </Text>
                       </div>
                       <div style={{ textAlign: 'center', marginTop: 10 }}>
-                        <Text variant="bodySm" as="p" fontWeight="bold">Follow These Steps</Text>
+                        <Text variant="bodySm" as="p" fontWeight="bold">{t('Follow These Steps','Marketing')}</Text>
                         <div style={{ marginTop: 6, lineHeight: 1.4, fontSize: 12, color: '#374151' }}>
                           <div>{t('Step 1: Login or create account on your store.', 'Marketing')}</div>
                           <div>{t('Step 2: Add to your wishlist by clicking the heart symbol.', 'Marketing')}</div>
@@ -420,15 +420,19 @@ export default function WinYourWishlist() {
                         </div>
                       </div>
                     </div>
-                    <div>
+                  
+                      <Card>
+                      <div style={{padding:100}}>
                       <Text variant="headingSm" as="h3" fontWeight="bold" style={{ marginBottom: 8 }}>
                         {t('Promote your contest effectively with a landing page', 'Marketing')}
                       </Text>
                       <Text variant="bodySm" as="p" color="subdued" style={{ marginBottom: 14 }}>
                         {t('Create a dedicated landing page to share contest details with your shoppers – what the contest is about, how to enter, when it ends, and what they could win.', 'Marketing')}
                       </Text>
-                    </div>
-                  </div>
+                      </div>
+                      </Card>
+                      </div>
+
                 </Box>
               </Card>
             </div>

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getCurrentStoreDomain } from './storeUtils';
 
 // Create an axios instance with default config
 const api = axios.create({
@@ -10,14 +11,40 @@ const api = axios.create({
   withCredentials: true, // Important for sending cookies with cross-site requests
 });
 
-// Request interceptor to add auth token if it exists
+// Request interceptor to add auth token if it exists and store domain
 api.interceptors.request.use(
   (config) => {
+    // Get the current store domain
+    const storeDomain = getCurrentStoreDomain();
+    
+    // Add store domain to the request data
+    if (config.data) {
+      if (typeof config.data === 'object') {
+        config.data.store_domain = storeDomain;
+      } else if (typeof config.data === 'string') {
+        try {
+          const parsedData = JSON.parse(config.data);
+          parsedData.store_domain = storeDomain;
+          config.data = JSON.stringify(parsedData);
+        } catch (error) {
+          // If it's not JSON, create a new data object
+          config.data = { 
+            original_data: config.data,
+            store_domain: storeDomain 
+          };
+        }
+      }
+    } else {
+      // If no data, create data with store domain
+      config.data = { store_domain: storeDomain };
+    }
+    
     // You can add auth token here if needed
     // const token = localStorage.getItem('auth_token');
     // if (token) {
     //   config.headers.Authorization = `Bearer ${token}`;
     // }
+    
     return config;
   },
   (error) => {

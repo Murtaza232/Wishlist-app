@@ -20,6 +20,8 @@ export default function WishlistReminder() {
   const [testEmail, setTestEmail] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
+  const [isFreePlan, setIsFreePlan] = useState(false);
+  const [planName, setPlanName] = useState('');
 
   // Fetch current values from subscription notifications
   useEffect(() => {
@@ -50,7 +52,30 @@ export default function WishlistReminder() {
     })();
   }, [apiUrl]);
 
+  // Check active subscription plan
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = await getSessionToken(appBridge);
+        const planRes = await fetch(`${apiUrl}subscription/active`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (planRes.ok) {
+          const data = await planRes.json();
+          const name = data?.data?.plan_name || null;
+          setPlanName(name || '');
+          setIsFreePlan(!name || String(name).toLowerCase() === 'free');
+        } else {
+          setIsFreePlan(true);
+        }
+      } catch (e) {
+        setIsFreePlan(true);
+      }
+    })();
+  }, [apiUrl]);
+
   const handleToggleActive = async () => {
+    if (isFreePlan) return; // gated on Free plan
     setIsToggling(true);
     try {
       const token = await getSessionToken(appBridge);
@@ -74,6 +99,7 @@ export default function WishlistReminder() {
   };
 
   const handleSaveSettings = async () => {
+    if (isFreePlan) return; // gated on Free plan
     setIsSaving(true);
     try {
       const token = await getSessionToken(appBridge);
@@ -119,9 +145,14 @@ export default function WishlistReminder() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <InlineStack gap="3" align="center">
             <Text variant="headingLg" as="h1" fontWeight="bold">{t('Wishlist Reminder', 'Marketing')}</Text>
-           <Box style={{marginLeft: 10, marginTop:2}}> <Badge tone={active ? 'success' : 'critical'}>{active ? t('Live','Marketing') : t('Off','Marketing')}</Badge></Box>
+            <Box style={{marginLeft: 10, marginTop:2}}> <Badge tone={active ? 'success' : 'critical'}>{active ? t('Live','Marketing') : t('Off','Marketing')}</Badge></Box>
+            {isFreePlan && (
+              <Box style={{marginLeft: 8, marginTop:2}}>
+                <Badge tone="attention">{t('Upgrade to access','Pricing Plans')}</Badge>
+              </Box>
+            )}
           </InlineStack>
-          <Button tone="critical" variant="secondary" onClick={handleToggleActive} loading={isToggling}>{active ? t('Turn Off Reminder','Marketing') : t('Turn On Reminder','Marketing')}</Button>
+          <Button tone="critical" variant="secondary" onClick={handleToggleActive} loading={isToggling} disabled={isFreePlan}>{active ? t('Turn Off Alert','Marketing') : t('Turn On Alert','Marketing')}</Button>
         </div>
 
         {/* Connection banner */}
@@ -145,10 +176,10 @@ export default function WishlistReminder() {
               <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Text>{t('If a shopper adds products to Wishlist, then send reminder', 'Marketing')}</Text>
                 <div style={{ width: 140 }}>
-                  <TextField value={delay} type="number" onChange={setDelay} autoComplete="off" disabled={!active} min="1" error={!delay || isNaN(delay) || parseInt(delay, 10) < 1 ? 'Enter a valid number' : ''} />
+                  <TextField value={delay} type="number" onChange={setDelay} autoComplete="off" disabled={isFreePlan || !active} min="1" error={!delay || isNaN(delay) || parseInt(delay, 10) < 1 ? 'Enter a valid number' : ''} />
                 </div>
                 <div style={{ width: 120 }}>
-                  <Select options={[{label:'hours', value:'hours'},{label:'days', value:'days'}]} value={unit} onChange={setUnit} disabled={!active} />
+                  <Select options={[{label:t('Hours','Notifications'), value:'hours'},{label:t('Days','Notifications'), value:'days'}]} value={unit} onChange={setUnit} disabled={isFreePlan || !active} />
                 </div>
                 
               
@@ -161,7 +192,7 @@ export default function WishlistReminder() {
                     primary
                     onClick={handleSaveSettings}
                     loading={isSaving}
-                    disabled={!active || !delay || isNaN(delay) || parseInt(delay, 10) < 1}
+                    disabled={isFreePlan || !active || !delay || isNaN(delay) || parseInt(delay, 10) < 1}
                    
                   >
                     {t('Save Settings', 'Marketing')}
@@ -187,7 +218,7 @@ export default function WishlistReminder() {
                     {t('Use this pre-designed template', 'Marketing')}
                   </Text>
                   <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-                    <Button disabled={!active} onClick={() => setShowTestModal(true)}>{t('Send Test Email', 'Marketing')}</Button>
+                    <Button disabled={isFreePlan || !active} onClick={() => setShowTestModal(true)}>{t('Send Test Email', 'Marketing')}</Button>
                     {/* <Button variant="tertiary">Chat with support to customize</Button> */}
                   </div>
                 </div>

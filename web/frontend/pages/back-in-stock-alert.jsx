@@ -15,12 +15,27 @@ export default function BackInStockAlert() {
 	const [showTestModal, setShowTestModal] = useState(false);
 	const [testEmail, setTestEmail] = useState('');
 	const [isToggling, setIsToggling] = useState(false);
+	const [planName, setPlanName] = useState(null);
+	const [isFreePlan, setIsFreePlan] = useState(false);
 
 	// Prefill from API
 	useEffect(() => {
 		(async () => {
 			try {
 				const token = await getSessionToken(appBridge);
+				// Active subscription/plan
+				try {
+					const subRes = await fetch(`${apiUrl}subscription/active`, { headers: { Authorization: `Bearer ${token}` } });
+					if (subRes.ok) {
+						const subJson = await subRes.json();
+						const name = subJson?.data?.plan_name || null;
+						setPlanName(name);
+						setIsFreePlan(!name || String(name).toLowerCase() === 'free');
+					} else {
+						setIsFreePlan(true);
+					}
+				} catch (_) { setIsFreePlan(true); }
+
 				const res = await fetch(`${apiUrl}subscription-notifications`, { headers: { Authorization: `Bearer ${token}` } });
 				if (res.ok) {
 					const json = await res.json();
@@ -42,6 +57,7 @@ export default function BackInStockAlert() {
 	}, [apiUrl]);
 
 	const handleToggleActive = async () => {
+		if (isFreePlan) return;
 		setIsToggling(true);
 		try {
 			const token = await getSessionToken(appBridge);
@@ -80,8 +96,13 @@ export default function BackInStockAlert() {
 					<InlineStack gap="5" align="center">
 						<Text variant="headingLg" as="h1" fontWeight="bold">{t('Back in Stock Alert','Marketing')}</Text>
 						<Box style={{marginLeft: 10, marginTop:2}}> <Badge tone={active ? 'success' : 'critical'}>{active ? t('Live','Marketing') : t('Off','Marketing')}</Badge></Box>
+						{isFreePlan && (
+							<Box style={{marginLeft: 8, marginTop:2}}>
+								<Badge tone="attention">{t('Upgrade to access','Pricing Plans')}</Badge>
+							</Box>
+						)}
 					</InlineStack>
-					<Button tone="critical" variant="secondary" onClick={handleToggleActive} loading={isToggling}>{active ? t('Turn Off Alert','Marketing') : t('Turn On Alert','Marketing')}</Button>
+					<Button tone="critical" variant="secondary" onClick={handleToggleActive} loading={isToggling} disabled={isFreePlan}>{active ? t('Turn Off Alert','Marketing') : t('Turn On Alert','Marketing')}</Button>
 				</div>
 
 				{/* Connection banner */}
@@ -125,7 +146,7 @@ export default function BackInStockAlert() {
 										{t('Use this pre-designed template','Marketing')}
 									</Text>
 									<div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-										<Button disabled={!active} onClick={() => setShowTestModal(true)}>{t('Send Test Email','Marketing')}</Button>
+										<Button disabled={!active || isFreePlan} onClick={() => setShowTestModal(true)}>{t('Send Test Email','Marketing')}</Button>
 										{/* <Button variant="tertiary">Chat with support to customize</Button> */}
 									</div>
 								</div>

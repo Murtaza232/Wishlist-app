@@ -82,12 +82,27 @@ function renderWishlistIconInCollectionCards(settings) {
   cards.forEach(function(card) {
     // Try to set data-product-id if not present
     if (!card.getAttribute('data-product-id')) {
-      // Try to find a product link or image with product handle/id in href or data attribute
-      var productLink = card.querySelector('a[href*="/products/"]');
-      if (productLink && productLink.href) {
-        var match = productLink.href.match(/\/products\/([a-zA-Z0-9\-]+)/);
-        if (match) {
-          card.setAttribute('data-product-id', match[1]); // fallback: set handle if id not available
+      // First, try to extract numeric product ID from anchor tag
+      var anchor = card.querySelector('a.full-unstyled-link');
+      if (anchor && anchor.id) {
+        console.log('[WISHLIST] Initial extraction - Found anchor with ID:', anchor.id);
+        var idMatch = anchor.id.match(/.*?product-grid-(\d{8,})/i);
+        if (idMatch) {
+          card.setAttribute('data-product-id', idMatch[1]); // Set numeric ID
+          console.log('[WISHLIST] Initial extraction - Set product ID:', idMatch[1]);
+        } else {
+          console.log('[WISHLIST] Initial extraction - No match found for anchor ID:', anchor.id);
+        }
+      }
+      
+      // If no numeric ID found, try to find a product link or image with product handle/id in href or data attribute
+      if (!card.getAttribute('data-product-id')) {
+        var productLink = card.querySelector('a[href*="/products/"]');
+        if (productLink && productLink.href) {
+          var match = productLink.href.match(/\/products\/([a-zA-Z0-9\-]+)/);
+          if (match) {
+            card.setAttribute('data-product-id', match[1]); // fallback: set handle if id not available
+          }
         }
       }
       // If you have a hidden input or element with product id, use it here
@@ -142,7 +157,61 @@ function renderWishlistIconInCollectionCards(settings) {
     iconSpan.className = 'wishlist-icon';
     iconSpan.style.cssText = "position:absolute;z-index:2;cursor:pointer;" + iconPositionStyle;
     iconSpan.innerHTML = svg;
-     iconSpan.addEventListener('click', function(event) {
+    
+    // Set product ID on the icon (same approach as product page)
+    var productId = card.getAttribute('data-product-id');
+    if (!productId) {
+      var hiddenId = card.querySelector("input[name='product_id']");
+      if (hiddenId && hiddenId.value) {
+        productId = hiddenId.value;
+      }
+    }
+    if (!productId) {
+      var anchor = card.querySelector('a.full-unstyled-link');
+      if (anchor && anchor.id) {
+        // Extract numeric product ID from anchor ID (e.g., "StandardCardNoMediaLink-template--18509771145468__product-grid-9043897843964")
+        var idMatch = anchor.id.match(/.*?product-grid-(\d{8,})/i);
+        if (idMatch) {
+          productId = idMatch[1];
+        }
+      }
+    }
+    if (!productId) {
+      var form = card.querySelector('form');
+      if (form) {
+        var formInput = form.querySelector('input[name="id"]') || form.querySelector('input[name="product_id"]');
+        if (formInput && formInput.value) {
+          productId = formInput.value;
+        }
+      }
+    }
+    if (!productId) {
+      var productLink = card.querySelector("a[href*='/products/']");
+      if (productLink && productLink.href) {
+        var match = productLink.href.match(/\/products\/([a-zA-Z0-9\-]+)/);
+        if (match) {
+          var handle = match[1];
+          if (window.ShopifyAnalytics && window.ShopifyAnalytics.meta && Array.isArray(window.ShopifyAnalytics.meta.products)) {
+            var found = window.ShopifyAnalytics.meta.products.find(function(p) {
+              return p.handle === handle;
+            });
+            if (found && found.id) {
+              productId = found.id.toString();
+            }
+          }
+        }
+      }
+    }
+    
+    // Set the product ID on the icon
+    if (productId) {
+      iconSpan.setAttribute('data-product-id', productId);
+      console.log('[WISHLIST] Product ID extracted:', productId, 'from card:', card);
+    } else {
+      console.warn('[WISHLIST] No product ID found for card:', card);
+    }
+    
+    iconSpan.addEventListener('click', function(event) {
       event.stopPropagation();
       event.preventDefault(); // prevents default anchor behavior
     });
@@ -311,119 +380,81 @@ document.addEventListener("DOMContentLoaded", function() {
           icon.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            // Get product ID from the card (same as add_to_wishlist)
+            
+            // Get customer ID (same logic as before)
             var card = icon.closest('.card, .product-card-wrapper, .card-wrapper');
-          var addBtn = card ? card.querySelector('.wishlist-add-btn') : null;
-          var customerId = addBtn && addBtn.dataset ? addBtn.dataset.customerId : null;
-          if (!customerId) {
-            // Try any .wishlist-add-btn on the page
-            var anyAddBtn = document.querySelector('.wishlist-add-btn');
-            if (anyAddBtn && anyAddBtn.dataset) {
-              customerId = anyAddBtn.dataset.customerId;
+            var addBtn = card ? card.querySelector('.wishlist-add-btn') : null;
+            var customerId = addBtn && addBtn.dataset ? addBtn.dataset.customerId : null;
+            if (!customerId) {
+              var anyAddBtn = document.querySelector('.wishlist-add-btn');
+              if (anyAddBtn && anyAddBtn.dataset) {
+                customerId = anyAddBtn.dataset.customerId;
+              }
             }
-          }
-          if (!customerId) {
-            // Try .wishlist-collection-icon data-customer-id
-            var collectionIcon = document.querySelector('.wishlist-collection-icon');
-            if (collectionIcon && collectionIcon.dataset && collectionIcon.dataset.customerId) {
-              customerId = collectionIcon.dataset.customerId;
+            if (!customerId) {
+              var collectionIcon = document.querySelector('.wishlist-collection-icon');
+              if (collectionIcon && collectionIcon.dataset && collectionIcon.dataset.customerId) {
+                customerId = collectionIcon.dataset.customerId;
+              }
             }
-          }
-          if (!customerId) {
-            var customerDiv = document.getElementById('wishlist-cart-customer');
-            customerId = customerDiv ? customerDiv.getAttribute('data-customer-id') : (window.wishlistCustomerId || '');
-            if (customerId) {
+            if (!customerId) {
+              var customerDiv = document.getElementById('wishlist-cart-customer');
+              customerId = customerDiv ? customerDiv.getAttribute('data-customer-id') : (window.wishlistCustomerId || '');
             }
-          }
-          if (!customerId && window.ShopifyAnalytics && window.ShopifyAnalytics.meta && window.ShopifyAnalytics.meta.page && window.ShopifyAnalytics.meta.page.customerId) {
-            customerId = window.ShopifyAnalytics.meta.page.customerId;
-          }
+            if (!customerId && window.ShopifyAnalytics && window.ShopifyAnalytics.meta && window.ShopifyAnalytics.meta.page && window.ShopifyAnalytics.meta.page.customerId) {
+              customerId = window.ShopifyAnalytics.meta.page.customerId;
+            }
 
-          // Robust productId detection
-          var productId = null;
-          var hiddenId = card ? card.querySelector("input[name='product_id']") : null;
-          var dataProductId = card && card.getAttribute('data-product-id');
-          if (hiddenId && hiddenId.value) {
-            productId = hiddenId.value;
-          } else if (dataProductId) {
-            // If it's a number, use as is.
-            if (/^\d+$/.test(dataProductId)) {
-              productId = dataProductId;
-            } else {
-              // Try to map using ShopifyAnalytics.meta.products
-              if (window.ShopifyAnalytics && window.ShopifyAnalytics.meta && Array.isArray(window.ShopifyAnalytics.meta.products)) {
-                // Try to match by GID
-                var found = window.ShopifyAnalytics.meta.products.find(function(p) {
-                  return p.gid && p.gid.endsWith('/' + dataProductId);
-                });
-                if (!found) {
-                  // Try to match by variant name (if you can get it from the DOM)
-                  var variantName = card && card.querySelector('.product-title') ? card.querySelector('.product-title').textContent.trim() : null;
-                  if (variantName) {
-                    found = window.ShopifyAnalytics.meta.products.find(function(p) {
-                      return p.variants && p.variants.some(function(v) { return v.name === variantName; });
-                    });
-                  }
+            // Get product ID from the icon's data attribute (set when icon was created)
+            var productId = icon.getAttribute('data-product-id');
+            console.log('[WISHLIST] Product ID from icon:', productId);
+            
+            // Fallback: try to get from card if not set on icon
+            if (!productId) {
+              productId = card.getAttribute('data-product-id');
+              console.log('[WISHLIST] Product ID from card:', productId);
+            }
+            
+            // Additional fallback: try to extract from anchor ID first
+            if (!productId) {
+              var anchor = card.querySelector('a.full-unstyled-link');
+              if (anchor && anchor.id) {
+                console.log('[WISHLIST] Found anchor with ID:', anchor.id);
+                // Extract numeric product ID from anchor ID (e.g., "StandardCardNoMediaLink-template--18509771145468__product-grid-9043897843964")
+                var idMatch = anchor.id.match(/.*?product-grid-(\d{8,})/i);
+                if (idMatch) {
+                  productId = idMatch[1];
+                  console.log('[WISHLIST] Extracted product ID from anchor:', productId);
+                } else {
+                  console.log('[WISHLIST] No match found for anchor ID:', anchor.id);
                 }
-                // Try to match by product title as a last resort
-                if (!found) {
-                  var productTitle = null;
-                  var titleEl = card && (card.querySelector('.card__heading a') || card.querySelector('.card__heading.h5 a'));
-                  if (titleEl) {
-                    productTitle = titleEl.textContent.trim();
-                    found = window.ShopifyAnalytics.meta.products.find(function(p) {
-                      return p.variants && p.variants.some(function(v) { return v.name === productTitle; });
+              }
+            }
+            
+            // Additional fallback: try to extract from product link
+            if (!productId) {
+              var productLink = card.querySelector("a[href*='/products/']");
+              if (productLink && productLink.href) {
+                var match = productLink.href.match(/\/products\/([a-zA-Z0-9\-]+)/);
+                if (match) {
+                  var handle = match[1];
+                  
+                  // Try to map handle to numeric ID using ShopifyAnalytics
+                  if (window.ShopifyAnalytics && window.ShopifyAnalytics.meta && Array.isArray(window.ShopifyAnalytics.meta.products)) {
+                    var found = window.ShopifyAnalytics.meta.products.find(function(p) {
+                      return p.handle === handle;
                     });
                     if (found && found.id) {
-                      productId = found.id;
-                  
+                      productId = found.id.toString();
                     }
                   }
                 }
-                if (found && found.id) {
-                  productId = found.id;
-                } else if (!productId) {
-                  productId = dataProductId;
-                  if (card) {
-                  }
-                }
-              } else {
-                productId = dataProductId;
-                // console.warn('[WISHLIST] Could not map to numeric ID, using handle:', productId);
-                if (card) {
-                  // console.debug('[WISHLIST] Card HTML for debugging:', card.outerHTML);
-                }
               }
             }
-          } else {
-            // Fallback: try to parse from product link (handle)
-            var productLink = card ? card.querySelector("a[href*='/products/']") : null;
-            if (productLink && productLink.href) {
-              var match = productLink.href.match(/\/products\/(\w[\w\-]*)/);
-              if (match) {
-                var handle = match[1];
-                // Try to map handle to numeric ID
-                if (window.ShopifyAnalytics && window.ShopifyAnalytics.meta && Array.isArray(window.ShopifyAnalytics.meta.products)) {
-                  var found = window.ShopifyAnalytics.meta.products.find(function(p) {
-                    return p.handle === handle;
-                  });
-                  if (found && found.id) {
-                    productId = found.id;
-                
-                  } else {
-                    productId = handle;
-                   
-                  }
-                } else {
-                  productId = handle;
-                 
-                }
-              }
-            }
-          }
 
             if (!productId) {
-              alert('Could not determine product. Please check your collection template.');
+              console.warn('[WISHLIST] Could not determine product ID.');
+              alert('Could not determine product ID. Please check your collection template or try refreshing the page.');
               return;
             }
             if (!customerId) {
@@ -441,18 +472,53 @@ document.addEventListener("DOMContentLoaded", function() {
             select.innerHTML = '<option>Loading...</option>';
             fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlists?customer_id=' + encodeURIComponent(customerId))
               .then(res => res.json())
-              .then(data => {
+              .then(wishlistsData => {
+                // Load wishlists
                 select.innerHTML = '';
-                if (!Array.isArray(data) || data.length === 0) {
+                if (!Array.isArray(wishlistsData) || wishlistsData.length === 0) {
                   select.innerHTML = '<option disabled>No wishlists yet</option>';
                 } else {
-                  data.forEach(wl => {
+                  wishlistsData.forEach(wl => {
                     const opt = document.createElement('option');
                     opt.value = wl.id;
                     opt.textContent = wl.title;
                     select.appendChild(opt);
                   });
                 }
+                
+                // Try to load usage info (optional - don't fail if this doesn't work)
+                fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/usage/stats')
+                  .then(res => res.json())
+                  .then(usageData => {
+                    if (usageData.success && usageData.data) {
+                      const usageInfo = usageData.data;
+                      const usageText = `Usage: ${usageInfo.current_usage}/${usageInfo.limit} (${usageInfo.plan} plan)`;
+                      
+                      // Add usage info below the modal title
+                      let usageElement = modal.querySelector('.usage-info');
+                      if (!usageElement) {
+                        usageElement = document.createElement('div');
+                        usageElement.className = 'usage-info';
+                        usageElement.style.cssText = 'text-align: center; font-size: 0.9rem; color: #666; margin-bottom: 20px;';
+                        modal.querySelector('h3').insertAdjacentElement('afterend', usageElement);
+                      }
+                      usageElement.textContent = usageText;
+                      
+                      // Show warning if approaching limit
+                      if (usageInfo.usage_percentage > 80) {
+                        usageElement.style.color = '#e74c3c';
+                        usageElement.style.fontWeight = 'bold';
+                      }
+                    }
+                  })
+                  .catch(error => {
+                    // Silently fail for usage info - it's optional
+                    console.debug('Usage info not available:', error);
+                  });
+              })
+              .catch((error) => {
+                console.error('Error loading wishlists:', error);
+                select.innerHTML = '<option disabled>Error loading wishlists</option>';
               });
 
             addToSelectedBtn.onclick = function() {
@@ -468,7 +534,12 @@ document.addEventListener("DOMContentLoaded", function() {
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ wishlist_id: wishlistId, product_id: productId })
               })
-              .then(res => res.json())
+              .then(res => {
+                if (!res.ok) {
+                  return res.json().then(data => { throw data; });
+                }
+                return res.json();
+              })
               .then(data => {
                 if (data.status === 'true' && data.message && data.message.toLowerCase().includes('already')) {
                   alert('Product already in this wishlist.');
@@ -479,8 +550,12 @@ document.addEventListener("DOMContentLoaded", function() {
                 addToSelectedBtn.textContent = 'Add to Selected';
                 addToSelectedBtn.disabled = false;
               })
-              .catch(() => {
-                alert('Error adding to wishlist.');
+              .catch((error) => {
+                if (error.error_code === 'USAGE_LIMIT_REACHED') {
+                  alert('Usage limit reached. Please upgrade your plan to add more items.');
+                } else {
+                  alert('Error adding to wishlist.');
+                }
                 addToSelectedBtn.textContent = 'Add to Selected';
                 addToSelectedBtn.disabled = false;
               });
@@ -518,11 +593,22 @@ document.addEventListener("DOMContentLoaded", function() {
                   titleInput.value = '';
                   createBtn.textContent = 'Create and Add';
                   createBtn.disabled = false;
+                })
+                .catch((itemError) => {
+                  if (itemError.error_code === 'USAGE_LIMIT_REACHED') {
+                    alert('Usage limit reached. Please upgrade your plan to add more items.');
+                  } else {
+                    alert('Error adding product to wishlist.');
+                  }
+                  createBtn.textContent = 'Create and Add';
+                  createBtn.disabled = false;
                 });
               })
               .catch((err) => {
                 if (err && err.message && err.message.toLowerCase().includes('already exists')) {
                   alert('A wishlist with this title already exists.');
+                } else if (err.error_code === 'USAGE_LIMIT_REACHED') {
+                  alert('Usage limit reached. Please upgrade your plan to create more wishlists.');
                 } else {
                   alert('Error creating wishlist.');
                 }

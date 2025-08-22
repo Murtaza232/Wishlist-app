@@ -19,6 +19,8 @@ export default function SavedForLater() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
+  const [isFreePlan, setIsFreePlan] = useState(false);
+  const [planName, setPlanName] = useState('');
 
   // Prefill from API
   useEffect(() => {
@@ -53,7 +55,30 @@ export default function SavedForLater() {
     })();
   }, [apiUrl]);
 
+  // Check active subscription plan
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = await getSessionToken(appBridge);
+        const planRes = await fetch(`${apiUrl}subscription/active`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (planRes.ok) {
+          const data = await planRes.json();
+          const name = data?.data?.plan_name || null;
+          setPlanName(name || '');
+          setIsFreePlan(!name || String(name).toLowerCase() === 'free');
+        } else {
+          setIsFreePlan(true);
+        }
+      } catch (e) {
+        setIsFreePlan(true);
+      }
+    })();
+  }, [apiUrl]);
+
   const handleToggleActive = async () => {
+    if (isFreePlan) return; // gated on Free plan
     setIsToggling(true);
     try {
       const token = await getSessionToken(appBridge);
@@ -80,6 +105,7 @@ export default function SavedForLater() {
   };
 
   const handleSaveSettings = async () => {
+    if (isFreePlan) return; // gated on Free plan
     setIsSaving(true);
     try {
       const token = await getSessionToken(appBridge);
@@ -133,12 +159,18 @@ export default function SavedForLater() {
             <Box style={{marginLeft: 10, marginTop:2}}> 
               <Badge tone={active ? 'success' : 'critical'}>{active ? t('Live','Marketing') : t('Off','Marketing')}</Badge>
             </Box>
+            {isFreePlan && (
+              <Box style={{marginLeft: 8, marginTop:2}}>
+                <Badge tone="attention">{t('Upgrade to access','Pricing Plans')}</Badge>
+              </Box>
+            )}
           </InlineStack>
           <Button 
             tone="critical" 
             variant="secondary" 
             onClick={handleToggleActive}
             loading={isToggling}
+            disabled={isFreePlan}
           >
             {active ? t('Turn Off Reminder','Marketing') : t('Turn On Reminder','Marketing')}
           </Button>
@@ -192,7 +224,7 @@ export default function SavedForLater() {
                     type="number"
                     onChange={setReminderDays}
                     autoComplete="off"
-                    disabled={!active}
+                    disabled={isFreePlan || !active}
                     min="1"
                     error={!reminderDays || isNaN(reminderDays) || parseInt(reminderDays, 10) < 1 ? 'Please enter a valid number of days' : ''}
                   />
@@ -201,7 +233,7 @@ export default function SavedForLater() {
                 <div style={{ width: '100%', marginTop: 12 }}>
                   <Button 
                     onClick={handleSaveSettings}
-                    disabled={!active || !reminderDays || isNaN(reminderDays) || parseInt(reminderDays, 10) < 1}
+                    disabled={isFreePlan || !active || !reminderDays || isNaN(reminderDays) || parseInt(reminderDays, 10) < 1}
                     primary
                     loading={isSaving}
                   >
@@ -220,21 +252,23 @@ export default function SavedForLater() {
           <Card>
             <Box padding="4">
               <Text variant="headingSm" as="h3" fontWeight="bold">{t('Step 2: Review Email Content','Marketing')}</Text>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 12 }}>
-                <div style={{ border: '1px solid #E5E7EB', borderRadius: 8, padding: 16, background: '#fff', height: 380 }}>
-                  <img 
-                    src={savedforlaterimg} 
-                    alt="Saved for Later Email Preview" 
-                    style={{ 
-                      width: '100%', 
-                      height: '100%', 
-                      objectFit: 'contain',
-                      borderRadius: 4
-                    }} 
-                  />
-                </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 12, alignItems: 'stretch' }}>
                 <Card>
-                <div style={{padding:100}}>
+                  <div style={{ padding: 16, height: '100%' }}>
+                    <img 
+                      src={savedforlaterimg} 
+                      alt="Saved for Later Email Preview" 
+                      style={{ 
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        borderRadius: 4
+                      }} 
+                    />
+                  </div>
+                </Card>
+                <Card>
+                  <div style={{ padding: 100 }}>
                   <Text as="p" variant="bodyMd">
                     {t('Email Description','Marketing')}
                   </Text>
@@ -248,7 +282,7 @@ export default function SavedForLater() {
                     <Button 
                       primary 
                       onClick={() => setShowTestModal(true)}
-                      disabled={!active}
+                      disabled={isFreePlan || !active}
                     >
                       {t('Send Test Email','Marketing')}
                     </Button>

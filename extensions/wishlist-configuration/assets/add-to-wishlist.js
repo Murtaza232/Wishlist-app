@@ -465,7 +465,12 @@ function setupWishlistModal() {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ wishlist_id: wishlistId, product_id: productId })
     })
-    .then(res => res.json())
+    .then(res => {
+      if (!res.ok) {
+        return res.json().then(data => { throw data; });
+      }
+      return res.json();
+    })
     .then(data => {
       // console.debug('[WISHLIST] Add to wishlist response:', data);
       if (data.status === 'true' && data.message && data.message.toLowerCase().includes('already')) {
@@ -479,7 +484,11 @@ function setupWishlistModal() {
     })
     .catch((error) => {
       // console.error('[WISHLIST] Error adding to wishlist:', error);
-      alert('Error adding to wishlist.');
+      if (error.error_code === 'USAGE_LIMIT_REACHED') {
+        alert('Usage limit reached. Please upgrade your plan to add more items.');
+      } else {
+        alert('Error adding to wishlist.');
+      }
       addToSelectedBtn.textContent = 'Add to Selected';
       addToSelectedBtn.disabled = false;
     });
@@ -529,6 +538,8 @@ function setupWishlistModal() {
       // console.error('[WISHLIST] Error creating wishlist:', err);
       if (err && err.message && err.message.toLowerCase().includes('already exists')) {
         alert('A wishlist with this title already exists.');
+      } else if (err.error_code === 'USAGE_LIMIT_REACHED') {
+        alert('Usage limit reached. Please upgrade your plan to create more wishlists.');
       } else {
         alert('Error creating wishlist.');
       }
@@ -565,22 +576,56 @@ function showWishlistModal() {
   
   modal.style.display = 'flex';
   select.innerHTML = '<option>Loading...</option>';
+  
+  // Load wishlists first, then try to load usage info (optional)
   fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/wishlists?customer_id=' + encodeURIComponent(customerId))
     .then(res => res.json())
-    .then(data => {
+    .then(wishlistsData => {
+      // Load wishlists
       select.innerHTML = '';
-      if (!Array.isArray(data) || data.length === 0) {
+      if (!Array.isArray(wishlistsData) || wishlistsData.length === 0) {
         select.innerHTML = '<option disabled>No wishlists yet</option>';
       } else {
-        data.forEach(wl => {
+        wishlistsData.forEach(wl => {
           const opt = document.createElement('option');
           opt.value = wl.id;
           opt.textContent = wl.title;
           select.appendChild(opt);
         });
       }
+      
+      // Try to load usage info (optional - don't fail if this doesn't work)
+      fetch('https://phpstack-362288-5709690.cloudwaysapps.com/api/usage/stats')
+        .then(res => res.json())
+        .then(usageData => {
+          if (usageData.success && usageData.data) {
+            const usageInfo = usageData.data;
+            const usageText = `Usage: ${usageInfo.current_usage}/${usageInfo.limit} (${usageInfo.plan} plan)`;
+            
+            // Add usage info below the modal title
+            let usageElement = modal.querySelector('.usage-info');
+            if (!usageElement) {
+              usageElement = document.createElement('div');
+              usageElement.className = 'usage-info';
+              usageElement.style.cssText = 'text-align: center; font-size: 0.9rem; color: #666; margin-bottom: 20px;';
+              modal.querySelector('h3').insertAdjacentElement('afterend', usageElement);
+            }
+            usageElement.textContent = usageText;
+            
+            // Show warning if approaching limit
+            if (usageInfo.usage_percentage > 80) {
+              usageElement.style.color = '#e74c3c';
+              usageElement.style.fontWeight = 'bold';
+            }
+          }
+        })
+        .catch(error => {
+          // Silently fail for usage info - it's optional
+          console.debug('Usage info not available:', error);
+        });
     })
-    .catch(() => {
+    .catch((error) => {
+      console.error('Error loading wishlists:', error);
       select.innerHTML = '<option disabled>Error loading wishlists</option>';
     });
 }

@@ -28,11 +28,30 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')->hourly();
         
-        // Dispatch the wishlist reminder job daily
-        $schedule->job(new SendWishlistReminderEmailsJob())->daily();
-        
+        // Dispatch the wishlist reminder job every 30 minutes
+        $schedule->job(new SendWishlistReminderEmailsJob())
+            ->name('wishlist-reminders')
+            ->everyThirtyMinutes()
+            ->withoutOverlapping(30); // Prevent overlapping for 30 minutes
+            
         // Dispatch the stock monitoring job every hour
-        $schedule->job(new StockMonitoringJob())->hourly();
+        $schedule->job(new StockMonitoringJob())
+            ->hourly()
+            ->name('stock-monitoring')
+            ->withoutOverlapping(60);
+
+        // Run trending wishlist emails daily at 9am
+        $schedule->call(function () {
+            try {
+                $sessions = \App\Models\Session::all();
+                $svc = app(\App\Services\FrequentlyWishlistedService::class);
+                foreach ($sessions as $s) {
+                    $svc->run($s);
+                }
+            } catch (\Throwable $e) {
+                \Log::error('FrequentlyWishlisted schedule failed', ['error' => $e->getMessage()]);
+            }
+        })->dailyAt('09:00');
     }
 
     /**

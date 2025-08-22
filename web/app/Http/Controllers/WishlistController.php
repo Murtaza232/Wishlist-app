@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Session;
 use App\Models\Wishlist;
 use App\Services\WishlistNotificationService;
+use App\Services\UsageService;
 use App\Models\Product;
 
 class WishlistController extends HelperController
@@ -302,7 +303,6 @@ class WishlistController extends HelperController
      */
     public function createWishlist(Request $request)
     {
-        // return 'hello';
         $request->validate([
             'customer_id' => 'required',
             'title' => 'required|string|max:255',
@@ -314,8 +314,20 @@ class WishlistController extends HelperController
                 'message' => 'Shop domain is required.'
             ], 400);
         }
+        
+        $shopDomain = $shopSession->shop;
+        
+        // Check usage limits before creating wishlist
+        if (!UsageService::isActionAllowed($shopDomain, 'create_wishlist')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Usage limit reached. Please upgrade your plan to create more wishlists.',
+                'error_code' => 'USAGE_LIMIT_REACHED'
+            ], 429);
+        }
+        
         // Use the shop domain from the Session model
-        $shop = Session::where('shop', $shopSession->shop)
+        $shop = Session::where('shop', $shopDomain)
             ->whereNotNull('access_token')
             ->first();
 
@@ -343,16 +355,19 @@ class WishlistController extends HelperController
             'title' => $request->title,
         ]);
 
-            if (!class_exists('\\App\\Services\\WishlistNotificationService')) {
-                throw new \Exception('Service class not found');
-            }
-            
-            $notificationService = app(\App\Services\WishlistNotificationService::class);
-            $result = $notificationService->sendSignupConfirmationEmail($request->customer_id, $wishlist, $shop);
-            // return $result;
+        // Track usage after successful creation
+        UsageService::trackUsage($shopDomain, 'create_wishlist');
+
+        if (!class_exists('\\App\\Services\\WishlistNotificationService')) {
+            throw new \Exception('Service class not found');
+        }
+        
+        $notificationService = app(\App\Services\WishlistNotificationService::class);
+        $result = $notificationService->sendSignupConfirmationEmail($request->customer_id, $wishlist, $shop);
+        
         return response()->json($wishlist);
     }
-    public function addItemToWishlist(Request $request)
+        public function addItemToWishlist(Request $request)
     {
         $request->validate([
             'wishlist_id' => 'required|integer',
@@ -362,6 +377,34 @@ class WishlistController extends HelperController
         if (!$wishlist) {
             return response()->json(['error' => 'Wishlist not found'], 404);
         }
+        
+        // Get shop domain for usage tracking
+        $shopDomain = null;
+        if ($wishlist->shop_id) {
+            $shop = Session::find($wishlist->shop_id);
+            $shopDomain = $shop ? $shop->shop : null;
+        }
+        
+        if (!$shopDomain) {
+            $shopSession = $this->getShop($request);
+            if ($shopSession) {
+                $shopDomain = $shopSession->shop;
+            }
+        }
+        
+        if (!$shopDomain) {
+            return response()->json(['error' => 'Shop domain not found'], 400);
+        }
+        
+        // Check usage limits before adding item
+        if (!UsageService::isActionAllowed($shopDomain, 'add_item')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Usage limit reached. Please upgrade your plan to add more items.',
+                'error_code' => 'USAGE_LIMIT_REACHED'
+            ], 429);
+        }
+        
         // Get shop_id from wishlist if available, otherwise from session
         $shopId = $wishlist->shop_id ?? null;
         if (!$shopId) {
@@ -375,6 +418,7 @@ class WishlistController extends HelperController
                 }
             }
         }
+        
         // Prevent duplicate items using shop_id, customer_id, and product_id
         $exists = WishlistItem::where('shop_id', $shopId)
             ->where('customer_id', $wishlist->customer_id)
@@ -410,6 +454,10 @@ class WishlistController extends HelperController
             'current_price' => $currentPrice,
             'price_checked_at' => now(),
         ]);
+        
+        // Track usage after successful addition
+        UsageService::trackUsage($shopDomain, 'add_item');
+        
         return response()->json(['status' => 'success', 'message' => 'Product added to wishlist!']);
     }
 
@@ -531,18 +579,39 @@ class WishlistController extends HelperController
         $wishlistId = $request->input('wishlist_id');
         $shopDomain = $request->input('shop');
 
+        // Check if sharing is allowed for current plan
+        if (!UsageService::isSharingAllowed($shopDomain)) {
+            return response()->json([
+                'status' => false, 
+                'message' => 'Wishlist sharing is not available on your current plan. Please upgrade to share wishlists.',
+                'error_code' => 'SHARING_NOT_ALLOWED'
+            ], 403);
+        }
+
+        // Check usage limits before sharing
+        if (!UsageService::isActionAllowed($shopDomain, 'share_wishlist')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Usage limit reached. Please upgrade your plan to share more wishlists.',
+                'error_code' => 'USAGE_LIMIT_REACHED'
+            ], 429);
+        }
+
         $wishlist = \App\Models\Wishlist::find($wishlistId);
         if (!$wishlist) {
             return response()->json(['status' => false, 'message' => 'Wishlist not found.'], 404);
         }
         $shop = \App\Models\Session::where('shop', $shopDomain)->whereNotNull('access_token')->first();
         if (!$shop) {
-            return response()->json(['status' => false, 'message' => 'Shop not found.'], 404);
+            return response()->json(['status' => false, 'message' => 'Shop not found.'], 400);
         }
+        
         $notificationService = app(\App\Services\WishlistNotificationService::class);
         $result = $notificationService->sendWishlistSharedEmail($customerId, $wishlist, $shop);
-        // return $result;
+        
         if ($result) {
+            // Track usage after successful sharing
+            UsageService::trackUsage($shopDomain, 'share_wishlist');
             return response()->json(['status' => true, 'message' => 'Wishlist shared email sent.']);
         } else {
             return response()->json(['status' => false, 'message' => 'Failed to send wishlist shared email.'], 500);

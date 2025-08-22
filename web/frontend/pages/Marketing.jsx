@@ -9,6 +9,7 @@ import {
   InlineStack,
   Box,
   Badge,
+  Spinner,
   Icon,
   Divider,
   LegacyStack,
@@ -23,7 +24,7 @@ import {
   CheckIcon,
   HeartIcon,
   CartIcon,
-  ArrowRightIcon,ImportIcon,PersonIcon,CalendarIcon
+  ArrowRightIcon, ImportIcon, PersonIcon, CalendarIcon
 } from '@shopify/polaris-icons';
 import { useLanguage } from "../components";
 import { useMarketingAnalytics } from '../hooks/useMarketingAnalytics';
@@ -32,16 +33,18 @@ import { AppContext } from "../components";
 import { useAuthenticatedFetch } from "../hooks/useAuthenticatedFetch";
 import { useNavigate } from 'react-router-dom';
 import { getSessionToken } from "@shopify/app-bridge-utils";
+import { useAppBridge } from "@shopify/app-bridge-react";
 import Skelton from '../components/Skelton';
 
 export default function Marketing() {
+  const appBridge = useAppBridge();
   const { t } = useLanguage();
-  const { 
-    analytics, 
-    loading, 
-    error, 
-    dateRange, 
-    updateDateRange 
+  const {
+    analytics,
+    loading,
+    error,
+    dateRange,
+    updateDateRange
   } = useMarketingAnalytics();
 
   // State for date picker
@@ -62,6 +65,44 @@ export default function Marketing() {
   const [subscriptionStatusMap, setSubscriptionStatusMap] = useState({});
   const [campaign, setCampaign] = useState(null);
   const [metrics, setMetrics] = useState({ total_signups: 0, wishlisted_shoppers: 0, wishlist_actions: 0, wishlist_value: 0 });
+  const [fwActive, setFwActive] = useState(null);
+  const [fwUpdating, setFwUpdating] = useState(false);
+  const [updatingNotificationMap, setUpdatingNotificationMap] = useState({});
+  const [isFreePlan, setIsFreePlan] = useState(false);
+  const [planName, setPlanName] = useState('');
+
+  // Check active subscription plan and redirect if Free
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = await getSessionToken(appBridge);
+        const planRes = await fetch(`${apiUrl}subscription/active`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (planRes.ok) {
+          const data = await planRes.json();
+          const name = data?.data?.plan_name || null;
+          const isFree = !name || String(name).toLowerCase() === 'free';
+          setPlanName(name || '');
+          setIsFreePlan(isFree);
+          
+          // Redirect to home if Free plan or no plan
+          if (isFree || !name) {
+            navigate('/');
+            return;
+          }
+        } else {
+          // Redirect if we can't verify the plan
+          navigate('/');
+        }
+      } catch (e) {
+        console.error('Error checking plan status:', e);
+        // Redirect on error to be safe
+        navigate('/');
+      }
+    })();
+  }, [apiUrl, navigate]);
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -91,40 +132,73 @@ export default function Marketing() {
         list.forEach(n => {
           const key = n?.notification_type || (n?.title || '').toLowerCase();
           map[key] = {
+            id: n?.id,
             active_status: Number(n?.active_status) === 1 || n?.active_status === true,
             updated_at: n?.updated_at,
             title: n?.title
           };
         });
         setSubscriptionStatusMap(map);
-      } catch (_) {}
+      } catch (_) { }
     };
     loadSubs();
   }, [apiUrl]);
-  useEffect(() => {
-  const fetchCurrentCampaign = async () => {
+
+  const toggleFW = async () => {
     try {
-      const res = await authFetch(`${apiUrl}campaigns/current`);
-      const json = await res.json();
-      if (json?.success && json?.data?.campaign) {
-        const c = json.data.campaign;
-        setCampaign(c);
-        setMetrics(json.data.metrics || metrics);
-        // hydrate fields
-        if (c.start_date && c.end_date) {
-          setDateRange({ start: new Date(c.start_date), end: new Date(c.end_date) });
-        }
-        if (typeof c.total_winners !== 'undefined' && c.total_winners !== null) setWinners(String(c.total_winners));
-        if (typeof c.voucher_amount !== 'undefined' && c.voucher_amount !== null) setVoucher(String(c.voucher_amount));
-      } else {
-        setCampaign(null);
-      }
-    } catch (e) {
-      // ignore
+      setFwUpdating(true);
+      const next = !fwActive;
+      await authFetch(`${apiUrl}frequently-wishlisted/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active_status: next })
+      });
+      setFwActive(next);
+    } catch (_) {
     } finally {
-      setIsLoadingCampaign(false);
+      setFwUpdating(false);
     }
-  };  }, [apiUrl]);
+  };
+
+  // Load frequently-wishlisted config for the 5th card status
+  useEffect(() => {
+    const loadFW = async () => {
+      try {
+        const res = await authFetch(`${apiUrl}frequently-wishlisted/config`);
+        if (!res?.ok) return;
+        const json = await res.json();
+        if (json?.success && json?.data) {
+          setFwActive(!!json.data.active_status);
+        }
+      } catch (_) { }
+    };
+    loadFW();
+  }, [apiUrl]);
+  useEffect(() => {
+    const fetchCurrentCampaign = async () => {
+      try {
+        const res = await authFetch(`${apiUrl}campaigns/current`);
+        const json = await res.json();
+        if (json?.success && json?.data?.campaign) {
+          const c = json.data.campaign;
+          setCampaign(c);
+          setMetrics(json.data.metrics || metrics);
+          // hydrate fields
+          if (c.start_date && c.end_date) {
+            setDateRange({ start: new Date(c.start_date), end: new Date(c.end_date) });
+          }
+          if (typeof c.total_winners !== 'undefined' && c.total_winners !== null) setWinners(String(c.total_winners));
+          if (typeof c.voucher_amount !== 'undefined' && c.voucher_amount !== null) setVoucher(String(c.voucher_amount));
+        } else {
+          setCampaign(null);
+        }
+      } catch (e) {
+        // ignore
+      } finally {
+        setIsLoadingCampaign(false);
+      }
+    };
+  }, [apiUrl]);
   // Helper function to get icon component by name
   const getIconComponent = (iconName) => {
     const iconMap = {
@@ -138,6 +212,31 @@ export default function Marketing() {
   const formatCurrency = (amount) => {
     if (!amount) return '₱0';
     return '₱' + Number(amount).toLocaleString();
+  };
+
+  const isNotificationActive = (key) => {
+    return !!subscriptionStatusMap?.[key]?.active_status;
+  };
+
+  const toggleNotification = async (key) => {
+    try {
+      const entry = subscriptionStatusMap?.[key];
+      if (!entry?.id) return;
+      setUpdatingNotificationMap(prev => ({ ...prev, [key]: true }));
+      const nextStatus = entry.active_status ? 0 : 1;
+      await authFetch(`${apiUrl}subscription-notification-status-save/${entry.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active_status: nextStatus })
+      });
+      setSubscriptionStatusMap(prev => ({
+        ...prev,
+        [key]: { ...prev[key], active_status: !!nextStatus }
+      }));
+    } catch (_) {
+    } finally {
+      setUpdatingNotificationMap(prev => ({ ...prev, [key]: false }));
+    }
   };
 
   // Infer a status label for activities when subscription mapping is absent
@@ -158,6 +257,20 @@ export default function Marketing() {
     if (startDate && startDate <= now && (!endDate || endDate > now)) return 'Live';
     return 'Off';
   };
+
+  // Appointment scheduling (no prompts; backend resolves user/shop)
+  // const handleAppointmentClick = async () => {
+  //   try {
+  //     const res = await authFetch(`${apiUrl}appointments/book`, {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' }
+  //     });
+  //     const json = await res.json();
+  //     if (json?.success) {
+  //       alert(t('Your appointment is booked!', 'Marketing'));
+  //     }
+  //   } catch (_) {}
+  // };
 
   // Handle date range change
   const handleDateRangeChange = ({ start, end }) => {
@@ -277,20 +390,20 @@ export default function Marketing() {
           marginBottom: '24px'
         }}>
           <div>
-        <div style={{
-          fontSize: 20,
-          fontWeight: 700,
-          margin: 0,
-          color: '#222',
-          letterSpacing: 0.5,
-          marginBottom: '8px'
-        }}>
-          {t('Marketing and Automations', 'Marketing')}
+            <div style={{
+              fontSize: 20,
+              fontWeight: 700,
+              margin: 0,
+              color: '#222',
+              letterSpacing: 0.5,
+              marginBottom: '8px'
+            }}>
+              {t('Marketing and Automations', 'Marketing')}
             </div>
             <span style={{ fontSize: 13, color: '#555', fontWeight: 400, maxWidth: 700 }}>
-            {t('Marketing subtitle', 'Marketing')}
-          </span>
-        </div>
+              {t('Marketing subtitle', 'Marketing')}
+            </span>
+          </div>
 
           {/* Date Range Picker */}
           <div style={{ minWidth: '300px' }}>
@@ -303,8 +416,8 @@ export default function Marketing() {
                 open={showDatePicker}
                 onClose={() => setShowDatePicker(false)}
                 activator={
-                  <Button 
-                    size="slim" 
+                  <Button
+                    size="slim"
                     icon={CalendarIcon}
                     variant="tertiary"
                     onClick={() => setShowDatePicker(true)}
@@ -379,185 +492,200 @@ export default function Marketing() {
 
         {/* Only show content when analytics are loaded */}
         {!loading && analytics && (
-        <Layout>
-          {/* Integration Status Section */}
-          <Layout.Section>
-            <Card>
-              <Box padding="4">
-                <InlineStack align="space-between">
-                  <InlineStack gap="3" align="center">
-                    {/* {analytics?.integration_status?.is_connected && (
+          <Layout>
+            {/* Integration Status Section */}
+            <Layout.Section>
+              <Card>
+                <Box padding="4">
+                  <InlineStack align="space-between">
+                    <InlineStack gap="3" align="center">
+                      {/* {analytics?.integration_status?.is_connected && (
                       <img
                         src={analytics?.integration_status?.provider_logo || 'https://static.swym.it/klaviyo.png'}
                         alt="provider"
                         style={{ width: 20, height: 20, objectFit: 'contain', borderRadius: 4 }}
                       />
                     )} */}
-                    <Text variant="bodyMd" as="p">
-                      {analytics?.integration_status?.is_connected 
-                        ? <span><strong>{analytics.integration_status.provider_name || 'Smtp'}</strong>{` ${t('has been connected as your marketing integration for Email', 'Marketing')}`}</span>
-                        : t('No marketing integration connected', 'Marketing')
-                      }
-                    </Text>
+                      <Text variant="bodyMd" as="p">
+                        {analytics?.integration_status?.is_connected
+                          ? <span><strong>{analytics.integration_status.provider_name || 'Smtp'}</strong>{` ${t('has been connected as your marketing integration for Email', 'Marketing')}`}</span>
+                          : <span><strong>'Smtp'</strong> {t('has been connected as your marketing integration for Email', 'Marketing')}</span>
+                        }
+                      </Text>
+                    </InlineStack>
+                    {/* Removed status badge per requirement */}
                   </InlineStack>
-                  {/* Removed status badge per requirement */}
-                </InlineStack>
-                {analytics?.integration_status?.last_sync && (
-                  <Box paddingBlockStart="2">
-                    <Text variant="bodySm" as="p" color="subdued">
-                      {t('Last synced', 'Marketing')}: {analytics.integration_status.last_sync}
-                    </Text>
-                  </Box>
-                )}
-              </Box>
-            </Card>
-          </Layout.Section>
+                  {analytics?.integration_status?.last_sync && (
+                    <Box paddingBlockStart="2">
+                      <Text variant="bodySm" as="p" color="subdued">
+                        {t('Last synced', 'Marketing')}: {analytics.integration_status.last_sync}
+                      </Text>
+                    </Box>
+                  )}
+                </Box>
+              </Card>
+            </Layout.Section>
 
-          {/* Turn visitors into buyers section */}
-          <Layout.Section>
+            {/* Turn visitors into buyers section */}
+            <Layout.Section>
               <Box padding="4">
                 <Text variant="headingLg" as="h2" fontWeight="bold">
                   {t('Turn visitors into buyers', 'Marketing')}
                 </Text>
-                <Box paddingBlockStart="3" style={{ marginTop:10 }}>
+                <Box paddingBlockStart="3" style={{ marginTop: 10 }}>
                   <Text variant="bodyMd" as="p" color="subdued">
                     {t(`Boost sales with`, 'Marketing')} {analytics.integration_status.provider_name || 'Smtp'} {t(`marketing automations by re-engaging shoppers who show intent but leave without buying, using personalized product recommendations.`, 'Marketing')}
                   </Text>
                 </Box>
               </Box>
-          </Layout.Section>
+            </Layout.Section>
 
-          {/* Live campaign banner */}
-          {activeCampaign && (
-            <Layout.Section>
-              <Card>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: ' 0 10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 20, height: 20, borderRadius: 6, background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✨</div>
-                    <Text variant="bodySm" as="p"><b>{t('Your', 'Marketing')} {activeCampaign?.title || 'Win Your Wishlist'} {t('campaign is now live!', 'Marketing')}</b> {t('You can monitor performance and see more details.', 'Marketing')}</Text>
-                  </div>
-                  <Button size="slim" onClick={() => navigate('/win-your-wishlist')}>{t('View Performance', 'Marketing')}</Button>
-                </div>
-            </Card>
-          </Layout.Section>
-          )}
-
-                     {/* Win Your Wishlist Campaign Card */}
-          {!activeCampaign && (
-           <Layout.Section>
-             <Card>
-                  <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  minHeight: '200px'
-                }}>
-             {/* Left Side - Campaign Details */}
-                  <div style={{
-                    padding: '20px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center'
-                  }}>
-                    {/* Top Banner */}
-                    <div style={{
-                      backgroundColor: '#E3F2FD',
-                      borderRadius: '16px',
-                      padding: '8px 12px',
-                      marginBottom: '16px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      width: 'fit-content'
-                    }}>
-                      <Icon source={LightbulbIcon} tone="info" />
-                      <Text variant="bodySm" as="span" fontWeight="medium" style={{ fontSize: '12px' }}>
-                        {t('Launch a gifting campaign', 'Marketing')}
-                      </Text>
+            {/* Live campaign banner */}
+            {activeCampaign && (
+              <Layout.Section>
+                <Card>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: ' 0 10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 20, height: 20, borderRadius: 6, background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✨</div>
+                      <Text variant="bodySm" as="p"><b>{t('Your', 'Marketing')} {activeCampaign?.title || 'Win Your Wishlist'} {t('campaign is now live!', 'Marketing')}</b> {t('You can monitor performance and see more details.', 'Marketing')}</Text>
                     </div>
+                    <Button size="slim" onClick={() => navigate('/win-your-wishlist')}>{t('View Performance', 'Marketing')}</Button>
+                  </div>
+                </Card>
+              </Layout.Section>
+            )}
 
-                   {/* Campaign Title */}
-                    <Text variant="headingLg" as="h2" fontWeight="bold" style={{ 
-                      marginBottom: '12px',
-                      fontSize: '22px',
-                      lineHeight: '1.2'
+            {/* Win Your Wishlist Campaign Card */}
+            {!activeCampaign && (
+              <Layout.Section>
+                <Card>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    minHeight: '200px'
+                  }}>
+                    {/* Left Side - Campaign Details */}
+                    <div style={{
+                      padding: '20px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center'
                     }}>
-                     {t('Win Your Wishlist Campaign', 'Marketing')}
-                   </Text>
-
-                   {/* Campaign Description */}
-                    <Text variant="bodyMd" as="p" color="subdued" style={{ 
-                      lineHeight: '1.4',
-                      marginBottom: '20px',
-                      fontSize: '14px'
-                    }}>
-                       {t('Gamify engagement', 'Marketing')}
-                     </Text>
-
-                   {/* Performance Metrics */}
-                     <div style={{
-                       backgroundColor: '#F6F6F7',
-                       borderRadius: '8px',
-                      padding: '12px',
-                      marginBottom: '16px'
-                    }}>
+                      {/* Top Banner */}
                       <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(3, 1fr)',
-                        gap: '8px'
+                        backgroundColor: '#E3F2FD',
+                        borderRadius: '16px',
+                        padding: '8px 12px',
+                        marginBottom: '30px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        width: 'fit-content'
                       }}>
-                         {analytics?.performance_metrics?.map((metric, index) => (
-                          <div key={index} style={{ 
-                            textAlign: 'center',
-                            padding: '8px 4px'
-                          }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <Icon source={getIconComponent(metric.icon)} tone="subdued" />
-                              <div style={{ marginLeft: 6 }}>
-                                <Text variant="bodyMd" as="span" fontWeight="bold" style={{ fontSize: '14px' }}>
-                                   {metric.value}
-                                 </Text>
-                                <div style={{ lineHeight: 1 }}>
-                                <Text variant="bodySm" as="span" color="subdued" style={{ fontSize: '12px' }}>
-                                    {t(metric.label, 'Marketing')}
-                                 </Text>
-                               </div>
-                           </div>
-                            </div>
-                          </div>
-                         )) || (
-                           <div style={{ 
-                             textAlign: 'center',
-                             padding: '8px 4px',
-                             gridColumn: 'span 3'
-                           }}>
-                             <Text variant="bodySm" as="span" color="subdued">
-                               Loading performance metrics...
-                             </Text>
-                           </div>
-                         )}
+                        <Icon source={LightbulbIcon} tone="info" />
+                        <Text variant="bodySm" as="span" fontWeight="medium" style={{ fontSize: '12px' }}>
+                          {t('Launch a gifting campaign', 'Marketing')}
+                        </Text>
                       </div>
-                     </div>
 
-                   {/* Action Buttons */}
-                   <InlineStack gap="2" align="start">
-                      <Button 
-                        variant="primary" 
-                        size="medium"
-                        onClick={() => navigate('/win-your-wishlist')}
-                     
-                        style={{
-                          backgroundColor: '#111827',
-                          color: '#fff',
-                          border: '1px solid #0f172a',
-                          fontWeight: 600,
-                          padding: '10px 18px',
-                          borderRadius: 8,
-                          boxShadow: '0 1px 2px rgba(0,0,0,0.06)'
-                        }}
-                      >
-                       {t('Setup Campaign', 'Marketing')}
-                     </Button>
-                      {/* <Button 
+                      {/* Campaign Title */}
+                      <Text variant="headingLg" as="h2" fontWeight="bold" style={{
+                        marginBottom: '12px',
+                        fontSize: '22px',
+                        lineHeight: '1.2'
+                      }}>
+                        {t('Win Your Wishlist Campaign', 'Marketing')}
+                      </Text>
+                      <Box style={{ marginTop: 10,marginBottom:10 }}>
+                        {/* Campaign Description */}
+                        <Text variant="bodyMd" as="p" color="subdued" style={{
+                          lineHeight: '1.4',
+                          marginBottom: '20px',
+                          fontSize: '14px'
+                        }}>
+                          {t('Gamify engagement', 'Marketing')}
+                        </Text>
+                      </Box>
+                      {/* Performance Metrics */}
+                      <div style={{
+                        backgroundColor: '#F6F6F7',
+                        borderRadius: '8px',
+                        padding: '20px',
+                        marginBottom: '16px'
+                      }}>
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(3, 1fr)',
+                          gap: '8px'
+                        }}>
+                          {analytics?.performance_metrics?.map((metric, index) => (
+                            <div key={index} style={{
+                              textAlign: 'center',
+                              padding: '8px 4px'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                  {/* Icon on left */}
+                                  <Icon source={getIconComponent(metric.icon)} tone="subdued" />
+
+                                  {/* Text on right */}
+                                  <div style={{ marginLeft: 6 }}>
+                                    <Text
+                                      variant="bodyMd"
+                                      as="span"
+                                      fontWeight="bold"
+                                      style={{ fontSize: '14px' }}
+                                    >
+                                      {metric.value}
+                                    </Text>
+                                    <div style={{ lineHeight: 1 }}>
+                                      <Text
+                                        variant="bodySm"
+                                        as="span"
+                                        color="subdued"
+                                        style={{ fontSize: '12px' }}
+                                      >
+                                        {t(metric.label, 'Marketing')}
+                                      </Text>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )) || (
+                              <div style={{
+                                textAlign: 'center',
+                                padding: '8px 4px',
+                                gridColumn: 'span 3'
+                              }}>
+                                <Text variant="bodySm" as="span" color="subdued">
+                                  Loading performance metrics...
+                                </Text>
+                              </div>
+                            )}
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <InlineStack gap="2" align="start">
+                        <Button
+                          variant="primary"
+                          size="medium"
+                          onClick={() => navigate('/win-your-wishlist')}
+
+                          style={{
+                            backgroundColor: '#111827',
+                            color: '#fff',
+                            border: '1px solid #0f172a',
+                            fontWeight: 600,
+                            padding: '10px 18px',
+                            borderRadius: 8,
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.06)'
+                          }}
+                        >
+                          {t('Setup Campaign', 'Marketing')}
+                        </Button>
+                        {/* <Button 
                         variant="plain" 
                         size="small"
                         icon={ArrowRightIcon}
@@ -568,241 +696,288 @@ export default function Marketing() {
                       >
                        {t('Learn More', 'Marketing')}
                      </Button> */}
-                   </InlineStack>
+                      </InlineStack>
+                    </div>
+
+                    {/* Right Side - Campaign Preview Image */}
+                    <div style={{
+                      position: 'relative',
+                      overflow: 'hidden',
+                      borderRadius: '0 8px 8px 0',
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      alignItems: 'center'
+                    }}>
+                      <img
+                        src={wishlistwin}
+                        alt="Win Your Wishlist Campaign Preview"
+                        style={{
+                          width: '70%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          display: 'block'
+                        }}
+                      />
+                    </div>
+                  </div>
+                </Card>
+              </Layout.Section>
+            )}
+            {/* Shopper Segments Section */}
+            <Layout.Section>
+              <Card>
+                <Box padding="4">
+                  {/* Header */}
+                  <div style={{ marginBottom: '24px' }}>
+                    <Text variant="headingLg" as="h2" fontWeight="bold" style={{ marginBottom: '8px' }}>
+                      {t('Shopper Segments', 'Marketing')}
+                    </Text>
+                    <Box style={{ marginTop: 10 }}>
+                      <Text variant="bodyMd" as="p" color="subdued">
+                        {t('Predesigned shopper segments', 'Marketing')}
+                      </Text>
+                    </Box>
                   </div>
 
-                 {/* Right Side - Campaign Preview Image */}
-                 <div style={{
-                   position: 'relative',
-                   overflow: 'hidden',
-                   borderRadius: '0 8px 8px 0',
-                   display: 'flex',
-                   justifyContent: 'flex-end',
-                   alignItems: 'center'
-                 }}>
-                   <img 
-                     src={wishlistwin} 
-                     alt="Win Your Wishlist Campaign Preview"
-                     style={{
-                       width: '70%',
-                       height: '80%',
-                       objectFit: 'cover',
-                       display: 'block'
-                     }}
-                   />
-                 </div>
-               </div>
-             </Card>
-           </Layout.Section>
-          )}
-                      {/* Shopper Segments Section */}
-                      <Layout.Section>
-             <Card>
-               <Box padding="4">
-                 {/* Header */}
-                 <div style={{ marginBottom: '24px' }}>
-                   <Text variant="headingLg" as="h2" fontWeight="bold" style={{ marginBottom: '8px' }}>
-                     {t('Shopper Segments', 'Marketing')}
-                   </Text>
-                   <Text variant="bodyMd" as="p" color="subdued">
-                     {t('Predesigned shopper segments', 'Marketing')}
-                   </Text>
-                 </div>
+                  {/* Potential Revenue Alert */}
+                  {analytics?.potential_revenue && (
+                    <div style={{
+                      backgroundColor: '#F6F6F7',
+                      border: '1px solid #E1E3E5',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      marginBottom: '24px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px'
+                    }}>
+                      <div style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        backgroundColor: '#10B981',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        <div style={{
+                          width: '12px',
+                          height: '12px',
+                          backgroundColor: 'white',
+                          borderRadius: '50%'
+                        }} />
+                      </div>
+                      <div>
+                        <Text variant="bodyMd" as="p" fontWeight="bold" style={{ marginBottom: '4px' }}>
+                          {formatCurrency(analytics.potential_revenue.total_potential_revenue)} {t('in potential revenue is slipping away', 'Marketing')}
+                        </Text>
+                        <Text variant="bodyMd" as="p">
+                          {t('from', 'Marketing')} {analytics.potential_revenue.products_count} {t('wishlisted products that', 'Marketing')} {analytics.potential_revenue.customers_count} {t('high-intent shoppers haven\'t purchased yet.', 'Marketing')}
+                        </Text>
+                      </div>
+                    </div>
+                  )}
 
-                 {/* Potential Revenue Alert */}
-                 {analytics?.potential_revenue && (
-                 <div style={{
-                   backgroundColor: '#F6F6F7',
-                   border: '1px solid #E1E3E5',
-                   borderRadius: '8px',
-                   padding: '16px',
-                   marginBottom: '24px',
-                   display: 'flex',
-                   alignItems: 'center',
-                   gap: '12px'
-                 }}>
-                   <div style={{
-                     width: '24px',
-                     height: '24px',
-                     borderRadius: '50%',
-                     backgroundColor: '#10B981',
-                     display: 'flex',
-                     alignItems: 'center',
-                     justifyContent: 'center',
-                     flexShrink: 0
-                   }}>
-                     <div style={{
-                       width: '12px',
-                       height: '12px',
-                       backgroundColor: 'white',
-                       borderRadius: '50%'
-                     }} />
-                   </div>
-                   <div>
-                     <Text variant="bodyMd" as="p" fontWeight="bold" style={{ marginBottom: '4px' }}>
-                         {formatCurrency(analytics.potential_revenue.total_potential_revenue)} {t('in potential revenue is slipping away', 'Marketing')}
-                     </Text>
-                     <Text variant="bodyMd" as="p">
-                         {t('from', 'Marketing')} {analytics.potential_revenue.products_count} {t('wishlisted products that', 'Marketing')} {analytics.potential_revenue.customers_count} {t('high-intent shoppers haven\'t purchased yet.', 'Marketing')}
-                     </Text>
-                   </div>
-                 </div>
-                 )}
-
-                 {/* Shopper Segment Cards Grid */}
-                 <div style={{
-                   display: 'grid',
-                   gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                   gap: '16px'
-                 }}>
-                   {/* Card 1: Haven't bought yet */}
-                   <Card>
-                     <div style={{ padding: '16px' }}>
-                       <div>
-                         <div style={{
-                           display: 'flex',
-                           justifyContent: 'space-between',
-                           alignItems: 'flex-start',
-                           marginBottom: '16px'
-                         }}>
-                           <Text variant="headingMd" as="h3" fontWeight="bold" style={{ 
-                             fontSize: '15px',
-                             lineHeight: '1.4',
-                             flex: 1
-                           }}>
-                             {t('Shoppers who wishlisted and saved the products but', 'Marketing')}{' '}
-                             <span style={{ color: '#111827' }}>{t('haven\'t bought yet', 'Marketing')}</span>
-                           </Text>
-                           <Popover
-                             active={activePopover === 'havent_bought_yet'}
-                             onClose={handleClosePopover}
-                             activator={
-                               <div onClick={() => handleOpenPopover('havent_bought_yet')} style={{
-                             width: '32px',
-                             height: '32px',
-                             borderRadius: '6px',
-                             backgroundColor: '#F3F4F6',
-                             display: 'flex',
-                             alignItems: 'center',
-                             justifyContent: 'center',
-                             flexShrink: 0,
-                                 marginLeft: '12px',
-                                 cursor: 'pointer'
-                           }}>
-                             <Icon source={ImportIcon} tone="subdued" />
-                           </div>
-                             }
-                           >
-                             <ActionList
-                               actionRole="menuitem"
-                               items={[
-                                 {
-                                   content: 'Initiate new download',
-                                   helpText: sevenMonthLabel,
-                                   onAction: () => handleInitiateDownload('havent_bought_yet')
-                                 },
-                                //  { content: 'See help article', onAction: () => window.open('https://help.shopify.com', '_blank') }
-                               ]}
-                             />
-                           </Popover>
-                         </div>
-                         <div style={{ marginBottom: '20px' }}>
-                           <div style={{ 
-                             display: 'flex', 
-                             alignItems: 'center', 
-                             marginBottom: '12px',
-                             gap: '8px'
-                           }}>
-                             <div style={{
-                               width: '24px',
-                               height: '24px',
-                               borderRadius: '4px',
-                               backgroundColor: '#F3F4F6',
-                               display: 'flex',
-                               alignItems: 'center',
-                               justifyContent: 'center',
-                               flexShrink: 0
-                             }}>
-                               <Icon source={PersonIcon} tone="subdued" />
-                             </div>
-                             <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>
-                               {analytics?.shopper_segments?.havent_bought_yet?.shoppers_count || 0} {t('shoppers', 'Marketing')}
-                             </Text>
-                           </div>
-                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                             <div style={{
-                               width: '24px',
-                               height: '24px',
-                               borderRadius: '4px',
-                               backgroundColor: '#F3F4F6',
-                               display: 'flex',
-                               alignItems: 'center',
-                               justifyContent: 'center',
-                               flexShrink: 0
-                             }}>
-                               <Icon source={CartIcon} tone="subdued" />
-                             </div>
-                             <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>
-                               {formatCurrency(analytics?.shopper_segments?.havent_bought_yet?.wishlisted_value || 0)} {t('wishlisted value', 'Marketing')}
-                             </Text>
-                           </div>
-                         </div>
-                         <Button 
-                           variant="primary" 
-                           size="slim"
-                           fullWidth
-                           style={{
-                             backgroundColor: '#F9FAFB',
-                             color: '#111827',
-                             border: '1px solid #E5E7EB',
-                             fontWeight: '500',
-                             borderRadius: '6px',
-                             height: '36px',
-                             marginTop: '16px'
-                           }}
-                         >
-                           {t('Reach out to us to enable', 'Marketing')}
-                         </Button>
-                       </div>
-                     </div>
-                   </Card>
+                  {/* Shopper Segment Cards Grid */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                    gap: '16px'
+                  }}>
+                    {/* Card 1: Haven't bought yet */}
+                    <Card>
+                      <div style={{ padding: '16px' }}>
+                        <div>
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-start',
+                            marginBottom: '16px',
+                            height: '80px'
+                          }}>
+                            <Text variant="headingMd" as="h3" fontWeight="bold" style={{
+                              fontSize: '15px',
+                              lineHeight: '1.4',
+                              flex: 1
+                            }}>
+                              {t('Shoppers who wishlisted and saved the products but', 'Marketing')}{' '}
+                              <span style={{ color: '#111827' }}>{t('haven\'t bought yet', 'Marketing')}</span>
+                            </Text>
+                            <Popover
+                              active={activePopover === 'havent_bought_yet'}
+                              onClose={handleClosePopover}
+                              activator={
+                                <div onClick={() => handleOpenPopover('havent_bought_yet')} style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '6px',
+                                  backgroundColor: '#F3F4F6',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                  marginLeft: '12px',
+                                  cursor: 'pointer'
+                                }}>
+                                  <Icon source={ImportIcon} tone="subdued" />
+                                </div>
+                              }
+                            >
+                              <ActionList
+                                actionRole="menuitem"
+                                items={[
+                                  {
+                                    content: 'Initiate new download',
+                                    helpText: sevenMonthLabel,
+                                    onAction: () => handleInitiateDownload('havent_bought_yet')
+                                  },
+                                  //  { content: 'See help article', onAction: () => window.open('https://help.shopify.com', '_blank') }
+                                ]}
+                              />
+                            </Popover>
+                          </div>
+                          <div style={{ marginBottom: '20px' }}>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              marginBottom: '12px',
+                              gap: '8px',
+                              backgroundColor: '#F5F3FF',
+                              padding: '8px',
+                              borderRadius: '6px'
+                            }}>
+                              <div style={{
+                                width: '24px',
+                                height: '24px',
+                                borderRadius: '4px',
+                                backgroundColor: '#F3F4F6',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}>
+                                <Icon source={PersonIcon} tone="subdued" />
+                              </div>
+                              {analytics?.shopper_segments?.havent_bought_yet ? (
+                                <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>
+                                  {analytics.shopper_segments.havent_bought_yet.shoppers_count} {t('shoppers', 'Marketing')}
+                                </Text>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <Spinner size="small" />
+                                  <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>Loading...</Text>
+                                </div>
+                              )}
+                            </div>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              backgroundColor: '#F5F3FF',
+                              padding: '8px',
+                              borderRadius: '6px'
+                            }}>
+                              <div style={{
+                                width: '24px',
+                                height: '24px',
+                                borderRadius: '4px',
+                                backgroundColor: '#EEF2FF',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}>
+                                <Icon source={CartIcon} tone="subdued" />
+                              </div>
+                              {analytics?.shopper_segments?.havent_bought_yet ? (
+                                <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>
+                                  {formatCurrency(analytics.shopper_segments.havent_bought_yet.wishlisted_value || 0)} {t('wishlisted value', 'Marketing')}
+                                </Text>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <Spinner size="small" />
+                                  <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>Loading...</Text>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            size="slim"
+                            fullWidth
+                            style={{
+                              backgroundColor: '#F9FAFB',
+                              color: '#111827',
+                              border: '1px solid #E5E7EB',
+                              fontWeight: '500',
+                              borderRadius: '6px',
+                              height: '36px',
+                              marginTop: '16px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '8px'
+                            }}
+                            onClick={() => toggleNotification('wishlist_reminder')}
+                            disabled={!subscriptionStatusMap['wishlist_reminder'] || !!updatingNotificationMap['wishlist_reminder']}
+                          >
+                            {updatingNotificationMap['wishlist_reminder'] ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Spinner size="small" />
+                                <span>{isNotificationActive('wishlist_reminder') ? 'Disabling...' : 'Enabling...'}</span>
+                              </div>
+                            ) : (
+                              subscriptionStatusMap['wishlist_reminder'] ? (
+                                isNotificationActive('wishlist_reminder') ? t('Disable', 'Installation') : t('Enable', 'Installation')
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <Spinner size="small" />
+                                  <span>Loading...</span>
+                                </div>
+                              )
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
 
                     {/* Card 2: Currently on sale */}
-                   <Card>
-                     <div style={{ padding: '16px' }}>
-                       <div>
-                         <div style={{
-                           display: 'flex',
-                           justifyContent: 'space-between',
-                           alignItems: 'flex-start',
-                           marginBottom: '16px'
-                         }}>
-                           <Text variant="headingMd" as="h3" fontWeight="bold" style={{ 
-                             fontSize: '15px',
-                             lineHeight: '1.4',
-                             flex: 1
-                           }}>
-                             {t('Shoppers whose wishlisted and saved products are', 'Marketing')}{' '}
-                             <span style={{ color: '#111827' }}>{t('currently on sale', 'Marketing')}</span>
-                           </Text>
+                    <Card>
+                      <div style={{ padding: '16px' }}>
+                        <div>
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-start',
+                            marginBottom: '16px',
+                            height: '80px'
+                          }}>
+                            <Text variant="headingMd" as="h3" fontWeight="bold" style={{
+                              fontSize: '15px',
+                              lineHeight: '1.4',
+                              flex: 1
+                            }}>
+                              {t('Shoppers whose wishlisted and saved products are', 'Marketing')}{' '}
+                              <span style={{ color: '#111827' }}>{t('currently on sale', 'Marketing')}</span>
+                            </Text>
                             <Popover
                               active={activePopover === 'currently_on_sale'}
                               onClose={handleClosePopover}
                               activator={
                                 <div onClick={() => handleOpenPopover('currently_on_sale')} style={{
-                             width: '32px',
-                             height: '32px',
-                             borderRadius: '6px',
-                             backgroundColor: '#F3F4F6',
-                             display: 'flex',
-                             alignItems: 'center',
-                             justifyContent: 'center',
-                             flexShrink: 0,
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '6px',
+                                  backgroundColor: '#F3F4F6',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
                                   marginLeft: '12px',
                                   cursor: 'pointer'
-                           }}>
-                             <Icon source={ImportIcon} tone="subdued" />
-                           </div>
+                                }}>
+                                  <Icon source={ImportIcon} tone="subdued" />
+                                </div>
                               }
                             >
                               <ActionList
@@ -817,318 +992,449 @@ export default function Marketing() {
                                 ]}
                               />
                             </Popover>
-                         </div>
-                         <div style={{ marginBottom: '20px' }}>
-                           <div style={{ 
-                             display: 'flex', 
-                             alignItems: 'center', 
-                             marginBottom: '12px',
-                             gap: '8px'
-                           }}>
-                             <div style={{
-                               width: '24px',
-                               height: '24px',
-                               borderRadius: '4px',
-                               backgroundColor: '#F3F4F6',
-                               display: 'flex',
-                               alignItems: 'center',
-                               justifyContent: 'center',
-                               flexShrink: 0
-                             }}>
-                               <Icon source={PersonIcon} tone="subdued" />
-                             </div>
-                             <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>
-                               {analytics?.shopper_segments?.currently_on_sale?.shoppers_count || 0} {t('shoppers', 'Marketing')}
-                             </Text>
-                           </div>
-                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                             <div style={{
-                               width: '24px',
-                               height: '24px',
-                               borderRadius: '4px',
-                               border: '1px solid #E5E7EB',
-                               display: 'flex',
-                               alignItems: 'center',
-                               justifyContent: 'center',
-                               flexShrink: 0
-                             }}>
-                               <Icon source={CartIcon} tone="subdued" />
-                             </div>
-                             <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>
-                               {formatCurrency(analytics?.shopper_segments?.currently_on_sale?.wishlisted_value || 0)} {t('wishlisted value', 'Marketing')}
-                             </Text>
-                           </div>
-                         </div>
-                         <Button 
-                           variant="primary" 
-                           size="slim"
-                           fullWidth
-                           style={{
-                             backgroundColor: '#F9FAFB',
-                             color: '#111827',
-                             border: '1px solid #E5E7EB',
-                             fontWeight: '500',
-                             borderRadius: '6px',
-                             height: '36px',
-                             marginTop: '16px'
-                           }}
-                         >
-                           {t('Reach out to us to enable', 'Marketing')}
-                         </Button>
-                       </div>
-                     </div>
-                   </Card>
+                          </div>
+                          <div style={{ marginBottom: '20px' }}>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              marginBottom: '12px',
+                              gap: '8px',
+                              backgroundColor: '#F5F3FF',
+                              padding: '8px',
+                              borderRadius: '6px',
+                            }}>
+                              <div style={{
+                                width: '24px',
+                                height: '24px',
+                                borderRadius: '4px',
+                                backgroundColor: '#F3F4F6',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}>
+                                <Icon source={PersonIcon} tone="subdued" />
+                              </div>
+                              {analytics?.shopper_segments?.currently_on_sale ? (
+                                <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>
+                                  {analytics.shopper_segments.currently_on_sale.shoppers_count} {t('shoppers', 'Marketing')}
+                                </Text>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <Spinner size="small" />
+                                  <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>Loading...</Text>
+                                </div>
+                              )}
+                            </div>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              backgroundColor: '#F5F3FF',
+                              padding: '8px',
+                              borderRadius: '6px'
+                            }}>
+                              <div style={{
+                                width: '24px',
+                                height: '24px',
+                                borderRadius: '4px',
+                                backgroundColor: '#EEF2FF',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}>
+                                <Icon source={CartIcon} tone="subdued" />
+                              </div>
+                              {analytics?.shopper_segments?.currently_on_sale ? (
+                                <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>
+                                  {formatCurrency(analytics.shopper_segments.currently_on_sale.wishlisted_value || 0)} {t('wishlisted value', 'Marketing')}
+                                </Text>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <Spinner size="small" />
+                                  <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>Loading...</Text>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            size="slim"
+                            fullWidth
+                            style={{
+                              backgroundColor: '#F9FAFB',
+                              color: '#111827',
+                              border: '1px solid #E5E7EB',
+                              fontWeight: '500',
+                              borderRadius: '6px',
+                              height: '36px',
+                              marginTop: '16px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '8px'
+                            }}
+                            onClick={() => toggleNotification('price_drop_alert')}
+                            disabled={!subscriptionStatusMap['price_drop_alert'] || !!updatingNotificationMap['price_drop_alert']}
+                          >
+                            {updatingNotificationMap['price_drop_alert'] ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Spinner size="small" />
+                                <span>{isNotificationActive('price_drop_alert') ? 'Disabling...' : 'Enabling...'}</span>
+                              </div>
+                            ) : (
+                              subscriptionStatusMap['price_drop_alert'] ? (
+                                isNotificationActive('price_drop_alert') ? t('Disable', 'Installation') : t('Enable', 'Installation')
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <Spinner size="small" />
+                                  <span>Loading...</span>
+                                </div>
+                              )
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
 
-                                      {/* Card 3: Selling out fast */}
-                   <Card>
-                     <div style={{ padding: '16px' }}>
-                       <div>
-                         <div style={{
-                           display: 'flex',
-                           justifyContent: 'space-between',
-                           alignItems: 'flex-start',
-                           marginBottom: '16px'
-                         }}>
-                           <Text variant="headingMd" as="h3" fontWeight="bold" style={{ 
-                             fontSize: '15px',
-                             lineHeight: '1.4',
-                             flex: 1
-                           }}>
-                             {t('Shoppers whose wishlisted and saved products are', 'Marketing')}{' '}
-                             <span style={{ color: '#111827' }}>{t('selling out fast', 'Marketing')}</span>
-                           </Text>
-                           <Popover
-                             active={activePopover === 'selling_out_fast'}
-                             onClose={handleClosePopover}
-                             activator={
-                               <div onClick={() => handleOpenPopover('selling_out_fast')} style={{
-                             width: '32px',
-                             height: '32px',
-                             borderRadius: '6px',
-                             backgroundColor: '#F3F4F6',
-                             display: 'flex',
-                             alignItems: 'center',
-                             justifyContent: 'center',
-                             flexShrink: 0,
-                             marginLeft: '12px'
-                           }}>
-                             <Icon source={ImportIcon} tone="subdued" />
-                           </div>
-                             }
-                           >
-                             <ActionList
-                               actionRole="menuitem"
-                               items={[
-                                 {
-                                   content: 'Initiate new download',
-                                   helpText: sevenMonthLabel,
-                                   onAction: () => handleInitiateDownload('selling_out_fast')
-                                 },
-                                //  { content: 'See help article', onAction: () => window.open('https://help.shopify.com', '_blank') }
-                               ]}
-                             />
-                           </Popover>
-                         </div>
-                         <div style={{ marginBottom: '20px' }}>
-                           <div style={{ 
-                             display: 'flex', 
-                             alignItems: 'center', 
-                             marginBottom: '12px',
-                             gap: '8px'
-                           }}>
-                             <div style={{
-                               width: '24px',
-                               height: '24px',
-                               borderRadius: '4px',
-                               backgroundColor: '#F3F4F6',
-                               display: 'flex',
-                               alignItems: 'center',
-                               justifyContent: 'center',
-                               flexShrink: 0
-                             }}>
-                               <Icon source={PersonIcon} tone="subdued" />
-                             </div>
-                             <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>
-                                 {analytics?.shopper_segments?.selling_out_fast?.shoppers_count || 0} {t('shoppers', 'Marketing')}
-                             </Text>
-                           </div>
-                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                             <div style={{
-                               width: '24px',
-                               height: '24px',
-                               borderRadius: '4px',
-                               backgroundColor: '#F3F4F6',
-                               display: 'flex',
-                               alignItems: 'center',
-                               justifyContent: 'center',
-                               flexShrink: 0
-                             }}>
-                               <Icon source={CartIcon} tone="subdued" />
-                             </div>
-                             <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>
-                                 {formatCurrency(analytics?.shopper_segments?.selling_out_fast?.wishlisted_value || 0)} {t('wishlisted value', 'Marketing')}
-                             </Text>
-                           </div>
-                         </div>
-                         <Button 
-                           variant="primary" 
-                           size="slim"
-                           fullWidth
-                           style={{
-                             backgroundColor: '#F9FAFB',
-                             color: '#111827',
-                             border: '1px solid #E5E7EB',
-                             fontWeight: '500',
-                             borderRadius: '6px',
-                             height: '36px',
-                             marginTop: '16px'
-                           }}
-                         >
-                           {t('Reach out to us to enable', 'Marketing')}
-                         </Button>
-                       </div>
-                     </div>
-                   </Card>
+                    {/* Card 3: Selling out fast */}
+                    <Card>
+                      <div style={{ padding: '16px' }}>
+                        <div>
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-start',
+                            marginBottom: '16px',
+                            height: '80px'
+                          }}>
+                            <Text variant="headingMd" as="h3" fontWeight="bold" style={{
+                              fontSize: '15px',
+                              lineHeight: '1.4',
+                              flex: 1
+                            }}>
+                              {t('Shoppers whose wishlisted and saved products are', 'Marketing')}{' '}
+                              <span style={{ color: '#111827' }}>{t('selling out fast', 'Marketing')}</span>
+                            </Text>
+                            <Popover
+                              active={activePopover === 'selling_out_fast'}
+                              onClose={handleClosePopover}
+                              activator={
+                                <div onClick={() => handleOpenPopover('selling_out_fast')} style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '6px',
+                                  backgroundColor: '#F3F4F6',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                  marginLeft: '12px'
+                                }}>
+                                  <Icon source={ImportIcon} tone="subdued" />
+                                </div>
+                              }
+                            >
+                              <ActionList
+                                actionRole="menuitem"
+                                items={[
+                                  {
+                                    content: 'Initiate new download',
+                                    helpText: sevenMonthLabel,
+                                    onAction: () => handleInitiateDownload('selling_out_fast')
+                                  },
+                                  //  { content: 'See help article', onAction: () => window.open('https://help.shopify.com', '_blank') }
+                                ]}
+                              />
+                            </Popover>
+                          </div>
+                          <div style={{ marginBottom: '20px' }}>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              marginBottom: '12px',
+                              gap: '8px',
+                              backgroundColor: '#F5F3FF',
+                              padding: '8px',
+                              borderRadius: '6px'
+                            }}>
+                              <div style={{
+                                width: '24px',
+                                height: '24px',
+                                borderRadius: '4px',
+                                backgroundColor: '#F3F4F6',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}>
+                                <Icon source={PersonIcon} tone="subdued" />
+                              </div>
+                              {analytics?.shopper_segments?.selling_out_fast ? (
+                                <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>
+                                  {analytics.shopper_segments.selling_out_fast.shoppers_count} {t('shoppers', 'Marketing')}
+                                </Text>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <Spinner size="small" />
+                                  <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>Loading...</Text>
+                                </div>
+                              )}
+                            </div>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              backgroundColor: '#F5F3FF',
+                              padding: '8px',
+                              borderRadius: '6px'
+                            }}>
+                              <div style={{
+                                width: '24px',
+                                height: '24px',
+                                borderRadius: '4px',
+                                backgroundColor: '#EEF2FF',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}>
+                                <Icon source={CartIcon} tone="subdued" />
+                              </div>
+                              {analytics?.shopper_segments?.selling_out_fast ? (
+                                <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>
+                                  {formatCurrency(analytics.shopper_segments.selling_out_fast.wishlisted_value || 0)} {t('wishlisted value', 'Marketing')}
+                                </Text>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <Spinner size="small" />
+                                  <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>Loading...</Text>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            size="slim"
+                            fullWidth
+                            style={{
+                              backgroundColor: '#F9FAFB',
+                              color: '#111827',
+                              border: '1px solid #E5E7EB',
+                              fontWeight: '500',
+                              borderRadius: '6px',
+                              height: '36px',
+                              marginTop: '16px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '8px'
+                            }}
+                            onClick={() => toggleNotification('low_stock_alert')}
+                            disabled={!subscriptionStatusMap['low_stock_alert'] || !!updatingNotificationMap['low_stock_alert']}
+                          >
+                            {updatingNotificationMap['low_stock_alert'] ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Spinner size="small" />
+                                <span>{isNotificationActive('low_stock_alert') ? 'Disabling...' : 'Enabling...'}</span>
+                              </div>
+                            ) : (
+                              subscriptionStatusMap['low_stock_alert'] ? (
+                                isNotificationActive('low_stock_alert') ? t('Disable', 'Installation') : t('Enable', 'Installation')
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <Spinner size="small" />
+                                  <span>Loading...</span>
+                                </div>
+                              )
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
 
-                   {/* Card 4: Back in stock */}
-                   <Card>
-                     <div style={{ padding: '16px' }}>
-                       <div>
-                         <div style={{
-                           display: 'flex',
-                           justifyContent: 'space-between',
-                           alignItems: 'flex-start',
-                           marginBottom: '16px'
-                         }}>
-                           <Text variant="headingMd" as="h3" fontWeight="bold" style={{ 
-                             fontSize: '15px',
-                             lineHeight: '1.4',
-                             flex: 1
-                           }}>
-                             {t('Shoppers whose wishlisted and saved products are', 'Marketing')}{' '}
-                             <span style={{ color: '#111827' }}>{t('back in stock', 'Marketing')}</span>
-                           </Text>
-                           <Popover
-                             active={activePopover === 'back_in_stock'}
-                             onClose={handleClosePopover}
-                             activator={
-                               <div onClick={() => handleOpenPopover('back_in_stock')} style={{
-                             width: '32px',
-                             height: '32px',
-                             borderRadius: '6px',
-                             backgroundColor: '#F3F4F6',
-                             display: 'flex',
-                             alignItems: 'center',
-                             justifyContent: 'center',
-                             flexShrink: 0,
-                                 marginLeft: '12px',
-                                 cursor: 'pointer'
-                           }}>
-                             <Icon source={ImportIcon} tone="subdued" />
-                           </div>
-                             }
-                           >
-                             <ActionList
-                               actionRole="menuitem"
-                               items={[
-                                 {
-                                   content: 'Initiate new download',
-                                   helpText: sevenMonthLabel,
-                                   onAction: () => handleInitiateDownload('back_in_stock')
-                                 },
-                                //  { content: 'See help article', onAction: () => window.open('https://help.shopify.com', '_blank') }
-                               ]}
-                             />
-                           </Popover>
-                         </div>
-                         <div style={{ marginBottom: '20px' }}>
-                           <div style={{ 
-                             display: 'flex', 
-                             alignItems: 'center', 
-                             marginBottom: '12px',
-                             gap: '8px'
-                           }}>
-                             <div style={{
-                               width: '24px',
-                               height: '24px',
-                               borderRadius: '4px',
-                               backgroundColor: '#F3F4F6',
-                               display: 'flex',
-                               alignItems: 'center',
-                               justifyContent: 'center',
-                               flexShrink: 0
-                             }}>
-                               <Icon source={PersonIcon} tone="subdued" />
-                             </div>
-                             <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>
-                               {analytics?.shopper_segments?.back_in_stock?.shoppers_count || 0} {t('shoppers', 'Marketing')}
-                             </Text>
-                           </div>
-                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                             <div style={{
-                               width: '24px',
-                               height: '24px',
-                               borderRadius: '4px',
-                               backgroundColor: '#F3F4F6',
-                               display: 'flex',
-                               alignItems: 'center',
-                               justifyContent: 'center',
-                               flexShrink: 0
-                             }}>
-                               <Icon source={CartIcon} tone="subdued" />
-                             </div>
-                             <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>
-                               {formatCurrency(analytics?.shopper_segments?.back_in_stock?.wishlisted_value || 0)} {t('wishlisted value', 'Marketing')}
-                             </Text>
-                           </div>
-                         </div>
-                         <Button 
-                           variant="primary" 
-                           size="slim"
-                           fullWidth
-                           style={{
-                             backgroundColor: '#F9FAFB',
-                             color: '#111827',
-                             border: '1px solid #E5E7EB',
-                             fontWeight: '500',
-                             borderRadius: '6px',
-                             height: '36px',
-                             marginTop: '16px'
-                           }}
-                         >
-                           {t('Reach out to us to enable', 'Marketing')}
-                         </Button>
-                       </div>
-                     </div>
-                   </Card>
+                    {/* Card 4: Back in stock */}
+                    <Card>
+                      <div style={{ padding: '16px' }}>
+                        <div>
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-start',
+                            marginBottom: '16px',
+                            height: '80px'
+                          }}>
+                            <Text variant="headingMd" as="h3" fontWeight="bold" style={{
+                              fontSize: '15px',
+                              lineHeight: '1.4',
+                              flex: 1
+                            }}>
+                              {t('Shoppers whose wishlisted and saved products are', 'Marketing')}{' '}
+                              <span style={{ color: '#111827' }}>{t('back in stock', 'Marketing')}</span>
+                            </Text>
+                            <Popover
+                              active={activePopover === 'back_in_stock'}
+                              onClose={handleClosePopover}
+                              activator={
+                                <div onClick={() => handleOpenPopover('back_in_stock')} style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '6px',
+                                  backgroundColor: '#F3F4F6',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                  marginLeft: '12px',
+                                  cursor: 'pointer'
+                                }}>
+                                  <Icon source={ImportIcon} tone="subdued" />
+                                </div>
+                              }
+                            >
+                              <ActionList
+                                actionRole="menuitem"
+                                items={[
+                                  {
+                                    content: 'Initiate new download',
+                                    helpText: sevenMonthLabel,
+                                    onAction: () => handleInitiateDownload('back_in_stock')
+                                  },
+                                  //  { content: 'See help article', onAction: () => window.open('https://help.shopify.com', '_blank') }
+                                ]}
+                              />
+                            </Popover>
+                          </div>
+                          <div style={{ marginBottom: '20px' }}>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              marginBottom: '12px',
+                              gap: '8px',
+                              backgroundColor: '#F5F3FF',
+                              padding: '8px',
+                              borderRadius: '6px'
+                            }}>
+                              <div style={{
+                                width: '24px',
+                                height: '24px',
+                                borderRadius: '4px',
+                                backgroundColor: '#F3F4F6',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}>
+                                <Icon source={PersonIcon} tone="subdued" />
+                              </div>
+                              {analytics?.shopper_segments?.back_in_stock ? (
+                                <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>
+                                  {analytics.shopper_segments.back_in_stock.shoppers_count} {t('shoppers', 'Marketing')}
+                                </Text>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <Spinner size="small" />
+                                  <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>Loading...</Text>
+                                </div>
+                              )}
+                            </div>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              backgroundColor: '#F5F3FF',
+                              padding: '8px',
+                              borderRadius: '6px'
+                            }}>
+                              <div style={{
+                                width: '24px',
+                                height: '24px',
+                                borderRadius: '4px',
+                                backgroundColor: '#EEF2FF',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}>
+                                <Icon source={CartIcon} tone="subdued" />
+                              </div>
+                              {analytics?.shopper_segments?.back_in_stock ? (
+                                <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>
+                                  {formatCurrency(analytics.shopper_segments.back_in_stock.wishlisted_value || 0)} {t('wishlisted value', 'Marketing')}
+                                </Text>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <Spinner size="small" />
+                                  <Text variant="bodyMd" as="span" style={{ fontSize: '14px' }}>Loading...</Text>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            size="slim"
+                            fullWidth
+                            style={{
+                              backgroundColor: '#F9FAFB',
+                              color: '#111827',
+                              border: '1px solid #E5E7EB',
+                              fontWeight: '500',
+                              borderRadius: '6px',
+                              height: '36px',
+                              marginTop: '16px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '8px'
+                            }}
+                            onClick={() => toggleNotification('back_in_stock_alert')}
+                            disabled={!subscriptionStatusMap['back_in_stock_alert'] || !!updatingNotificationMap['back_in_stock_alert']}
+                          >
+                            {updatingNotificationMap['back_in_stock_alert'] ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Spinner size="small" />
+                                <span>{isNotificationActive('back_in_stock_alert') ? 'Disabling...' : 'Enabling...'}</span>
+                              </div>
+                            ) : (
+                              subscriptionStatusMap['back_in_stock_alert'] ? (
+                                isNotificationActive('back_in_stock_alert') ? t('Disable', 'Installation') : t('Enable', 'Installation')
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <Spinner size="small" />
+                                  <span>Loading...</span>
+                                </div>
+                              )
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
 
-                   {/* Card 5: Frequently wishlisted by others */}
-                   <Card>
-                     <div style={{ padding: '16px' }}>
-                       <div>
-                         <div style={{
-                           display: 'flex',
-                           justifyContent: 'space-between',
-                           alignItems: 'flex-start',
-                           marginBottom: '16px'
-                         }}>
-                           <Text variant="headingMd" as="h3" fontWeight="bold" style={{ 
-                             fontSize: '15px',
-                             lineHeight: '1.4',
-                             flex: 1
-                           }}>
-                             {t('Shoppers whose wishlisted products are', 'Marketing')}{' '}
-                             <span style={{ color: '#111827' }}>{t('frequently wishlisted by others', 'Marketing')}</span>
-                           </Text>
-                         </div>
-                         <div style={{ marginBottom: '20px' }}>
-                           <div style={{ 
-                             display: 'flex', 
-                             alignItems: 'flex-start', 
-                             gap: '8px',
-                             marginBottom: '12px'
-                           }}>
-                             {/* <div style={{
+                    {/* Card 5: Frequently wishlisted by others */}
+                    <Card>
+                      <div style={{ padding: '16px' }}>
+                        <div>
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-start',
+                            marginBottom: '16px'
+                          }}>
+                            <Text variant="headingMd" as="h3" fontWeight="bold" style={{
+                              fontSize: '15px',
+                              lineHeight: '1.4',
+                              flex: 1
+                            }}>
+                              {t('Shoppers whose wishlisted products are', 'Marketing')}{' '}
+                              <span style={{ color: '#111827' }}>{t('frequently wishlisted by others', 'Marketing')}</span>
+                            </Text>
+                          </div>
+                          <div style={{ marginBottom: '20px' }}>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: '8px',
+                              marginBottom: '12px'
+                            }}>
+                              {/* <div style={{
                                width: '24px',
                                height: '24px',
                                borderRadius: '4px',
@@ -1141,131 +1447,162 @@ export default function Marketing() {
                              }}>
                                <Icon source={CartIcon} tone="subdued" />
                              </div> */}
-                             <Text variant="bodyMd" as="p" style={{ fontSize: '14px', lineHeight: '1.4' }}>
-                               {t('Increase cart additions by promoting trending wishlist items', 'Marketing')}
-                             </Text>
-                           </div>
-                      
-                         </div>
-                         <Button 
-                           variant="primary" 
-                           size="slim"
-                           fullWidth
-                           style={{
-                             backgroundColor: '#F9FAFB',
-                             color: '#111827',
-                             border: '1px solid #E5E7EB',
-                             fontWeight: '500',
-                             borderRadius: '6px',
-                             height: '36px',
-                             marginTop: '16px'
-                           }}
-                         >
-                           {t('Reach out to us to enable', 'Marketing')}
-                         </Button>
-                       </div>
-                     </div>
-                   </Card>
-                 </div>
-               </Box>
-             </Card>
-           </Layout.Section>
+                              <Box style={{
+                                color: '#111827',
+                                backgroundColor: '#F3F4F6',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                display: 'inline-block',
+                                lineHeight: '1.5'
+                              }}>
+                                <Text variant="bodyMd" as="p" style={{ fontSize: '14px', lineHeight: '1.4' }}>
+                                  {t('Increase cart additions by promoting trending wishlist items', 'Marketing')}
+                                </Text>
+                              </Box>
+                            </div>
 
-           {/* Recent Marketing Activity Section */}
-           <Layout.Section>
-             <Card>
-               <Box padding="4">
-                 {/* Header */}
-                 <div style={{ marginBottom: '24px' }}>
-                   <Text variant="headingLg" as="h2" fontWeight="bold" style={{ marginBottom: '8px' }}>
-                     {t('Recent Marketing Activity', 'Marketing')}
-                   </Text>
-                   <Text variant="bodyMd" as="p" color="subdued">
-                     {t('Get a quick review of how your campaigns and automations are performing here.', 'Marketing')}
-                   </Text>
-                 </div>
+                          </div>
+                          <Button
+                            size="slim"
+                            fullWidth
+                            style={{
+                              backgroundColor: '#F9FAFB',
+                              color: '#111827',
+                              border: '1px solid #E5E7EB',
+                              fontWeight: '500',
+                              borderRadius: '6px',
+                              height: '36px',
+                              marginTop: '16px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '8px'
+                            }}
+                            onClick={toggleFW}
+                            disabled={fwActive === null || fwUpdating}
+                          >
+                            {fwUpdating && <Spinner size="small" />}
+                            {fwActive !== null ? (
+                              fwActive ? t('Disable', 'Installation') : t('Enable', 'Installation')
+                            ) : 'Loading...'}
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                </Box>
+              </Card>
+            </Layout.Section>
 
-                 {/* Marketing Activity Table */}
-                 <div style={{
-                   backgroundColor: '#F9FAFB',
-                   borderRadius: '8px',
-                   border: '1px solid #E5E7EB',
-                   overflow: 'hidden'
-                 }}>
-                   {/* Table Header */}
-                   <div style={{
-                     display: 'grid',
-                     gridTemplateColumns: '2fr 1fr 1fr 1fr',
-                     padding: '16px',
-                     backgroundColor: '#F3F4F6',
-                     borderBottom: '1px solid #E5E7EB',
-                     fontWeight: '600',
-                     fontSize: '14px',
-                     color: '#374151'
-                   }}>
-                     <div>{t('Title', 'Marketing')}</div>
-                     <div>{t('Status', 'Marketing')}</div>
-                     <div>{t('Schedule Time', 'Marketing')}</div>
-                     <div>{t('Last Updated', 'Marketing')}</div>
-                     {/* <div>{t('Action', 'Marketing')}</div> */}
-                   </div>
+            {/* Recent Marketing Activity Section */}
+            <Layout.Section>
+              <Card>
+                <Box padding="4">
+                  {/* Header */}
+                  <div style={{ marginBottom: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Text variant="headingLg" as="h2" fontWeight="bold" style={{ marginBottom: '8px' }}>
+                        {t('Recent Marketing Activity', 'Marketing')}
+                      </Text>
+                      {isFreePlan && (
+                        <Badge status="info">
+                          {t('Upgrade to access', 'Marketing')}
+                        </Badge>
+                      )}
+                    </div>
+                    <Box style={{ marginTop: 10 }}>
+                      <Text variant="bodyMd" as="p" color="subdued">
+                        {t('Get a quick review of how your campaigns and automations are performing here.', 'Marketing')}
+                      </Text>
+                    </Box>
+                  </div>
 
-                   {/* Table Rows */}
-                   {analytics?.marketing_activity?.map((activity, index) => (
-                     <div key={index} style={{ 
-                       borderBottom: index < analytics.marketing_activity.length - 1 ? '1px solid #E5E7EB' : 'none'
-                     }}>
-                     <div style={{
-                       display: 'grid',
-                       gridTemplateColumns: '2fr 1fr 1fr 1fr',
-                       padding: '16px',
-                       alignItems: 'center',
-                       fontSize: '14px'
-                     }}>
-                       <div style={{ fontWeight: '500', color: '#111827' }}>
-                           {activity.title}
-                       </div>
-                       <div>
-                         <div style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            backgroundColor: (() => {
-                              const key = activity.type || (activity.title || '').toLowerCase();
-                              const sub = subscriptionStatusMap[key];
-                              const live = sub ? sub.active_status : getStatusLabel(activity) === 'Live';
-                              return live ? '#D1FAE5' : '#F3F4F6';
-                            })(),
-                            color: (() => {
-                              const key = activity.type || (activity.title || '').toLowerCase();
-                              const sub = subscriptionStatusMap[key];
-                              const live = sub ? sub.active_status : getStatusLabel(activity) === 'Live';
-                              return live ? '#065F46' : '#374151';
-                            })(),
-                            padding: '4px 12px',
-                            borderRadius: '20px',
-                            fontSize: '12px',
-                            fontWeight: '500'
-                          }}>
+                  {/* Marketing Activity Table */}
+                  <div style={{
+                    backgroundColor: '#F9FAFB',
+                    borderRadius: '8px',
+                    border: '1px solid #E5E7EB',
+                    overflow: 'hidden'
+                  }}>
+                    {/* Table Header */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: '2fr 1fr 1fr 1fr',
+                      padding: '16px',
+                      backgroundColor: '#F3F4F6',
+                      borderBottom: '1px solid #E5E7EB',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: '#374151'
+                    }}>
+                      <div>{t('Title', 'Marketing')}</div>
+                      <div>{t('Status', 'Marketing')}</div>
+                      <div>{t('Schedule Time', 'Marketing')}</div>
+                      <div>{t('Last Updated', 'Marketing')}</div>
+                      {/* <div>{t('Action', 'Marketing')}</div> */}
+                    </div>
+
+                    {/* Table Rows */}
+                    {analytics?.marketing_activity?.map((activity, index) => (
+                      <div key={index} style={{
+                        borderBottom: index < analytics.marketing_activity.length - 1 ? '1px solid #E5E7EB' : 'none'
+                      }}>
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: '2fr 1fr 1fr 1fr',
+                          padding: '16px',
+                          alignItems: 'center',
+                          fontSize: '14px'
+                        }}>
+                          <div style={{ fontWeight: '500', color: '#111827', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {activity.title}
+                            {isFreePlan && (
+                              <Badge status="info" size="small">
+                                {t('Upgrade', 'Marketing')}
+                              </Badge>
+                            )}
+                          </div>
+                          <div>
                             <div style={{
-                              width: '8px',
-                              height: '8px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
                               backgroundColor: (() => {
                                 const key = activity.type || (activity.title || '').toLowerCase();
                                 const sub = subscriptionStatusMap[key];
                                 const live = sub ? sub.active_status : getStatusLabel(activity) === 'Live';
-                                return live ? '#10B981' : '#9CA3AF';
+                                return live ? '#D1FAE5' : '#F3F4F6';
                               })(),
-                              borderRadius: '50%'
-                            }} />
+                              color: (() => {
+                                const key = activity.type || (activity.title || '').toLowerCase();
+                                const sub = subscriptionStatusMap[key];
+                                const live = sub ? sub.active_status : getStatusLabel(activity) === 'Live';
+                                return live ? '#065F46' : '#374151';
+                              })(),
+                              padding: '4px 12px',
+                              borderRadius: '20px',
+                              fontSize: '12px',
+                              fontWeight: '500'
+                            }}>
+                              <div style={{
+                                width: '8px',
+                                height: '8px',
+                                backgroundColor: (() => {
+                                  const key = activity.type || (activity.title || '').toLowerCase();
+                                  const sub = subscriptionStatusMap[key];
+                                  const live = sub ? sub.active_status : getStatusLabel(activity) === 'Live';
+                                  return live ? '#10B981' : '#9CA3AF';
+                                })(),
+                                borderRadius: '50%'
+                              }} />
                               {(() => {
                                 const key = activity.type || (activity.title || '').toLowerCase();
                                 const sub = subscriptionStatusMap[key];
                                 return (sub && sub.active_status) ? 'Live' : 'Off';
                               })()}
+                            </div>
                           </div>
-                        </div>
-                        <div style={{ color: '#6B7280' }}>
+                          <div style={{ color: '#6B7280' }}>
                             {(() => {
                               const key = activity.type || (activity.title || '').toLowerCase();
                               const sub = subscriptionStatusMap[key];
@@ -1274,69 +1611,76 @@ export default function Marketing() {
                               const d = new Date(raw);
                               return isNaN(d.getTime()) ? String(raw) : d.toLocaleString();
                             })()}
+                          </div>
+                          <div>
+                            <Button 
+                              variant="tertiary" 
+                              onClick={() => !isFreePlan && handleViewActivity(activity)}
+                              disabled={isFreePlan}
+                              aria-disabled={isFreePlan}
+                            >
+                              {t('View Details', 'Marketing')}
+                            </Button>
+                          </div>
                         </div>
-                       <div>
-                         <Button variant="tertiary" onClick={() => handleViewActivity(activity)}>
-                           {t('View Details', 'Marketing')}
-                         </Button>
-                       </div>
-                     </div>
-                   </div>
-                   )) || (
-                     <div style={{
-                       padding: '16px',
-                       textAlign: 'center',
-                       color: '#6B7280'
-                     }}>
-                       <Text variant="bodyMd" as="span">
-                         Loading marketing activity...
-                         </Text>
-                       </div>
-                   )}
-                     </div>
-               </Box>
-             </Card>
-           </Layout.Section>
+                      </div>
+                    )) || (
+                        <div style={{
+                          padding: '16px',
+                          textAlign: 'center',
+                          color: '#6B7280'
+                        }}>
+                          <Text variant="bodyMd" as="span">
+                            Loading marketing activity...
+                          </Text>
+                        </div>
+                      )}
+                  </div>
+                </Box>
+              </Card>
+            </Layout.Section>
 
-           {/* Download modal */}
-           {downloadModalOpen && (
-             <Modal
-               open={downloadModalOpen}
-               onClose={() => setDownloadModalOpen(false)}
-               title="Download Shopper Data"
-               primaryAction={{
-                 content: downloadLoading ? 'Processing…' : 'Confirm',
-                 onAction: handleConfirmDownload,
-                 disabled: downloadLoading
-               }}
-               secondaryActions={[{ content: 'Cancel', onAction: () => setDownloadModalOpen(false) }]}
-             >
-               <Modal.Section>
-                     <div style={{
-                   background: '#EEF2FF',
-                   border: '1px solid #E5E7EB',
-                   padding: 16,
-                   borderRadius: 6,
-                   marginBottom: 16
-                 }}>
-                   <Text variant="bodyMd" as="p">
-                     This data might take a while to process. We will inform you once the data is ready to be downloaded via email.
-                         </Text>
-                       </div>
-                 <TextField
-                   label="Email to Contact"
-                   value={downloadEmail}
-                   onChange={setDownloadEmail}
-                   autoComplete="email"
-                   placeholder="Enter your email"
-                 />
-               </Modal.Section>
-             </Modal>
-           )}
+            {/* Download modal */}
+            {downloadModalOpen && (
+              <Modal
+                open={downloadModalOpen}
+                onClose={() => setDownloadModalOpen(false)}
+                title="Download Shopper Data"
+                primaryAction={{
+                  content: downloadLoading ? 'Processing…' : 'Confirm',
+                  onAction: handleConfirmDownload,
+                  disabled: downloadLoading
+                }}
+                secondaryActions={[{ content: 'Cancel', onAction: () => setDownloadModalOpen(false) }]}
+              >
+                <Modal.Section>
+                  <div style={{
+                    background: '#EEF2FF',
+                    border: '1px solid #E5E7EB',
+                    padding: 16,
+                    borderRadius: 6,
+                    marginBottom: 16
+                  }}>
+                    <Text variant="bodyMd" as="p">
+                      This data might take a while to process. We will inform you once the data is ready to be downloaded via email.
+                    </Text>
+                  </div>
+                  <TextField
+                    label="Email to Contact"
+                    value={downloadEmail}
+                    onChange={setDownloadEmail}
+                    autoComplete="email"
+                    placeholder="Enter your email"
+                  />
+                </Modal.Section>
+              </Modal>
+            )}
 
-         </Layout>
+
+
+          </Layout>
         )}
-       </div>
-     </Frame>
-   );
+      </div>
+    </Frame>
+  );
 } 

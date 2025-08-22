@@ -3,6 +3,7 @@ import { FiSearch, FiFilter, FiDownload, FiMoreVertical, FiRefreshCw, FiPlus, Fi
 import { Link } from 'react-router-dom';
 import { BsThreeDotsVertical, BsArrowLeft, BsArrowRight } from 'react-icons/bs';
 import { useCustomers } from '../hooks';
+import { Frame, Layout } from '@shopify/polaris';
 import { useLanguage } from '../components';
 
 const Customers = () => {
@@ -114,13 +115,29 @@ const Customers = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-7xl mx-auto">
+    <Frame>
+      <div style={{minHeight: '100vh' }}>
+        <Layout>
+          <Layout.Section>
+            <div className="p-6">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 style={{ fontWeight: 600, fontSize: 20}}>{t('Customers', 'Sidebar Tabs')}</h1>
-            <p className="text-sm text-gray-500">{t('View your store customers', 'Customers')}</p>
+            {/* <h1 style={{ fontWeight: 600, fontSize: 20}}>{t('Customers', 'Sidebar Tabs')}</h1>
+            <p className="text-sm text-gray-500">{t('View your store customers', 'Customers')}</p> */}
+                 <div style={{
+          fontSize: 20,
+          fontWeight: 700,
+          margin: 0,
+          color: '#222',
+          letterSpacing: 0.5,
+          alignItems: 'center',
+          width: '100%'
+        }}>
+         {t('Customers', 'Sidebar Tabs')}
+          <br />
+          <span style={{ fontSize: 13, color: '#555', fontWeight: 400, maxWidth: 700, marginTop: 2 }}>{t('View your store customers', 'Customers')}</span>
+        </div>
           </div>
           <div className="flex space-x-3">
             <button 
@@ -506,9 +523,12 @@ const Customers = () => {
               </div>
             </div>
           )}
-        </div>
+              </div>
+            </div>
+          </Layout.Section>
+        </Layout>
       </div>
-    </div>
+    </Frame>
   );
 };
 
