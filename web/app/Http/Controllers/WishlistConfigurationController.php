@@ -153,15 +153,6 @@ class WishlistConfigurationController extends HelperController
                 'message' => 'Shop domain is required.'
             ], 400);
         }
-        
-        // Ensure we have a valid Session model
-        if (!($shopSession instanceof \App\Models\Session)) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Invalid shop session.'
-            ], 400);
-        }
-        
         // Use the shop domain from the Session model
         $session = Session::where('shop', $shopSession->shop)
             ->whereNotNull('access_token')
@@ -181,12 +172,6 @@ class WishlistConfigurationController extends HelperController
         if (!$shopDomain) {
             return response()->json(['error' => 'Shop domain is required.'], 400);
         }
-        
-        // Ensure we have a valid Session model
-        if (!($shopDomain instanceof \App\Models\Session)) {
-            return response()->json(['error' => 'Invalid shop session.'], 400);
-        }
-        
         try {
             $api = $this->shopifyApiClient($shopDomain->shop);
             $query = '
