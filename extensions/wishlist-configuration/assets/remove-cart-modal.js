@@ -1,3 +1,69 @@
+// Notification function for beautiful alerts
+function showNotification(message, type = 'success') {
+  // Create notification element
+  var notification = document.createElement('div');
+  var backgroundColor = type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3';
+  
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: ${backgroundColor};
+    color: white;
+    padding: 15px 20px;
+    border-radius: 5px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    z-index: 10000;
+    font-family: inherit;
+    font-size: 14px;
+    max-width: 300px;
+    animation: slideIn 0.3s ease-out;
+  `;
+  
+  notification.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+        ${type === 'success' ? '<path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/>' : 
+          type === 'error' ? '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>' :
+          '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>'}
+      </svg>
+      <span>${message}</span>
+    </div>
+  `;
+  
+  // Add CSS animation if not already added
+  if (!document.getElementById('wishlist-notification-styles')) {
+    var style = document.createElement('style');
+    style.id = 'wishlist-notification-styles';
+    style.textContent = `
+      @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  // Add to page
+  document.body.appendChild(notification);
+  
+  // Remove after 5 seconds
+  setTimeout(function() {
+    if (notification.parentNode) {
+      notification.style.animation = 'slideOut 0.3s ease-in';
+      setTimeout(function() {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification);
+        }
+      }, 300);
+    }
+  }, 5000);
+}
+
 // Inject customer ID div if not present
 (function() {
   if (!document.getElementById('wishlist-cart-customer')) {
@@ -184,7 +250,7 @@ function unescapeSelector(selector) {
                         pendingRemoveForm.submit();
                       }
                       if (data && data.status === 'success') {
-                        alert('Product added to wishlist successfully!');
+                        showNotification('Product added to wishlist successfully!', 'success');
                       }
                     });
                   };
@@ -287,7 +353,7 @@ function unescapeSelector(selector) {
             if (pendingCustomerId && pendingProductId) {
               showWishlistSelection(pendingCustomerId, pendingProductId);
             } else {
-              alert('Could not determine customer or product. Please check your cart template.');
+              showNotification('Could not determine customer or product. Please check your cart template.', 'error');
             }
           };
         }

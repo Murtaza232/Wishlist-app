@@ -31,14 +31,32 @@ class HelperController extends Controller
     }
    public function getShop($request)
     {
-    
-        $shop = null;
-        if ($request) {
-            $shop = \App\Models\Session::where('shop', $request->get('shop'))->first();
+        // First try to get shop from request attributes (set by middleware)
+        $shopSession = $request->attributes->get('shop_session');
+        if ($shopSession) {
+            return $shopSession;
         }
-        if ($shop == null) {
-            $shop = \App\Models\Session::first();
+        
+        // Fallback to query parameter
+        $shop = $request->query('shop');
+        // return $shop;
+        if ($shop) {
+            $session = SessionModel::where('shop', $shop)->first();
+            if ($session) {
+                return $session;
+            }
         }
-        return $shop;
+        
+        // Fallback to request data
+        $shop = $request->input('store_domain');
+        if ($shop) {
+            $session = SessionModel::where('shop', $shop)->first();
+            if ($session) {
+                return $session;
+            }
+        }
+        
+        // Final fallback to first available session
+        return SessionModel::first();
     }
 }

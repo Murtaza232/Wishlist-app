@@ -216,6 +216,266 @@ class WishlistController extends HelperController
 
         return response()->json(['status' => 'success', 'message' => 'Product added to wishlist!']);
     }
+
+    /**
+     * Smart Save endpoint for adding products to wishlist (public, no shop middleware)
+     */
+    public function smartSaveAdd(Request $request)
+    {
+        // Handle preflight OPTIONS request
+        if ($request->isMethod('OPTIONS')) {
+            return response('', 200)
+                ->header('Access-Control-Allow-Origin', '*')
+                ->header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+                ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        }
+        
+        $request->validate([
+            'customer_id' => 'required|integer',
+            'product_id' => 'required',
+            'shop_domain' => 'required|string',
+        ]);
+
+        // Find the shop session
+        $shop = Session::where('shop', $request->shop_domain)
+            ->whereNotNull('access_token')
+            ->first();
+
+        if (!$shop) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Shop not found or not authenticated.'
+            ], 400)
+                ->header('Access-Control-Allow-Origin', '*')
+                ->header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+                ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        }
+
+        // Check usage limits before adding item via Smart Save
+        if (!UsageService::isActionAllowed($request->shop_domain, 'add_item')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Usage limit reached. Please upgrade your plan to add more items.',
+                'error_code' => 'USAGE_LIMIT_REACHED'
+            ], 429)
+                ->header('Access-Control-Allow-Origin', '*')
+                ->header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+                ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        }
+
+        // Convert product handle to product ID if needed
+        $productId = $request->product_id;
+        if (!is_numeric($productId)) {
+            // This is a product handle, we need to get the actual product ID
+            try {
+                $api = new \Shopify\Clients\Rest($shop->shop, $shop->access_token);
+                $response = $api->get('products', [
+                    'handle' => $productId,
+                    'fields' => 'id'
+                ]);
+                
+                $responseData = json_decode($response->getBody()->getContents(), true);
+                $products = $responseData['products'] ?? [];
+                if (!empty($products)) {
+                    $productId = $products[0]['id'];
+                    Log::info("Converted product handle '{$request->product_id}' to product ID: {$productId}");
+                } else {
+                    Log::error("Product not found for handle: {$request->product_id}");
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Product not found.'
+                    ], 404)
+                        ->header('Access-Control-Allow-Origin', '*')
+                        ->header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+                        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+                }
+            } catch (\Exception $e) {
+                Log::error('Error converting product handle to ID: ' . $e->getMessage());
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Error processing product.'
+                ], 500)
+                    ->header('Access-Control-Allow-Origin', '*')
+                    ->header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+                    ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+            }
+        }
+
+        // Get or create the latest wishlist for this customer
+        $wishlist = Wishlist::where('shop_id', $shop->id)
+            ->where('customer_id', $request->customer_id)
+            ->orderBy('created_at', 'desc')
+            ->first();
+            
+        if (!$wishlist) {
+            // Create a new wishlist if none exists
+            $wishlist = Wishlist::create([
+                'shop_id' => $shop->id,
+                'customer_id' => $request->customer_id,
+                'title' => 'My Wishlist'
+            ]);
+            Log::info("Created new wishlist ID: {$wishlist->id} for customer: {$request->customer_id}");
+        } else {
+            Log::info("Using existing wishlist ID: {$wishlist->id} for customer: {$request->customer_id}");
+        }
+
+        // Get current product price from products table first
+        $currentPrice = 0;
+        try {
+            $product = Product::where('shopify_product_id', $productId)
+                ->where('shop_id', $shop->id)
+                ->first();
+            
+            if ($product) {
+                $currentPrice = $product->price ?? 0;
+                Log::info("Found product price: $currentPrice for product ID: {$productId}");
+            } else {
+                Log::warning("Product not found in database for product ID: {$productId}");
+            }
+        } catch (\Exception $e) {
+            Log::error('Error fetching product price from database: ' . $e->getMessage());
+        }
+
+        // Check if the item already exists for this customer across all wishlists to avoid duplicates
+        $existingItem = WishlistItem::where('shop_id', $shop->id)
+            ->where('customer_id', $request->customer_id)
+            ->where('product_id', $productId)
+            ->first();
+
+        if ($existingItem) {
+            // Product already exists in a wishlist, update it to the latest wishlist
+            $existingItem->update([
+                'wishlist_id' => $wishlist->id,
+                'current_price' => $currentPrice,
+                'price_checked_at' => now()
+            ]);
+            
+            Log::info("Updated existing wishlist item ID: {$existingItem->id} to latest wishlist ID: {$wishlist->id}");
+            
+            return response()->json(['status' => 'success', 'message' => 'Item moved to latest wishlist.'])
+                ->header('Access-Control-Allow-Origin', '*')
+                ->header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+                ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        }
+
+        // Create the new wishlist item with price tracking
+        WishlistItem::create([
+            'shop_id' => $shop->id,
+            'customer_id' => $request->customer_id,
+            'wishlist_id' => $wishlist->id,
+            'product_id' => $productId,
+            'added_price' => $currentPrice,
+            'current_price' => $currentPrice,
+            'price_checked_at' => now(),
+        ]);
+
+        // Track usage after successful creation
+        UsageService::trackUsage($request->shop_domain, 'add_item');
+
+        return response()->json(['status' => 'success', 'message' => 'Product added to wishlist!'])
+            ->header('Access-Control-Allow-Origin', '*')
+            ->header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+            ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    }
+
+    /**
+     * Smart Save endpoint for getting wishlist products (public, no shop middleware)
+     */
+    public function smartSaveGetProducts(Request $request)
+    {
+        // Handle preflight OPTIONS request
+        if ($request->isMethod('OPTIONS')) {
+            return response('', 200)
+                ->header('Access-Control-Allow-Origin', '*')
+                ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+                ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        }
+        try {
+            $customerId = $request->input('customer_id');
+            $shopDomain = $request->input('shop_domain');
+            
+            Log::info('Smart Save: Fetching wishlist for customer ID: ' . $customerId . ', shop: ' . $shopDomain);
+    
+            if (!$customerId || !$shopDomain) {
+                return response()->json(['products' => [], 'error' => 'Customer ID and shop domain are required.'])
+                    ->header('Access-Control-Allow-Origin', '*')
+                    ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+                    ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+            }
+    
+            $shop = Session::where('shop', $shopDomain)
+                ->whereNotNull('access_token')
+                ->first();
+                
+            if (!$shop) {
+                Log::error('Smart Save: Could not find shop session for domain: ' . $shopDomain);
+                return response()->json(['products' => [], 'error' => 'Shop not found or not authenticated.'], 500)
+                    ->header('Access-Control-Allow-Origin', '*')
+                    ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+                    ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+            }
+    
+            $wishlistItems = WishlistItem::where('customer_id', $customerId)
+                ->where('shop_id', $shop->id)
+                ->get();
+                
+            if ($wishlistItems->isEmpty()) {
+                return response()->json(['products' => []])
+                    ->header('Access-Control-Allow-Origin', '*')
+                    ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+                    ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+            }
+    
+            $productIds = $wishlistItems->pluck('product_id')->toArray();
+            $gids = array_map(function($id) {
+                return "\"gid://shopify/Product/{$id}\"";
+            }, $productIds);
+    
+            $query = "{
+                nodes(ids: [" . implode(',', $gids) . "]) {
+                    ... on Product {
+                        id
+                        title
+                        handle
+                        images(first: 1) {
+                            edges {
+                                node {
+                                    src
+                                }
+                            }
+                        }
+                        variants(first: 1) {
+                            edges {
+                                node {
+                                    id
+                                    price
+                                }
+                            }
+                        }
+                    }
+                }
+            }";
+    
+            $api = new \Shopify\Clients\Graphql($shop->shop, $shop->access_token);
+            $response = $api->query($query);
+           
+            // Handle the response object properly
+            $responseData = json_decode($response->getBody()->getContents(), true);
+            $products = $responseData['data']['nodes'] ?? [];
+            return response()->json(['products' => $products])
+                ->header('Access-Control-Allow-Origin', '*')
+                ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+                ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+        } catch (\Exception $e) {
+            Log::error('Smart Save: Error fetching wishlist products: ' . $e->getMessage());
+            return response()->json(['products' => [], 'error' => 'Failed to fetch wishlist products.'], 500)
+                ->header('Access-Control-Allow-Origin', '*')
+                ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+                ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        }
+    }
+
     public function getWishlistProducts(Request $request)
     {
         // dd($request->all());

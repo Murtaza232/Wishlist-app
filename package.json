@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@shopify/app": "^3.0.0",
-    "@shopify/cli": "^3.83.3",
+    "@shopify/cli": "^3.84.0",
     "react-icons": "^5.5.0"
   },
   "devDependencies": {

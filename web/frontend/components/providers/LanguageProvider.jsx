@@ -552,6 +552,7 @@ export const LanguageProvider = ({ children }) => {
         'Enable Wishlist app embed': 'Enable Wishlist app embed',
         'Enable the Wishlist Configurations': 'Enable the Wishlist Configurations from App embeds in Theme settings by going to Shopify Theme Customization.',
         'Activate Button': 'Click here to activate',
+        'No Theme Selected': 'No Theme Selected',
         'Add Wishlist block': 'Add Wishlist block',
         'Add app block Text': 'Add the app block to display wishlist functionality on your selected theme. Customize the block positions to achieve the perfect placement according to your preferences.',
         'Wishlist Widget Near Cart Button': 'Wishlist Widget Near Cart Button',

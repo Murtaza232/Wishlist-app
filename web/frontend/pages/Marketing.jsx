@@ -93,12 +93,12 @@ export default function Marketing() {
           }
         } else {
           // Redirect if we can't verify the plan
-          navigate('/');
+          navigate('/Pricing');
         }
       } catch (e) {
         console.error('Error checking plan status:', e);
         // Redirect on error to be safe
-        navigate('/');
+        navigate('/Pricing');
       }
     })();
   }, [apiUrl, navigate]);

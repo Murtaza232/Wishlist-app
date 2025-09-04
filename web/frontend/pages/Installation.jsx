@@ -31,7 +31,7 @@ import { useLanguage } from "../components";
 
 export default function Installation() {
   const [selectedTab, setSelectedTab] = useState(0);
-  const [selectedTheme, setSelectedTheme] = useState('dawn');
+  const [selectedTheme, setSelectedTheme] = useState(''); // Remove hardcoded 'dawn' fallback
   const [showBanner, setShowBanner] = useState(true);
   const [themes, setThemes] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -115,8 +115,11 @@ export default function Installation() {
         setHandle(data.handle || '');
         setApikey(data.apikey || '');
         setActiveTheme(data.activeTheme || '');
-        if (data.activeTheme && !selectedTheme) {
+        // Set selectedTheme to activeTheme if available, otherwise to first available theme
+        if (data.activeTheme) {
           setSelectedTheme(data.activeTheme);
+        } else if (data.themes && data.themes.length > 0) {
+          setSelectedTheme(data.themes[0].theme_id);
         }
         setApiLoaded(true);
       }
@@ -136,8 +139,8 @@ export default function Installation() {
     fetchThemes();
   };
 
-  // Use selectedTheme for dropdown, but use activeTheme for URLs
-  const themeId = activeTheme || selectedTheme;
+  // Use selectedTheme for dropdown, but ensure we have a valid theme selected
+  const themeId = selectedTheme || activeTheme;
 
   const appEmbedUrl = (shop && themeId && apikey)
     ? `https://admin.shopify.com/store/${shop}/themes/${themeId}/editor?context=apps&appEmbed=${apikey}/wishlist_configuration`
@@ -271,17 +274,21 @@ export default function Installation() {
             variant="primary" 
             icon={!apiLoaded ? undefined : ExternalIcon}
             onClick={() => {
-              if (appEmbedUrl && apiLoaded) {
+              if (appEmbedUrl && apiLoaded && themeId) {
                 window.open(appEmbedUrl, '_blank');
+              } else {
+                console.error('Cannot open theme editor: missing required data', { shop, themeId, apikey, apiLoaded });
               }
             }}
-            disabled={!apiLoaded || !appEmbedUrl}
+            disabled={!apiLoaded || !appEmbedUrl || !themeId}
           >
             {!apiLoaded ? (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent:'center', gap: '8px',width:'47px' }}>
                 <div style={{ width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
                
               </div>
+            ) : !themeId ? (
+              t('No Theme Selected', 'Installation') || 'No Theme Selected'
             ) : (
               t('Activate Button', 'Installation')
             )}

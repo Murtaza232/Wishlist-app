@@ -134,9 +134,36 @@ class PricingController extends Controller
             $annual = (float) ($plan->annual_price ?? 0);
             $selectedPrice = $billing === 'annual' ? $annual : $monthly;
 
-            // Free plan shortcut (selected period has no price)
+            // Free plan handling - create/update subscription record
             if ($selectedPrice <= 0) {
-                return response()->json(['success' => true, 'message' => 'Free plan activated']);
+                // Create or update subscription record for free plan
+                $subscription = Subscription::updateOrCreate(
+                    [
+                        'shop_id' => $shopSession->id,
+                        'billing_period' => $billing,
+                    ],
+                    [
+                        'plan_id' => $plan->id,
+                        'status' => 'active',
+                        'currency' => $plan->currency ?: 'USD',
+                        'price' => 0,
+                        'shopify_charge_id' => null,
+                        'shopify_subscription_id' => null,
+                        'activated_at' => now(),
+                        'current_period_end' => now()->addYear(), // Free plans don't expire
+                        'raw_payload' => null,
+                    ]
+                );
+                
+                return response()->json([
+                    'success' => true, 
+                    'message' => 'Free plan activated',
+                    'data' => [
+                        'plan_id' => $plan->id,
+                        'plan_name' => $plan->name,
+                        'status' => 'active'
+                    ]
+                ]);
             }
 
             $baseUrl = rtrim(config('app.url'), '/');

@@ -64,7 +64,7 @@ class WishlistConfigurationController extends HelperController
             'show_count_floating_btn' => 'nullable|boolean',
             'floating_btn_position' => 'nullable|in:left,right,bottom-left,bottom-right',
             'button_size_product_page' => 'nullable|integer',
-            'icon_thickness_product_page' => 'nullable|integer',
+            'icon_thickness_product_page' => 'nullable|integer|min:1|max:4',
             'floating_btn_corner_radius' => 'nullable|integer',
             'text_color' => 'nullable|string',
            

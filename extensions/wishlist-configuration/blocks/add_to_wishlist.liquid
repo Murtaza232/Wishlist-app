@@ -1,4 +1,4 @@
-<button type="button" id="wishlist-add-btn" class="wishlist-add-btn" data-product-id="{{ product.id }}" data-customer-id="{{ customer.id }}">
+<button type="button" id="wishlist-add-btn" class="wishlist-add-btn" data-product-id="{{ product.id }}" data-customer-id="{{ customer.id }}" style="display: none;">
   <span id="wishlist-add-icon-container" style="display:inline-block;vertical-align:middle;"></span>
   <span id="wishlist-add-btn-text">Add To Wishlist</span>
 </button>
@@ -7,9 +7,30 @@
   // Pass data to JavaScript file
   window.wishlistProductId = '{{ product.id }}';
   window.wishlistCustomerId = '{{ customer.id }}';
+  
+  // Immediately hide the button to prevent flash
+  (function() {
+    var btn = document.getElementById('wishlist-add-btn');
+    if (btn) {
+      btn.style.display = 'none';
+      btn.style.visibility = 'hidden';
+    }
+  })();
 </script>
 <!-- Wishlist Modal (No faded background, always centered) -->
 <style>
+/* Immediate button hiding - highest priority */
+#wishlist-add-btn, 
+button#wishlist-add-btn, 
+.wishlist-add-btn#wishlist-add-btn,
+button.wishlist-add-btn#wishlist-add-btn {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+}
 
 @media (max-width: 600px) {
   .wishlist-add-btn {
@@ -19,6 +40,7 @@
     padding: 10px 0;
   }
 }
+
 @media (max-width: 1024px) {
   .wishlist-add-btn {
     font-size: 13px;
@@ -26,7 +48,9 @@
     width:100px;
     padding: 10px 0;
   }
-}@media (max-width: 576px) {
+}
+
+@media (max-width: 576px) {
   .wishlist-add-btn {
     font-size: 13px;
     gap: 8px;
@@ -105,6 +129,36 @@
   cursor: pointer;
   transition: background 0.18s;
   letter-spacing: 0.01em;
+}
+
+/* Icon alignment for wishlist button */
+#wishlist-add-icon-container {
+  display: inline-block;
+  vertical-align: middle;
+  margin-bottom: 2px;
+}
+
+#wishlist-add-btn {
+  display: none !important; /* Hidden by default, will be shown by JavaScript when appropriate */
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Additional rules to ensure button is hidden by default */
+button#wishlist-add-btn.wishlist-add-btn {
+  display: none !important;
+}
+
+.wishlist-add-btn#wishlist-add-btn {
+  display: none !important;
+}
+
+/* Ensure icon and text are properly aligned */
+#wishlist-add-icon-container svg,
+#wishlist-add-icon-container img {
+  vertical-align: middle;
+  display: inline-block;
 }
 #wishlist-section-title{
   direction: ltr;

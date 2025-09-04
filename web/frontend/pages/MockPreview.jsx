@@ -36,7 +36,7 @@ function WishlistButton({
     isFullWidthIcon = false,
     buttonSize = 40,
     renderRawIcon = false,
-    iconThickness = 0,
+    iconThickness = 1,
 }) {
     const isIconOnly = buttonType === 'icon' || buttonType === 'only-icon';
     const isIconTextOrText = buttonType === 'icon-text' || buttonType === 'text';
@@ -44,9 +44,9 @@ function WishlistButton({
     // Icon and text size logic
     let iconSize = buttonSize || 24;
     let textSize = buttonSize ? Math.max(12, Math.round(buttonSize * 0.35)) : (isAdded ? 12 : (isIconTextOrText ? 14 : 16));
-    // When thickness is 0, match icon size to text size (avoid enlarging text)
-    if (typeof iconThickness === 'number' && iconThickness === 0) {
-      iconSize = textSize;
+    // When thickness is 1 (minimum), ensure icon size is appropriate
+    if (typeof iconThickness === 'number' && iconThickness === 1) {
+      iconSize = Math.max(textSize, 16); // Ensure minimum icon size
     }
     let style = {
         display: 'flex',
@@ -108,7 +108,7 @@ export default function MockPreview({
     saveForLaterPermission = undefined,
     previewWidth,
     buttonSize,
-    iconThickness = 0,
+    iconThickness = 1,
     drawerAlignment = 'left', // Added for drawer alignment
     floatingButtonCornerRadius = 10, // Add this prop
     textColor = '#222222',

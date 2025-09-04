@@ -6,6 +6,100 @@ if (window.wishlistInitialized) {
 } else {
   window.wishlistInitialized = true;
   
+  // Notification function for beautiful alerts
+  function showNotification(message, type = 'success') {
+    // Create notification element
+    var notification = document.createElement('div');
+    var backgroundColor = type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3';
+    
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: ${backgroundColor};
+      color: white;
+      padding: 15px 20px;
+      border-radius: 5px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      z-index: 10000;
+      font-family: inherit;
+      font-size: 14px;
+      max-width: 300px;
+      animation: slideIn 0.3s ease-out;
+    `;
+    
+    notification.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+          ${type === 'success' ? '<path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/>' : 
+            type === 'error' ? '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>' :
+            '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>'}
+        </svg>
+        <span>${message}</span>
+      </div>
+    `;
+    
+    // Add CSS animation if not already added
+    if (!document.getElementById('wishlist-notification-styles')) {
+      var style = document.createElement('style');
+      style.id = 'wishlist-notification-styles';
+      style.textContent = `
+        @keyframes slideIn {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+          from { transform: translateX(0); opacity: 1; }
+          to { transform: translateX(100%); opacity: 0; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Remove after 5 seconds
+    setTimeout(function() {
+      if (notification.parentNode) {
+        notification.style.animation = 'slideOut 0.3s ease-in';
+        setTimeout(function() {
+          if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+          }
+        }, 300);
+      }
+    }, 5000);
+  }
+  
+  // Immediately hide the button to prevent any flash
+  (function() {
+    var btn = document.getElementById('wishlist-add-btn');
+    if (btn) {
+      btn.style.display = 'none';
+      btn.style.visibility = 'hidden';
+      btn.style.opacity = '0';
+      btn.style.position = 'absolute';
+      btn.style.left = '-9999px';
+      btn.style.top = '-9999px';
+    }
+    
+    // Monitor the button to ensure it stays hidden until proper logic runs
+    var checkInterval = setInterval(function() {
+      var btn = document.getElementById('wishlist-add-btn');
+      if (btn && !window.wishlistButtonVisibilityDetermined) {
+        btn.style.display = 'none';
+        btn.style.visibility = 'hidden';
+        btn.style.opacity = '0';
+        btn.style.position = 'absolute';
+        btn.style.left = '-9999px';
+        btn.style.top = '-9999px';
+      } else if (window.wishlistButtonVisibilityDetermined) {
+        clearInterval(checkInterval);
+      }
+    }, 100);
+  })();
+  
   var wishlistPrimaryColor = '#111'; // fallback, global
 function createWishlistButtonOnImage(position, metafields) {
   // Check if button already exists to prevent duplicates
@@ -89,9 +183,6 @@ function createWishlistButtonOnImage(position, metafields) {
   iconContainer.style.display = 'inline-block';
   iconContainer.style.verticalAlign = 'middle';
   iconContainer.style.lineHeight = '1';
-  if (appearance !== 'plain') {
-    iconContainer.style.marginTop = '10px';
-  }
   // console.debug('[WISHLIST] Using icon container ID:', iconContainerId, 'Source:', metafields['wishlist_icon_container_id'] ? 'metafield' : 'static fallback');
   
   // Create text container with dynamic ID
@@ -224,7 +315,7 @@ function createWishlistButtonOnImage(position, metafields) {
     e.preventDefault();
     var customerId = window.wishlistCustomerId;
     if (!customerId) {
-      alert('Please log in to use wishlists.');
+              showNotification('Please log in to use wishlists.', 'error');
       return;
     }
     
@@ -268,6 +359,24 @@ function applyWishlistBtnStyle() {
     ? window.wishlistButtonHeightFromMetafield
     : null;
   
+  // Don't apply styling if button visibility hasn't been determined yet
+  if (!window.wishlistButtonVisibilityDetermined) {
+    if (wishlistBtn) {
+      wishlistBtn.style.display = 'none';
+      wishlistBtn.style.visibility = 'hidden';
+      wishlistBtn.style.opacity = '0';
+      wishlistBtn.style.position = 'absolute';
+      wishlistBtn.style.left = '-9999px';
+      wishlistBtn.style.top = '-9999px';
+    }
+    return;
+  }
+  
+  // Don't apply styling if button is hidden
+  if (wishlistBtn && wishlistBtn.style.display === 'none') {
+    return;
+  }
+  
   // Function to match cart button height
   function matchCartButtonHeight(wishlistBtn, cartBtn) {
     if (!wishlistBtn || !cartBtn) return;
@@ -295,11 +404,6 @@ function applyWishlistBtnStyle() {
     if (cartLineHeight) wishlistBtn.style.lineHeight = cartLineHeight;
     
     wishlistBtn.style.boxSizing = 'border-box';
-  }
-  
-  // Don't apply styling if button is hidden
-  if (wishlistBtn && wishlistBtn.style.display === 'none') {
-    return;
   }
   
   // Ensure button is clickable
@@ -454,7 +558,7 @@ function setupWishlistModal() {
     // console.debug('[WISHLIST] Add to selected button clicked');
     const wishlistId = select.value;
     if (!wishlistId) {
-      alert('Please select a wishlist.');
+              showNotification('Please select a wishlist.', 'error');
       return;
     }
     // console.debug('[WISHLIST] Adding to wishlist:', wishlistId);
@@ -474,9 +578,9 @@ function setupWishlistModal() {
     .then(data => {
       // console.debug('[WISHLIST] Add to wishlist response:', data);
       if (data.status === 'true' && data.message && data.message.toLowerCase().includes('already')) {
-        alert('Product already in this wishlist.');
+        showNotification('Product already in this wishlist.', 'info');
       } else {
-        alert('Added to wishlist!');
+                  showNotification('Added to wishlist!', 'success');
       }
       modal.style.display = 'none';
       addToSelectedBtn.textContent = 'Add to Selected';
@@ -485,9 +589,9 @@ function setupWishlistModal() {
     .catch((error) => {
       // console.error('[WISHLIST] Error adding to wishlist:', error);
       if (error.error_code === 'USAGE_LIMIT_REACHED') {
-        alert('Usage limit reached. Please upgrade your plan to add more items.');
+        showNotification('Usage limit reached. Please upgrade your plan to add more items.', 'error');
       } else {
-        alert('Error adding to wishlist.');
+                  showNotification('Error adding to wishlist.', 'error');
       }
       addToSelectedBtn.textContent = 'Add to Selected';
       addToSelectedBtn.disabled = false;
@@ -500,7 +604,7 @@ function setupWishlistModal() {
     // console.debug('[WISHLIST] Create button clicked');
     const title = titleInput.value.trim();
     if (!title) {
-      alert('Please enter a wishlist name.');
+              showNotification('Please enter a wishlist name.', 'error');
       return;
     }
     // console.debug('[WISHLIST] Creating wishlist with title:', title);
@@ -527,7 +631,7 @@ function setupWishlistModal() {
       })
       .then(() => {
         // console.debug('[WISHLIST] Product added to new wishlist');
-        alert('Wishlist created and product added!');
+        showNotification('Wishlist created and product added!', 'success');
         modal.style.display = 'none';
         titleInput.value = '';
         createBtn.textContent = 'Create and Add';
@@ -537,11 +641,11 @@ function setupWishlistModal() {
     .catch((err) => {
       // console.error('[WISHLIST] Error creating wishlist:', err);
       if (err && err.message && err.message.toLowerCase().includes('already exists')) {
-        alert('A wishlist with this title already exists.');
+        showNotification('A wishlist with this title already exists.', 'error');
       } else if (err.error_code === 'USAGE_LIMIT_REACHED') {
-        alert('Usage limit reached. Please upgrade your plan to create more wishlists.');
+                  showNotification('Usage limit reached. Please upgrade your plan to create more wishlists.', 'error');
       } else {
-        alert('Error creating wishlist.');
+                  showNotification('Error creating wishlist.', 'error');
       }
       createBtn.textContent = 'Create and Add';
       createBtn.disabled = false;
@@ -646,6 +750,9 @@ function showWishlistModal() {
       // Check button position tab first
       var buttonPositionTab = metafields['button_position_tab'];
       
+      // Mark that button visibility has been determined
+      window.wishlistButtonVisibilityDetermined = true;
+      
       // If button should be on product image, hide the original button immediately
       if (buttonPositionTab === 'product_image') {
         if (btn) {
@@ -657,9 +764,13 @@ function showWishlistModal() {
         // console.debug('[WISHLIST] Near cart mode - styling original button');
         if (btn) {
           btn.style.display = 'flex';
+          btn.style.visibility = 'visible';
+          btn.style.opacity = '1';
+          btn.style.position = 'relative';
+          btn.style.left = 'auto';
+          btn.style.top = 'auto';
           btn.style.pointerEvents = 'auto';
           btn.style.cursor = 'pointer';
-          btn.style.position = 'relative';
           btn.style.zIndex = '10';
         }
       } else {
@@ -667,9 +778,13 @@ function showWishlistModal() {
         // console.debug('[WISHLIST] Default mode - styling original button');
         if (btn) {
           btn.style.display = 'flex';
+          btn.style.visibility = 'visible';
+          btn.style.opacity = '1';
+          btn.style.position = 'relative';
+          btn.style.left = 'auto';
+          btn.style.top = 'auto';
           btn.style.pointerEvents = 'auto';
           btn.style.cursor = 'pointer';
-          btn.style.position = 'relative';
           btn.style.zIndex = '10';
         }
       }
@@ -711,9 +826,6 @@ function showWishlistModal() {
           iconContainer.style.display = 'inline-block';
           iconContainer.style.verticalAlign = 'middle';
           iconContainer.style.lineHeight = '1';
-          if (appearance !== 'plain') {
-            iconContainer.style.marginTop = '10px';
-          }
         }
         if (btnText) {
           btnText.textContent = buttonText;
@@ -737,9 +849,6 @@ function showWishlistModal() {
           iconContainer.style.display = 'inline-block';
           iconContainer.style.verticalAlign = 'middle';
           iconContainer.style.lineHeight = '1';
-          if (appearance !== 'plain') {
-            iconContainer.style.marginTop = '10px';
-          }
         }
         if (btnText) {
           btnText.style.display = 'none';
@@ -803,7 +912,7 @@ function showWishlistModal() {
           e.preventDefault();
           var customerId = window.wishlistCustomerId;
           if (!customerId) {
-            alert('Please log in to use wishlists.');
+            showNotification('Please log in to use wishlists.', 'error');
             return;
           }
           
@@ -838,11 +947,19 @@ function showWishlistModal() {
       var buttonPositionTab = metafields['button_position_tab'];
       var wishlistBtn = document.getElementById('wishlist-add-btn');
       
+      // Mark that button visibility has been determined
+      window.wishlistButtonVisibilityDetermined = true;
+      
       // Check if button should be shown based on button_position_tab
       if (buttonPositionTab === 'product_image') {
         // console.debug('[WISHLIST] Product image mode - hiding original button and creating image button');
         if (wishlistBtn) {
           wishlistBtn.style.display = 'none';
+          wishlistBtn.style.visibility = 'hidden';
+          wishlistBtn.style.opacity = '0';
+          wishlistBtn.style.position = 'absolute';
+          wishlistBtn.style.left = '-9999px';
+          wishlistBtn.style.top = '-9999px';
         }
         
         // Create wishlist button on product image
@@ -855,12 +972,22 @@ function showWishlistModal() {
         // console.debug('[WISHLIST] Near cart mode - showing original button');
         if (wishlistBtn) {
           wishlistBtn.style.display = 'flex';
+          wishlistBtn.style.visibility = 'visible';
+          wishlistBtn.style.opacity = '1';
+          wishlistBtn.style.position = 'relative';
+          wishlistBtn.style.left = 'auto';
+          wishlistBtn.style.top = 'auto';
         }
       } else {
         // Default behavior (backward compatibility)
         // console.debug('[WISHLIST] Default mode - showing original button');
         if (wishlistBtn) {
           wishlistBtn.style.display = 'flex';
+          wishlistBtn.style.visibility = 'visible';
+          wishlistBtn.style.opacity = '1';
+          wishlistBtn.style.position = 'relative';
+          wishlistBtn.style.left = 'auto';
+          wishlistBtn.style.top = 'auto';
         }
       }
       
@@ -1017,9 +1144,10 @@ function showWishlistModal() {
     });
 })();
 
-document.addEventListener("DOMContentLoaded", function() {
-  applyWishlistBtnStyle();
-});
+// Remove this call since it runs before metafields are loaded
+// document.addEventListener("DOMContentLoaded", function() {
+//   applyWishlistBtnStyle();
+// });
 
 document.addEventListener('DOMContentLoaded', function() {
   // console.debug('[WISHLIST] DOMContentLoaded - setting up modal functionality');
@@ -1041,28 +1169,27 @@ setTimeout(function() {
   setupWishlistModal();
 }, 1000);
 
-document.addEventListener('DOMContentLoaded', function() {
-  var selector = window.wishlistBtnSelector || '.wishlist-add-btn';
-  var btns = document.querySelectorAll(selector);
-  btns.forEach(function(btn) {
-    btn.style.display = 'flex';
-    btn.style.alignItems = 'center';
-    btn.style.justifyContent = 'center';
-    btn.style.gap = '12px';
-    btn.style.fontSize = '15px';
-    btn.style.fontWeight = '600';
-    btn.style.margin = '0 auto 16px auto';
-    btn.style.boxSizing = 'border-box';
-    btn.style.border = 'none';
-    btn.style.cursor = 'pointer';
-    btn.style.transition = 'background 0.2s, color 0.2s';
-    // Focus outline (simulate :focus)
-    btn.addEventListener('focus', function() {
-      btn.style.outline = '2px solid #222';
-    });
-    btn.addEventListener('blur', function() {
-      btn.style.outline = '';
-    });
-  });
-});
+// Remove this problematic event listener that forces all buttons to be visible
+// document.addEventListener('DOMContentLoaded', function() {
+//   var selector = window.wishlistBtnSelector || '.wishlist-add-btn';
+//   var btns = document.querySelectorAll(selector);
+//   btns.forEach(function(btn) {
+//     btn.style.display = 'flex';
+//     btn.style.alignItems = 'center';
+//     btn.style.justifyContent = 'center';
+//     btn.style.gap = '12px';
+//     btn.style.fontSize = '15px';
+//     btn.style.fontWeight = '600';
+//     btn.style.margin = '0 auto 16px auto';
+//     btn.style.boxSizing = 'border-box';
+//     btn.style.border = 'none';
+//     btn.style.cursor = 'pointer';
+//     btn.style.transition = 'background 0.2s, color 0.2s';
+//     // Focus outline (simulate :focus)
+//     btn.addEventListener('focus', function() {
+//       btn.style.outline = '2px solid #222';
+//       btn.style.outline = '';
+//     });
+//   });
+// });
 } // Close the else block from the initialization check

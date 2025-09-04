@@ -10,7 +10,8 @@ import {
   ProgressBar,
   Icon,
   Box,
-  Divider
+  Divider,
+  Spinner
 } from '@shopify/polaris'
 import { 
   ExternalIcon,
@@ -202,9 +203,13 @@ function Index() {
 
   // Function to fetch wishlist statistics
   const fetchWishlistStats = async (startDate, endDate) => {
+    setMetricsLoading(true);
     try {
       const token = await getSessionToken(appBridge);
-      if (!token) return;
+      if (!token) {
+        setMetricsLoading(false);
+        return;
+      }
 
       const startDateStr = startDate.toISOString().split('T')[0];
       const endDateStr = endDate.toISOString().split('T')[0];
@@ -238,10 +243,12 @@ function Index() {
           { title: t('Total Lists'), value: data.data.total_lists },
           { title: t('Total Customers'), value: customersTotal },
         ]);
+        setMetricsLoading(false);
       }
     } catch (error) {
       console.error('Error fetching wishlist statistics:', error);
       // Keep the current metrics if there's an error
+      setMetricsLoading(false);
     }
   };
 
@@ -269,6 +276,7 @@ function Index() {
     { title: t('Total Lists'), value: 0 },
     { title: t('Total Customers'), value: 0 },
   ]);
+  const [metricsLoading, setMetricsLoading] = useState(true);
 
   const setupSteps = [
     { 
@@ -406,9 +414,15 @@ function Index() {
                         background: 'repeating-linear-gradient(to right, #c9cccf 0px, #c9cccf 2px, transparent 2px, transparent 4px)',
                         margin: '4px 0'
                       }}></div>
-                      <Text variant="headingLg" as="p" fontWeight="bold">
-                        {metric.value}
-                      </Text>
+                      {metricsLoading ? (
+                        <div style={{ display: 'flex', justifyContent: 'center', padding: '20px 0' }}>
+                          <Spinner size="small" />
+                        </div>
+                      ) : (
+                        <Text variant="headingLg" as="p" fontWeight="bold">
+                          {metric.value}
+                        </Text>
+                      )}
                     </div>
                   </Card>
                 ))}

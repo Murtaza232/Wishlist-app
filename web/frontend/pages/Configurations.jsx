@@ -11,7 +11,6 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from "../components";
 
 
-
 function ColorPopover({ color, setColor, active, setActive }) {
   const [hex, setHex] = useState(color);
   return (
@@ -62,7 +61,6 @@ export default function ManageConfiguration() {
   const [primaryPopoverActive, setPrimaryPopoverActive] = useState(false);
   const [secondaryPopoverActive, setSecondaryPopoverActive] = useState(false);
   const [selectedIcon, setSelectedIcon] = useState("Heart");
-
   // Product Page tab state
   const [buttonType, setButtonType] = useState("icon-text");
   const [buttonStyle, setButtonStyle] = useState("solid");
@@ -183,7 +181,7 @@ export default function ManageConfiguration() {
     async function fetchConfig() {
       try {
         const token = await getSessionToken(appBridge);
-        // console.log(token)
+       console.log(token)
         if (!token) return;
         const res = await fetch(`${apiUrl}wishlist-configuration`, {
           headers: {
@@ -697,8 +695,8 @@ export default function ManageConfiguration() {
                     <div style={{ fontWeight: 600, fontSize: 20, marginBottom: 18 }}>{t('Icon thickness', 'Configurations')}</div>
                     <Box sectioned title={t('Icon thickness', 'Configurations')}>
                       <RangeSlider
-                        min={0}
-                        max={8}
+                        min={1}
+                        max={4}
                         step={1}
                         value={iconThickness}
                         onChange={val => { setIconThickness(val); markUnsaved(); }}

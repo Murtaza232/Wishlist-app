@@ -4,7 +4,9 @@
 <div id="wishlist-extension-status-detector" class="wishlist-extension-enabled" style="display: none; position: absolute; left: -9999px; top: -9999px;"></div>
 
 <script>
+
   // Removed: window.wishlistIconType, window.wishlistAddBtnIconType, and any icon-related extension settings
+  window.wishlistEnable=true;
   window.wishlistButtonIcon = "{{ block.settings.icon | default: '' }}";
   window.wishlistCustomIcon = "{% if block.settings.icon_add != blank %}{{ block.settings.icon_add | image_url: width: 48 }}{% endif %}";
   window.wishlistButtonPosition = "{{ block.settings.button_position | default: '' }}";
@@ -24,6 +26,13 @@
   window.wishlistAddToWishlistProductPage="{{block.settings.add_wishlist_selector_product_image}}";
   window.wishlistCartItemSelector = "{{ block.settings.wishlist_cart_item_selector | escape }}";
   window.wishlistCartRemoveSelector = "{{ block.settings.wishlist_cart_remove_selector | escape }}";
+  // Smart Save will be controlled via metafields
+  window.wishlistSmartSaveEnabled = true; // Always enable, but check metafields for actual setting
+  
+  // Debug logging
+  console.log('[WISHLIST CONFIG] Configuration block loaded');
+  console.log('[WISHLIST CONFIG] Current URL:', window.location.pathname);
+  console.log('[WISHLIST CONFIG] Is product page:', window.location.pathname.indexOf('/products/') !== -1);
 </script>
 <script>
 function isProductPage() {
@@ -69,6 +78,19 @@ function isProductPage() {
       // If metafields fetch fails, do not render icon
       // Optionally, you can skip calling renderWishlistIconAndFonts
     });
+})();
+
+// Load Smart Save script (will check metafields for settings)
+(function() {
+  var smartSaveScript = document.createElement('script');
+  smartSaveScript.src = '{{ 'smart-save.js' | asset_url }}?v=' + Date.now();
+  smartSaveScript.onload = function() {
+    console.log('[WISHLIST CONFIG] Smart Save script loaded successfully');
+  };
+  smartSaveScript.onerror = function() {
+    console.error('[WISHLIST CONFIG] Failed to load Smart Save script');
+  };
+  document.head.appendChild(smartSaveScript);
 })();
 
 </script>
