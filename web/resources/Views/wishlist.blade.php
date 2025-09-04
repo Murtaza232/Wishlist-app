@@ -297,6 +297,72 @@
 window.customerId = @json($customerId ?? '');
 window.wishlistId = @json($wishlistId ?? '');
 window.shopDomain = @json(request()->get('shop') ?? (isset($shopData['shop']) ? $shopData['shop'] : ''));
+
+// Notification function for wishlist page
+function showNotification(message, type = 'success') {
+    // Create notification element
+    var notification = document.createElement('div');
+    var backgroundColor = type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3';
+    
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${backgroundColor};
+        color: white;
+        padding: 15px 20px;
+        border-radius: 5px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        z-index: 10000;
+        font-family: inherit;
+        font-size: 14px;
+        max-width: 300px;
+        animation: slideIn 0.3s ease-out;
+    `;
+    
+    notification.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                ${type === 'success' ? '<path d="M12 21c-4.5-4.2-8-7.2-8-11.1C4 5.5 7.5 4 10 6.5c1.2 1.2 2 2.5 2 2.5s.8-1.3 2-2.5C16.5 4 20 5.5 20 9.9c0 2.2-1.2 4.2-3.5 6.7-.8.9-1.7 1.7-2.5 2.4z"/>' : 
+                  type === 'error' ? '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>' :
+                  '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>'}
+            </svg>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    // Add CSS animation if not already added
+    if (!document.getElementById('wishlist-notification-styles')) {
+        var style = document.createElement('style');
+        style.id = 'wishlist-notification-styles';
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Remove after 5 seconds
+    setTimeout(function() {
+        if (notification.parentNode) {
+            notification.style.animation = 'slideOut 0.3s ease-in';
+            setTimeout(function() {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }
+    }, 5000);
+}
 </script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -432,7 +498,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var wishlistId = btn.getAttribute('data-wishlist-id');
         var customerId = btn.getAttribute('data-customer-id');
         if (!variantId || !wishlistId || !customerId || !productId) {
-            alert('Missing data to remove from wishlist.');
+            showNotification('Missing data to remove from wishlist.', 'error');
             return;
         }
         // Add to Shopify cart
@@ -458,14 +524,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Remove the card from the DOM
                     var card = btn.closest('.wishlist-card, .wishlist-drawer-card');
                     if (card) card.remove();
-                    alert('Added to cart and removed from wishlist!');
+                    showNotification('Added to cart and removed from wishlist!', 'success');
                 } else {
-                    alert('Added to cart, but failed to remove from wishlist.');
+                    showNotification('Added to cart, but failed to remove from wishlist.', 'error');
                 }
             });
         })
         .catch(function() {
-            alert('Failed to add to cart.');
+            showNotification('Failed to add to cart.', 'error');
         });
     }
     document.body.addEventListener('click', handleAddToCartClick);
@@ -488,7 +554,7 @@ function shareWishlist() {
         .then(res => res.json())
         .then(usageResponse => {
             if (!usageResponse.success || !usageResponse.data.is_allowed) {
-                alert('You cannot share wishlists. Usage limit reached. Please upgrade your plan to share more wishlists.');
+                showNotification('You cannot share wishlists. Usage limit reached. Please upgrade your plan to share more wishlists.', 'error');
                 return;
             }
 
@@ -519,9 +585,9 @@ function shareWishlist() {
                 })
                 .catch(error => {
                     if (error.error_code === 'USAGE_LIMIT_REACHED') {
-                        alert('Usage limit reached. Please upgrade your plan to share more wishlists.');
+                        showNotification('Usage limit reached. Please upgrade your plan to share more wishlists.', 'error');
                     } else if (error.error_code === 'SHARING_NOT_ALLOWED') {
-                        alert('Wishlist sharing is not available on your current plan. Please upgrade to share wishlists.');
+                        showNotification('Wishlist sharing is not available on your current plan. Please upgrade to share wishlists.', 'error');
                     } else {
                         console.error('Error sharing wishlist:', error);
                     }
@@ -536,12 +602,12 @@ function shareWishlist() {
                 });
             } else {
                 navigator.clipboard.writeText(url);
-                alert('Wishlist link copied to clipboard!');
+                showNotification('Wishlist link copied to clipboard!', 'success');
             }
         })
         .catch(error => {
             console.error('Error checking sharing permissions:', error);
-            alert('You cannot share wishlists. Usage limit reached. Please upgrade your plan to share more wishlists.');
+            showNotification('You cannot share wishlists. Usage limit reached. Please upgrade your plan to share more wishlists.', 'error');
         });
 }
 </script>
